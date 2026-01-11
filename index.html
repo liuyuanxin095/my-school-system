@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快樂國小 - 校務系統 V3.0 (安全版)</title>
+    <title>快樂國小 - 校務系統 V4.0 (全功能版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 500px; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 600px; } /* 寬度加寬 */
         h1 { color: #333; }
         input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         
@@ -16,11 +16,16 @@
         .btn-green { background-color: #28a745; margin-bottom: 20px; }
         .btn-gray { background-color: #6c757d; }
         
+        /* 小按鈕樣式 */
+        .btn-sm { padding: 5px 10px; font-size: 14px; margin: 0 2px; width: auto; }
+        .btn-red { background-color: #dc3545; } /* 刪除用紅色 */
+        .btn-yellow { background-color: #ffc107; color: black; } /* 修改用黃色 */
+
         #dashboard { display: none; }
-        #loading { display: none; color: #666; } /* 讀取中的提示 */
+        #loading { display: none; color: #666; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: middle; }
         th { background-color: #f2f2f2; }
         
         .add-box { background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left; }
@@ -31,7 +36,7 @@
     <div id="login-page" class="container">
         <h1>校務系統登入</h1>
         <p>請使用管理員 Email 登入</p>
-        <input type="email" id="emailInput" placeholder="Email (例如: admin@school.com)">
+        <input type="email" id="emailInput" placeholder="Email">
         <input type="password" id="passwordInput" placeholder="密碼">
         <button class="btn btn-blue" onclick="handleLogin()">登入系統</button>
         <p id="loading">驗證中...</p>
@@ -43,9 +48,11 @@
         
         <div class="add-box">
             <h3>➕ 新增學生資料</h3>
-            <input type="text" id="newId" placeholder="學號">
-            <input type="text" id="newName" placeholder="姓名">
-            <input type="number" id="newScore" placeholder="成績">
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="newId" placeholder="學號" style="flex: 1;">
+                <input type="text" id="newName" placeholder="姓名" style="flex: 1;">
+                <input type="number" id="newScore" placeholder="成績" style="flex: 1;">
+            </div>
             <button class="btn btn-green" onclick="addData()">確認新增</button>
         </div>
 
@@ -56,7 +63,7 @@
                     <th>學號</th>
                     <th>姓名</th>
                     <th>成績</th>
-                </tr>
+                    <th>操作功能</th> </tr>
             </thead>
             <tbody id="tableBody"></tbody>
         </table>
@@ -72,54 +79,40 @@
         const supabaseKey = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 🟢 1. 網頁一打開，先檢查這個人是不是之前登入過（保持登入狀態）
         checkSession();
 
         async function checkSession() {
-            // 問 Supabase：現在有人登入嗎？
             const { data: { session } } = await db.auth.getSession();
-            if (session) {
-                // 如果有，直接顯示後台，不用再輸入密碼
-                showDashboard(session.user.email);
-            }
+            if (session) showDashboard(session.user.email);
         }
 
-        // 🔵 2. 處理登入 (Login)
         async function handleLogin() {
             const email = document.getElementById('emailInput').value;
             const password = document.getElementById('passwordInput').value;
-            
-            document.getElementById('loading').style.display = 'block'; // 顯示轉圈圈文字
+            document.getElementById('loading').style.display = 'block';
 
-            // 呼叫 Supabase 的登入功能
-            const { data, error } = await db.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
-
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
             if (error) {
                 alert("登入失敗：" + error.message);
                 document.getElementById('loading').style.display = 'none';
             } else {
-                // 登入成功！
                 showDashboard(data.user.email);
             }
         }
 
-        // 🔴 3. 處理登出 (Logout)
         async function handleLogout() {
-            await db.auth.signOut(); // 告訴 Supabase 登出
-            location.reload(); // 重新整理網頁回到登入畫面
+            await db.auth.signOut();
+            location.reload();
         }
 
-        // 畫面切換與讀取資料
         function showDashboard(userEmail) {
             document.getElementById('login-page').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             document.getElementById('currentUser').innerText = userEmail;
-            fetchData(); // 登入後才去抓資料
+            fetchData();
         }
 
+        // 讀取資料 (Read) - 修改版
         async function fetchData() {
             const { data, error } = await db
                 .from('students')
@@ -131,11 +124,23 @@
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = ""; 
                 data.forEach(s => {
-                    tableBody.innerHTML += `<tr><td>${s.student_id}</td><td>${s.name}</td><td>${s.score}</td></tr>`;
+                    // 注意這裡：我們在每一行都加了修改和刪除按鈕
+                    // 並且把學生的 ID 藏在按鈕的指令裡
+                    tableBody.innerHTML += `
+                    <tr>
+                        <td>${s.student_id}</td>
+                        <td>${s.name}</td>
+                        <td>${s.score}</td>
+                        <td>
+                            <button class="btn btn-sm btn-yellow" onclick="updateScore('${s.id}', '${s.name}')">修改</button>
+                            <button class="btn btn-sm btn-red" onclick="deleteStudent('${s.id}', '${s.name}')">刪除</button>
+                        </td>
+                    </tr>`;
                 });
             }
         }
 
+        // 新增資料 (Create)
         async function addData() {
             const id = document.getElementById('newId').value;
             const name = document.getElementById('newName').value;
@@ -150,6 +155,45 @@
                 document.getElementById('newName').value = '';
                 document.getElementById('newScore').value = '';
                 fetchData();
+            }
+        }
+
+        // 🔥 新功能：修改成績 (Update)
+        async function updateScore(id, name) {
+            // 跳出一個簡單的輸入視窗
+            let newScore = prompt(`請輸入 ${name} 的新成績：`);
+            
+            // 如果使用者按取消或沒輸入，就什麼都不做
+            if (newScore === null || newScore === "") return;
+
+            // 送出修改指令
+            const { error } = await db
+                .from('students')
+                .update({ score: newScore }) // 只更新 score 欄位
+                .eq('id', id); // 條件是 id 等於剛剛選到的那個學生
+
+            if (error) alert("修改失敗：" + error.message);
+            else {
+                alert("修改成功！");
+                fetchData(); // 重新整理表格
+            }
+        }
+
+        // 🔥 新功能：刪除學生 (Delete)
+        async function deleteStudent(id, name) {
+            // 先再次確認，避免誤刪
+            let confirmAction = confirm(`確定要刪除 ${name} 的資料嗎？(此動作無法復原)`);
+            
+            if (confirmAction) {
+                const { error } = await db
+                    .from('students')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) alert("刪除失敗：" + error.message);
+                else {
+                    fetchData(); // 刪除後，重新讀取表格，該行就會消失
+                }
             }
         }
     </script>
