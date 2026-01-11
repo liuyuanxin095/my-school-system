@@ -10,53 +10,69 @@
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
+        /* 側邊欄全黑設定 */
         .sidebar {
             width: 250px;
-            background: #212529; /* 設定統一的黑色背景 */
+            background-color: #212529; /* 深黑背景 */
             color: white;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #333; /* 右側加一點點邊界感，避免跟內容混在一起 */
+            border-right: 1px solid #333;
         }
         
-        /* 標題區塊：顏色跟 sidebar 一樣，移除底線 */
         .sidebar-header { 
             padding: 20px 15px; 
-            background: #212529; 
-            border-bottom: 1px solid #373b3e; /* 很淡的分隔線，或者設 none 也可以 */
+            background-color: #212529; /* 確保標題也是同色 */
+            border-bottom: 1px solid #373b3e; 
         }
         .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; color: #fff; }
 
-        /* 選單按鈕樣式 */
-        .menu-btn, .accordion-button {
-            background-color: #212529 !important; /* 強制黑色 */
-            color: #adb5bd !important;            /* 文字灰色 */
+        /* 選單按鈕樣式 - 修正留白問題 */
+        .menu-btn {
+            display: flex;             /* 改用 flex 讓內容對齊 */
+            align-items: center;
+            width: 100%;               /* 寬度撐滿 */
+            padding: 12px 20px;
+            color: #adb5bd;
+            text-decoration: none;
+            background-color: transparent; /* 背景透明 */
+            border: none;
+            transition: 0.2s;
+            box-sizing: border-box;    /* 確保 padding 不會撐破寬度 */
+        }
+
+        /* 折疊選單按鈕 */
+        .accordion-button {
+            background-color: transparent !important;
+            color: #adb5bd !important;
             box-shadow: none !important;
             padding: 12px 20px;
-            border: none;
-            width: 100%;
-            text-align: left;
-            text-decoration: none;
         }
-        
+
         /* 滑鼠移過去 */
         .menu-btn:hover, .accordion-button:hover { 
-            background-color: #2c3034 !important; /* 稍微變亮一點點就好 */
+            background-color: #2c3034 !important; 
             color: #fff !important; 
         }
 
-        /* 被選中/展開 */
+        /* 被選中/展開 - 修正背景色 */
         .menu-btn.active, .accordion-button:not(.collapsed) { 
             color: #fff !important; 
             font-weight: bold;
-            background-color: #212529 !important; /* 維持黑色 */
+            background-color: #212529 !important; /* 維持黑色，不要變白 */
+            border-left: 4px solid #0d6efd;       /* 左邊加一條藍線標示 */
+        }
+        
+        /* 修正儀表板按鈕在 active 時的邊框 */
+        .menu-btn.active {
+            padding-left: 16px; /* 因為加了 border-left，稍微修正內距 */
         }
 
         /* 隱藏箭頭 */
         .accordion-button::after { display: none; }
 
-        /* 子選單樣式 */
+        /* 子選單 */
         .submenu-link {
             display: block;
             padding: 8px 20px 8px 54px; 
@@ -64,12 +80,15 @@
             text-decoration: none;
             font-size: 0.9rem;
             transition: 0.2s;
-            background-color: #1c1f23; /* 子選單比背景再深一點點，增加層次感 */
+            background-color: #15171a; /* 比側邊欄更深一點 */
         }
         .submenu-link:hover { color: #fff; background-color: #2c3034; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; }
         iframe { width: 100%; height: 100%; border: none; }
+        
+        /* 移除 Accordion 預設背景 */
+        .accordion-item { background-color: transparent; border: none; }
     </style>
     <script>
         if (!localStorage.getItem('currentUser')) {
