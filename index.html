@@ -3,52 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快樂國小 - 校務系統 V4.0 (全功能版)</title>
+    <title>快樂國小 - 校務系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 600px; } /* 寬度加寬 */
-        h1 { color: #333; }
-        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        /* 基礎設定：極簡風格 */
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f5f7fa; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 600px; }
         
-        .btn { width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        .btn-blue { background-color: #007bff; }
-        .btn-green { background-color: #28a745; margin-bottom: 20px; }
-        .btn-gray { background-color: #6c757d; }
+        /* 標題與版本號 */
+        h1 { color: #2c3e50; margin-bottom: 20px; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
+        .version-tag { font-size: 14px; color: #fff; background-color: #95a5a6; padding: 2px 8px; border-radius: 4px; vertical-align: middle; font-weight: normal; }
+
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; transition: 0.3s; }
+        input:focus { border-color: #3498db; outline: none; }
+
+        /* 按鈕優化：扁平化設計 */
+        .btn { width: 100%; padding: 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-blue { background-color: #3498db; }
+        .btn-green { background-color: #2ecc71; }
+        .btn-gray { background-color: #95a5a6; }
         
-        /* 小按鈕樣式 */
-        .btn-sm { padding: 5px 10px; font-size: 14px; margin: 0 2px; width: auto; }
-        .btn-red { background-color: #dc3545; } /* 刪除用紅色 */
-        .btn-yellow { background-color: #ffc107; color: black; } /* 修改用黃色 */
+        /* 表格內的小按鈕 */
+        .btn-sm { padding: 6px 12px; font-size: 14px; margin: 0 4px; width: auto; display: inline-block; }
+        .btn-red { background-color: #e74c3c; }
+        .btn-yellow { background-color: #f1c40f; color: #333; }
 
         #dashboard { display: none; }
-        #loading { display: none; color: #666; }
+        #loading { display: none; color: #7f8c8d; text-align: center; margin-top: 10px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: middle; }
-        th { background-color: #f2f2f2; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: center; color: #34495e; }
+        th { background-color: #fafafa; color: #7f8c8d; font-weight: 600; }
         
-        .add-box { background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left; }
+        .add-box { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .add-box h3 { margin-top: 0; color: #2c3e50; font-size: 18px; margin-bottom: 15px; }
+
+        /* =========================================
+           🔥 重點：自製浮動視窗 (Modal) 的 CSS
+           ========================================= */
+        .modal-overlay {
+            display: none; /* 平常隱藏 */
+            position: fixed; /* 固定在螢幕上 */
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
+            justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            animation: popUp 0.3s ease-out; /* 彈出動畫 */
+        }
+
+        /* 彈出動畫效果 */
+        @keyframes popUp {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-btn-group { display: flex; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div id="login-page" class="container">
-        <h1>校務系統登入</h1>
-        <p>請使用管理員 Email 登入</p>
+        <h1>校務系統登入 <span class="version-tag">v5.0</span></h1>
+        <p style="color: #7f8c8d; margin-bottom: 20px;">請使用管理員帳號登入</p>
         <input type="email" id="emailInput" placeholder="Email">
         <input type="password" id="passwordInput" placeholder="密碼">
-        <button class="btn btn-blue" onclick="handleLogin()">登入系統</button>
+        <button class="btn btn-blue" onclick="handleLogin()">登入</button>
         <p id="loading">驗證中...</p>
     </div>
 
     <div id="dashboard" class="container">
-        <h1 style="color: #007bff;">校務管理後台</h1>
-        <p>目前使用者：<span id="currentUser">...</span></p>
+        <h1>校務管理後台 <span class="version-tag">v5.0</span></h1>
         
         <div class="add-box">
-            <h3>➕ 新增學生資料</h3>
-            <div style="display: flex; gap: 5px;">
+            <h3>新增學生資料</h3>
+            <div style="display: flex; gap: 10px;">
                 <input type="text" id="newId" placeholder="學號" style="flex: 1;">
                 <input type="text" id="newName" placeholder="姓名" style="flex: 1;">
                 <input type="number" id="newScore" placeholder="成績" style="flex: 1;">
@@ -56,19 +94,34 @@
             <button class="btn btn-green" onclick="addData()">確認新增</button>
         </div>
 
-        <h3>📋 學生列表</h3>
+        <h3>學生列表</h3>
         <table id="studentTable">
             <thead>
                 <tr>
                     <th>學號</th>
                     <th>姓名</th>
                     <th>成績</th>
-                    <th>操作功能</th> </tr>
+                    <th>操作</th>
+                </tr>
             </thead>
             <tbody id="tableBody"></tbody>
         </table>
 
-        <button class="btn btn-gray" onclick="handleLogout()">登出</button>
+        <button class="btn btn-gray" onclick="handleLogout()" style="margin-top: 30px;">登出系統</button>
+    </div>
+
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin-top: 0;">修改成績</h3>
+            <p id="modalStudentName" style="color: #666; margin-bottom: 20px;">學生姓名</p>
+            
+            <input type="number" id="modalScoreInput" placeholder="輸入新成績">
+            
+            <div class="modal-btn-group">
+                <button class="btn btn-gray" onclick="closeModal()">取消</button>
+                <button class="btn btn-blue" onclick="saveEdit()">儲存修改</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -79,11 +132,14 @@
         const supabaseKey = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
+        // 用來暫存「現在正在修改哪一個學生」的 ID
+        let currentEditingId = null;
+
         checkSession();
 
         async function checkSession() {
             const { data: { session } } = await db.auth.getSession();
-            if (session) showDashboard(session.user.email);
+            if (session) showDashboard();
         }
 
         async function handleLogin() {
@@ -96,7 +152,7 @@
                 alert("登入失敗：" + error.message);
                 document.getElementById('loading').style.display = 'none';
             } else {
-                showDashboard(data.user.email);
+                showDashboard();
             }
         }
 
@@ -105,14 +161,12 @@
             location.reload();
         }
 
-        function showDashboard(userEmail) {
+        function showDashboard() {
             document.getElementById('login-page').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-            document.getElementById('currentUser').innerText = userEmail;
             fetchData();
         }
 
-        // 讀取資料 (Read) - 修改版
         async function fetchData() {
             const { data, error } = await db
                 .from('students')
@@ -124,15 +178,13 @@
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = ""; 
                 data.forEach(s => {
-                    // 注意這裡：我們在每一行都加了修改和刪除按鈕
-                    // 並且把學生的 ID 藏在按鈕的指令裡
                     tableBody.innerHTML += `
                     <tr>
                         <td>${s.student_id}</td>
                         <td>${s.name}</td>
-                        <td>${s.score}</td>
+                        <td><span style="font-weight:bold; color: #2c3e50;">${s.score}</span></td>
                         <td>
-                            <button class="btn btn-sm btn-yellow" onclick="updateScore('${s.id}', '${s.name}')">修改</button>
+                            <button class="btn btn-sm btn-yellow" onclick="openModal('${s.id}', '${s.name}', '${s.score}')">修改</button>
                             <button class="btn btn-sm btn-red" onclick="deleteStudent('${s.id}', '${s.name}')">刪除</button>
                         </td>
                     </tr>`;
@@ -140,7 +192,6 @@
             }
         }
 
-        // 新增資料 (Create)
         async function addData() {
             const id = document.getElementById('newId').value;
             const name = document.getElementById('newName').value;
@@ -150,7 +201,6 @@
             const { error } = await db.from('students').insert({ student_id: id, name: name, score: score });
             if (error) alert("新增失敗：" + error.message);
             else {
-                alert("新增成功！");
                 document.getElementById('newId').value = '';
                 document.getElementById('newName').value = '';
                 document.getElementById('newScore').value = '';
@@ -158,42 +208,50 @@
             }
         }
 
-        // 🔥 新功能：修改成績 (Update)
-        async function updateScore(id, name) {
-            // 跳出一個簡單的輸入視窗
-            let newScore = prompt(`請輸入 ${name} 的新成績：`);
-            
-            // 如果使用者按取消或沒輸入，就什麼都不做
-            if (newScore === null || newScore === "") return;
-
-            // 送出修改指令
-            const { error } = await db
-                .from('students')
-                .update({ score: newScore }) // 只更新 score 欄位
-                .eq('id', id); // 條件是 id 等於剛剛選到的那個學生
-
-            if (error) alert("修改失敗：" + error.message);
-            else {
-                alert("修改成功！");
-                fetchData(); // 重新整理表格
+        async function deleteStudent(id, name) {
+            if (confirm(`確定要刪除 ${name} 嗎？`)) {
+                const { error } = await db.from('students').delete().eq('id', id);
+                if (!error) fetchData();
             }
         }
 
-        // 🔥 新功能：刪除學生 (Delete)
-        async function deleteStudent(id, name) {
-            // 先再次確認，避免誤刪
-            let confirmAction = confirm(`確定要刪除 ${name} 的資料嗎？(此動作無法復原)`);
-            
-            if (confirmAction) {
-                const { error } = await db
-                    .from('students')
-                    .delete()
-                    .eq('id', id);
+        // =========================================
+        // 🔥 新功能：浮動視窗的控制邏輯
+        // =========================================
 
-                if (error) alert("刪除失敗：" + error.message);
-                else {
-                    fetchData(); // 刪除後，重新讀取表格，該行就會消失
-                }
+        // 1. 打開視窗
+        function openModal(id, name, currentScore) {
+            currentEditingId = id; // 記住現在要改誰
+            document.getElementById('modalStudentName').innerText = `正在修改：${name}`;
+            document.getElementById('modalScoreInput').value = currentScore; // 把舊成績填進去
+            
+            // 顯示視窗 (改成 flex 才能置中)
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        // 2. 關閉視窗
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditingId = null; // 清空記憶
+        }
+
+        // 3. 按下「儲存修改」
+        async function saveEdit() {
+            const newScore = document.getElementById('modalScoreInput').value;
+            
+            if (!newScore) { alert("請輸入成績"); return; }
+
+            // 送出修改給 Supabase
+            const { error } = await db
+                .from('students')
+                .update({ score: newScore })
+                .eq('id', currentEditingId);
+
+            if (error) {
+                alert("修改失敗");
+            } else {
+                closeModal(); // 關閉視窗
+                fetchData();  // 重新整理表格
             }
         }
     </script>
