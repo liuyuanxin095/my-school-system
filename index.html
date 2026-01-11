@@ -3,21 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快樂國小 - 校務系統</title>
+    <title>快樂國小 - 校務系統 V2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 400px; }
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 500px; }
         h1 { color: #333; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px;}
-        button:hover { background-color: #0056b3; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        /* 按鈕樣式 */
+        .btn { width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-blue { background-color: #007bff; }
+        .btn-blue:hover { background-color: #0056b3; }
+        .btn-green { background-color: #28a745; margin-bottom: 20px; } /* 新增按鈕是綠色的 */
+        .btn-green:hover { background-color: #218838; }
+        .btn-gray { background-color: #6c757d; }
+        
         #dashboard { display: none; }
         
         /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background-color: #f2f2f2; }
+        
+        /* 新增區塊樣式 */
+        .add-box { background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left; }
+        .add-box h3 { margin-top: 0; margin-bottom: 10px; color: #495057; }
     </style>
 </head>
 <body>
@@ -26,13 +37,21 @@
         <h1>校務系統登入</h1>
         <input type="text" id="usernameInput" placeholder="帳號：admin">
         <input type="password" id="passwordInput" placeholder="密碼：1234">
-        <button onclick="checkLogin()">登入系統</button>
+        <button class="btn btn-blue" onclick="checkLogin()">登入系統</button>
     </div>
 
     <div id="dashboard" class="container">
-        <h1 style="color: green;">學生資料列表</h1>
-        <p>資料直接從資料庫讀取中...</p>
+        <h1 style="color: #007bff;">校務管理後台</h1>
         
+        <div class="add-box">
+            <h3>➕ 新增學生資料</h3>
+            <input type="text" id="newId" placeholder="學號 (例如: S003)">
+            <input type="text" id="newName" placeholder="姓名 (例如: 張三)">
+            <input type="number" id="newScore" placeholder="成績 (例如: 100)">
+            <button class="btn btn-green" onclick="addData()">確認新增</button>
+        </div>
+
+        <h3>📋 學生列表</h3>
         <table id="studentTable">
             <thead>
                 <tr>
@@ -45,20 +64,19 @@
                 </tbody>
         </table>
 
-        <button onclick="logout()" style="background-color: #6c757d;">登出</button>
+        <button class="btn btn-gray" onclick="logout()">登出</button>
     </div>
 
     <script>
         // ==============================
-        // 設定區：請把這裡換成你的 Supabase 資料
+        // 設定區：記得要把你的 Key 貼回來！
         // ==============================
         const supabaseUrl = 'https://blzkbhjjoqylinywxtyy.supabase.co';
         const supabaseKey = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
         
-        // 啟動 Supabase (修正處：這裡改名為 db)
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 登入功能
+        // 登入
         function checkLogin() {
             var user = document.getElementById('usernameInput').value;
             var pass = document.getElementById('passwordInput').value;
@@ -66,23 +84,21 @@
             if (user === 'admin' && pass === '1234') {
                 document.getElementById('login-page').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                // 登入成功後，立刻去抓資料
                 fetchData();
             } else {
                 alert('帳號或密碼錯誤！');
             }
         }
 
-        // 抓取資料的功能
+        // 讀取資料 (Read)
         async function fetchData() {
-            // 修正處：這裡使用 db 來抓資料
             const { data, error } = await db
                 .from('students')
-                .select('*');
+                .select('*')
+                .order('student_id', { ascending: true }); // 讓學號照順序排
 
             if (error) {
-                console.error('抓取失敗:', error);
-                alert('讀取資料庫失敗！請看 Console');
+                console.error('讀取失敗:', error);
             } else {
                 const tableBody = document.getElementById('tableBody');
                 tableBody.innerHTML = ""; 
@@ -95,6 +111,38 @@
                     </tr>`;
                     tableBody.innerHTML += row;
                 });
+            }
+        }
+
+        // 新增資料 (Create) - 這是新功能！
+        async function addData() {
+            // 1. 抓取輸入框的值
+            const id = document.getElementById('newId').value;
+            const name = document.getElementById('newName').value;
+            const score = document.getElementById('newScore').value;
+
+            // 2. 檢查有沒有空白
+            if (!id || !name || !score) {
+                alert("請將資料填寫完整喔！");
+                return;
+            }
+
+            // 3. 送出資料給 Supabase
+            const { error } = await db
+                .from('students')
+                .insert({ student_id: id, name: name, score: score });
+
+            if (error) {
+                console.error('新增失敗:', error);
+                alert("新增失敗！請檢查學號是否重複，或看 Console 錯誤訊息");
+            } else {
+                alert("新增成功！🎉");
+                // 4. 清空輸入框
+                document.getElementById('newId').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('newScore').value = '';
+                // 5. 重新讀取表格，這樣才看得到新資料
+                fetchData();
             }
         }
 
