@@ -6,28 +6,26 @@
     <title>快樂國小 - 校務系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 基礎設定：極簡風格 */
+        /* 基礎設定 */
         body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f5f7fa; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 600px; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 700px; } /* 寬度加寬一點 */
         
-        /* 標題與版本號 */
         h1 { color: #2c3e50; margin-bottom: 20px; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
-        .version-tag { font-size: 14px; color: #fff; background-color: #95a5a6; padding: 2px 8px; border-radius: 4px; vertical-align: middle; font-weight: normal; }
+        .version-tag { font-size: 14px; color: #fff; background-color: #8e44ad; padding: 2px 8px; border-radius: 4px; vertical-align: middle; font-weight: normal; } /* V6 改紫色 */
 
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; transition: 0.3s; }
-        input:focus { border-color: #3498db; outline: none; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; transition: 0.3s; background: white; }
+        input:focus, select:focus { border-color: #3498db; outline: none; }
 
-        /* 按鈕優化：扁平化設計 */
         .btn { width: 100%; padding: 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
         .btn:hover { opacity: 0.9; }
         .btn-blue { background-color: #3498db; }
         .btn-green { background-color: #2ecc71; }
         .btn-gray { background-color: #95a5a6; }
         
-        /* 表格內的小按鈕 */
         .btn-sm { padding: 6px 12px; font-size: 14px; margin: 0 4px; width: auto; display: inline-block; }
         .btn-red { background-color: #e74c3c; }
         .btn-yellow { background-color: #f1c40f; color: #333; }
+        .btn-purple { background-color: #9b59b6; } /* 點名按鈕 */
 
         #dashboard { display: none; }
         #loading { display: none; color: #7f8c8d; text-align: center; margin-top: 10px; }
@@ -39,41 +37,23 @@
         .add-box { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
         .add-box h3 { margin-top: 0; color: #2c3e50; font-size: 18px; margin-bottom: 15px; }
 
-        /* =========================================
-           🔥 重點：自製浮動視窗 (Modal) 的 CSS
-           ========================================= */
+        /* 浮動視窗共用樣式 */
         .modal-overlay {
-            display: none; /* 平常隱藏 */
-            position: fixed; /* 固定在螢幕上 */
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
-            justify-content: center; align-items: center;
-            z-index: 1000;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000;
         }
-        
         .modal-box {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            width: 350px;
-            text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-            animation: popUp 0.3s ease-out; /* 彈出動畫 */
+            background: white; padding: 30px; border-radius: 12px; width: 350px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: popUp 0.3s ease-out;
         }
-
-        /* 彈出動畫效果 */
-        @keyframes popUp {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
+        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-btn-group { display: flex; gap: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div id="login-page" class="container">
-        <h1>校務系統登入 <span class="version-tag">v5.0</span></h1>
+        <h1>校務系統登入 <span class="version-tag">v6.0</span></h1>
         <p style="color: #7f8c8d; margin-bottom: 20px;">請使用管理員帳號登入</p>
         <input type="email" id="emailInput" placeholder="Email">
         <input type="password" id="passwordInput" placeholder="密碼">
@@ -82,7 +62,7 @@
     </div>
 
     <div id="dashboard" class="container">
-        <h1>校務管理後台 <span class="version-tag">v5.0</span></h1>
+        <h1>校務管理後台 <span class="version-tag">v6.0</span></h1>
         
         <div class="add-box">
             <h3>新增學生資料</h3>
@@ -101,7 +81,7 @@
                     <th>學號</th>
                     <th>姓名</th>
                     <th>成績</th>
-                    <th>操作</th>
+                    <th>點名與操作</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -112,28 +92,51 @@
 
     <div id="editModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="margin-top: 0;">修改成績</h3>
+            <h3 style="margin-top: 0;">✏️ 修改成績</h3>
             <p id="modalStudentName" style="color: #666; margin-bottom: 20px;">學生姓名</p>
-            
             <input type="number" id="modalScoreInput" placeholder="輸入新成績">
-            
             <div class="modal-btn-group">
-                <button class="btn btn-gray" onclick="closeModal()">取消</button>
+                <button class="btn btn-gray" onclick="closeEditModal()">取消</button>
                 <button class="btn btn-blue" onclick="saveEdit()">儲存修改</button>
             </div>
         </div>
     </div>
 
+    <div id="attendanceModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin-top: 0;">📝 學生點名</h3>
+            <p id="attendName" style="color: #666; margin-bottom: 20px; font-weight: bold;">...</p>
+            
+            <label style="display:block; text-align:left; color:#666; margin-bottom:5px;">日期：</label>
+            <input type="date" id="attendDate">
+            
+            <label style="display:block; text-align:left; color:#666; margin-bottom:5px;">狀態：</label>
+            <select id="attendStatus">
+                <option value="出席">✅ 出席</option>
+                <option value="遲到">⚠️ 遲到</option>
+                <option value="缺席">❌ 缺席</option>
+                <option value="事假">📄 事假</option>
+                <option value="病假">😷 病假</option>
+            </select>
+
+            <div class="modal-btn-group">
+                <button class="btn btn-gray" onclick="closeAttendModal()">取消</button>
+                <button class="btn btn-purple" onclick="saveAttendance()">確認點名</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ==============================
-        // 設定區
-        // ==============================
+        // =======================================================
+        // 🔥🔥🔥 設定區：請填入你的 URL 和 Key 🔥🔥🔥
+        // =======================================================
         const supabaseUrl = 'https://blzkbhjjoqylinywxtyy.supabase.co';
         const supabaseKey = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
-        const db = supabase.createClient(supabaseUrl, supabaseKey);
+        // =======================================================
 
-        // 用來暫存「現在正在修改哪一個學生」的 ID
-        let currentEditingId = null;
+        const db = supabase.createClient(supabaseUrl, supabaseKey);
+        let currentEditingId = null; // 修改成績用
+        let currentAttendId = null;  // 點名用 (存學號 string)
 
         checkSession();
 
@@ -184,7 +187,9 @@
                         <td>${s.name}</td>
                         <td><span style="font-weight:bold; color: #2c3e50;">${s.score}</span></td>
                         <td>
-                            <button class="btn btn-sm btn-yellow" onclick="openModal('${s.id}', '${s.name}', '${s.score}')">修改</button>
+                            <button class="btn btn-sm btn-purple" onclick="openAttendModal('${s.student_id}', '${s.name}')">點名</button>
+                            <span style="color:#ddd; margin:0 5px;">|</span>
+                            <button class="btn btn-sm btn-yellow" onclick="openEditModal('${s.id}', '${s.name}', '${s.score}')">修改</button>
                             <button class="btn btn-sm btn-red" onclick="deleteStudent('${s.id}', '${s.name}')">刪除</button>
                         </td>
                     </tr>`;
@@ -192,12 +197,12 @@
             }
         }
 
+        // --- CRUD 功能 ---
         async function addData() {
             const id = document.getElementById('newId').value;
             const name = document.getElementById('newName').value;
             const score = document.getElementById('newScore').value;
             if (!id || !name || !score) { alert("請填寫完整"); return; }
-
             const { error } = await db.from('students').insert({ student_id: id, name: name, score: score });
             if (error) alert("新增失敗：" + error.message);
             else {
@@ -215,46 +220,60 @@
             }
         }
 
-        // =========================================
-        // 🔥 新功能：浮動視窗的控制邏輯
-        // =========================================
-
-        // 1. 打開視窗
-        function openModal(id, name, currentScore) {
-            currentEditingId = id; // 記住現在要改誰
+        // --- 修改成績視窗邏輯 ---
+        function openEditModal(id, name, currentScore) {
+            currentEditingId = id;
             document.getElementById('modalStudentName').innerText = `正在修改：${name}`;
-            document.getElementById('modalScoreInput').value = currentScore; // 把舊成績填進去
-            
-            // 顯示視窗 (改成 flex 才能置中)
+            document.getElementById('modalScoreInput').value = currentScore;
             document.getElementById('editModal').style.display = 'flex';
         }
-
-        // 2. 關閉視窗
-        function closeModal() {
+        function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
-            currentEditingId = null; // 清空記憶
+            currentEditingId = null;
         }
-
-        // 3. 按下「儲存修改」
         async function saveEdit() {
             const newScore = document.getElementById('modalScoreInput').value;
-            
             if (!newScore) { alert("請輸入成績"); return; }
+            const { error } = await db.from('students').update({ score: newScore }).eq('id', currentEditingId);
+            if (error) alert("修改失敗"); else { closeEditModal(); fetchData(); }
+        }
 
-            // 送出修改給 Supabase
-            const { error } = await db
-                .from('students')
-                .update({ score: newScore })
-                .eq('id', currentEditingId);
+        // --- 🔥 點名視窗邏輯 ---
+        function openAttendModal(studentId, name) {
+            currentAttendId = studentId; // 這次我們存的是 "學號" (S001)，不是資料庫的 id
+            document.getElementById('attendName').innerText = `學生：${name} (${studentId})`;
+            
+            // 自動填入今天的日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('attendDate').value = today;
+            
+            document.getElementById('attendanceModal').style.display = 'flex';
+        }
+
+        function closeAttendModal() {
+            document.getElementById('attendanceModal').style.display = 'none';
+            currentAttendId = null;
+        }
+
+        async function saveAttendance() {
+            const date = document.getElementById('attendDate').value;
+            const status = document.getElementById('attendStatus').value;
+
+            // 寫入 attendance 表格
+            const { error } = await db.from('attendance').insert({
+                student_id: currentAttendId,
+                record_date: date,
+                status: status
+            });
 
             if (error) {
-                alert("修改失敗");
+                console.error(error);
+                alert("點名失敗！請確認你有在 Supabase 建立 attendance 表格。");
             } else {
-                closeModal(); // 關閉視窗
-                fetchData();  // 重新整理表格
+                alert("點名成功！✅");
+                closeAttendModal();
             }
         }
     </script>
-
 </body>
 </html>
