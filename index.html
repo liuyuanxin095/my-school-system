@@ -39,6 +39,8 @@
             text-align: left;
             text-decoration: none;
             border-left: 4px solid transparent; /* 預留左邊框位置 */
+            display: flex;
+            align-items: center; /* 確保圖示跟文字垂直置中 */
         }
 
         /* 滑鼠移過 */
@@ -61,7 +63,7 @@
         .submenu-link:hover { color: #fff; background-color: #2c3034; }
 
         /* ★★★ 關鍵：被點選的狀態 (藍色高亮) ★★★ */
-        /* 針對第一層按鈕 (如首頁) */
+        /* 針對第一層按鈕 (如首頁、表單系統) */
         .menu-btn.active {
             color: #fff !important;
             background-color: #212529 !important;
@@ -74,7 +76,7 @@
             border-left-color: #0d6efd;
         }
 
-        /* Accordion 展開時標題變亮，但不要藍邊框 (因為是點子選單才算選中) */
+        /* Accordion 展開時標題變亮 */
         .accordion-button:not(.collapsed) { 
             color: #fff !important; 
             font-weight: bold;
@@ -130,7 +132,7 @@
                 <div id="menu-academic" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">行事曆維護</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定（幼兒）</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定（十二）</a>
+                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定（十二年）</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學生學籍資料維護</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">課程維護作業</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">調代課作業</a>
@@ -247,7 +249,6 @@
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
         }
 
-        // 登出：使用 SweetAlert2 浮動視窗
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
@@ -265,14 +266,13 @@
             })
         });
 
-        // ★★★ 核心功能：控制藍色高亮條 ★★★
+        // 控制藍色高亮條
         function handleMenuClick(clickedEl) {
-            // 1. 移除所有 .active (包括首頁按鈕和所有子選單連結)
+            // 移除所有按鈕的 active
             document.querySelectorAll('.menu-btn, .submenu-link').forEach(el => {
                 el.classList.remove('active');
             });
-
-            // 2. 幫當前被點擊的元素加上 .active
+            // 加上當前點擊的 active
             clickedEl.classList.add('active');
         }
     </script>
