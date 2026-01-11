@@ -39,7 +39,7 @@
             padding: 15px 20px;
         }
         .accordion-button:not(.collapsed) { background-color: #343a40; color: #fff; }
-        .accordion-button::after { display: none; } /* 隱藏箭頭 */
+        .accordion-button::after { display: none; }
         .accordion-button:hover { background-color: #2c3034; color: white; }
         
         .submenu-link {
@@ -56,7 +56,6 @@
         iframe { width: 100%; height: 100%; border: none; }
     </style>
     <script>
-        // 安全檢查：沒登入就踢出去
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'login.html';
         }
@@ -152,7 +151,10 @@
         </div>
 
         <div class="mt-auto p-3 border-top border-secondary">
-            <button id="logoutBtn" class="btn btn-danger w-100 btn-sm">
+            <a href="admin/change_password.html" target="content-frame" class="btn btn-outline-light w-100 btn-sm mb-2 text-start">
+                修改個人密碼
+            </a>
+            <button id="logoutBtn" class="btn btn-danger w-100 btn-sm text-start">
                 登出系統
             </button>
         </div>
