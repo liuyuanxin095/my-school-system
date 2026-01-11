@@ -5,24 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>帳號權限管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .expired { color: red; font-weight: bold; }
         .active-badge { font-size: 0.8em; }
+        /* 移除 Bootstrap Icon 的 CSS 引用，因為用不到了 */
     </style>
 </head>
 <body class="bg-light p-4">
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>🛡️ 系統帳號管理中心</h3>
+        <h3>系統帳號管理中心</h3>
         <div class="btn-group">
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-                <i class="bi bi-person-plus-fill"></i> 手動新增帳號
+                手動新增帳號
             </button>
             <button id="syncBtn" class="btn btn-warning text-dark">
-                <i class="bi bi-arrow-repeat"></i> 從人資/學務同步
+                從人資/學務同步
             </button>
         </div>
     </div>
@@ -82,4 +82,164 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label>帳號
+                        <label>帳號到期日 (留空代表永久)</label>
+                        <input type="date" id="m_expiry" class="form-control">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" id="saveUserBtn" class="btn btn-primary">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 1. 載入帳號列表
+    async function loadUsers() {
+        const { data: users, error } = await db
+            .from('system_users')
+            .select('*')
+            .order('username');
+
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = '';
+
+        if (error) { 
+            console.error(error);
+            return; 
+        }
+
+        users.forEach(user => {
+            const today = new Date().toISOString().split('T')[0];
+            const isExpired = user.expiry_date && user.expiry_date < today;
+            const isActive = user.is_active;
+
+            let statusBadge = '';
+            if (!isActive) {
+                statusBadge = '<span class="badge bg-secondary">已停用</span>';
+            } else if (isExpired) {
+                statusBadge = '<span class="badge bg-danger">已過期</span>';
+            } else {
+                statusBadge = '<span class="badge bg-success">正常</span>';
+            }
+            
+            const expiryText = user.expiry_date ? user.expiry_date : '<span class="text-muted">永久有效</span>';
+            const maskedPass = user.password ? user.password.substring(0, 2) + '****' : '******';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${statusBadge}</td>
+                    <td class="fw-bold">${user.username}</td>
+                    <td>${user.name}</td>
+                    <td>${user.role}</td>
+                    <td class="text-muted" title="${user.password}">${maskedPass}</td>
+                    <td class="${isExpired ? 'expired' : ''}">${expiryText}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.username}')">刪除</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 2. 手動新增帳號
+    document.getElementById('saveUserBtn').addEventListener('click', async () => {
+        const formData = {
+            username: document.getElementById('m_username').value,
+            password: document.getElementById('m_password').value,
+            name: document.getElementById('m_name').value,
+            role: document.getElementById('m_role').value,
+            expiry_date: document.getElementById('m_expiry').value || null,
+            is_active: true
+        };
+
+        const { error } = await db.from('system_users').upsert([formData]); 
+        if (error) alert('儲存失敗: ' + error.message);
+        else {
+            alert('儲存成功！');
+            location.reload(); 
+        }
+    });
+
+    // 3. 刪除帳號
+    window.deleteUser = async (username) => {
+        if(!confirm(`確定要刪除帳號 ${username} 嗎？此動作無法復原！`)) return;
+        const { error } = await db.from('system_users').delete().eq('username', username);
+        if(!error) loadUsers();
+        else alert('刪除失敗');
+    };
+
+    // 4. 核心功能：同步邏輯 (使用身分證作為密碼)
+    document.getElementById('syncBtn').addEventListener('click', async () => {
+        if(!confirm('確定要從「人事資料」同步帳號嗎？\n\n1. 新教職員將自動建立帳號\n2. 預設密碼為「身分證字號」\n3. 離職員工將被停用')) return;
+
+        const { data: employees, error: errEmp } = await db
+            .from('employees')
+            .select('employee_id, name, national_id') 
+            .eq('status', 'active');
+        
+        if(errEmp) {
+            alert("讀取員工資料失敗，請檢查資料庫權限");
+            console.error(errEmp);
+            return;
+        }
+
+        const { data: resigned } = await db.from('employees').select('employee_id').eq('status', 'resigned');
+
+        let newCount = 0;
+        let disableCount = 0;
+
+        console.log(`找到 ${employees.length} 位現職人員，準備比對...`);
+
+        for (const emp of employees) {
+            const { data: existing } = await db.from('system_users').select('username').eq('username', emp.employee_id).single();
+            
+            if (!existing) {
+                const { error: insertError } = await db.from('system_users').insert([{
+                    username: emp.employee_id,
+                    name: emp.name,
+                    password: emp.national_id, 
+                    role: 'staff',
+                    is_active: true
+                }]);
+
+                if(insertError) console.error(`無法新增 ${emp.name}:`, insertError);
+                else newCount++;
+            }
+        }
+
+        if(resigned && resigned.length > 0) {
+            for (const emp of resigned) {
+                const { error } = await db.from('system_users')
+                    .update({ is_active: false })
+                    .eq('username', emp.employee_id);
+                if (!error) disableCount++;
+            }
+        }
+
+        // ▼▼▼ 這裡移除了 ✅ 和 ⛔ ▼▼▼
+        alert(`同步完成！\n\n新增了 ${newCount} 個教職員帳號 (密碼為身分證)\n停用了 ${disableCount} 個離職帳號`);
+        loadUsers();
+    });
+
+    // 初始載入
+    loadUsers();
+
+    // 搜尋功能
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const value = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#userTableBody tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(value) ? '' : 'none';
+        });
+    });
+
+</script>
+</body>
+</html>
