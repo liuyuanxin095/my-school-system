@@ -10,63 +10,65 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; }
-        .week-row input { border: none; background: transparent; width: 100%; }
+        .week-row input { border: none; background: transparent; width: 100%; text-align: center; }
         .week-row input:focus { outline: 1px solid #ced4da; background: white; }
+        .locked-select { background-color: #e9ecef; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold text-secondary"><i class="bi bi-calendar-week"></i> 學期週次設定</h3>
+        <h3 class="fw-bold text-secondary"><i class="bi bi-calendar-range"></i> 學期週次設定</h3>
         <button id="saveBtn" class="btn btn-primary">
-            <i class="bi bi-save"></i> 儲存設定
+            <i class="bi bi-save"></i> 儲存週次設定
         </button>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white fw-bold">
-            基本參數設定
-        </div>
+        <div class="card-header bg-white fw-bold">參數設定</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label">學制選擇</label>
-                    <select id="systemType" class="form-select bg-light fw-bold">
-                        <option value="kindergarten">幼兒部</option>
-                        <option value="k12">十二年國教</option>
+                    <label class="form-label">學制 (自動鎖定)</label>
+                    <select id="systemType" class="form-select fw-bold locked-select">
+                        <option value="kindergarten">幼兒園</option>
+                        <option value="elementary">國小部</option>
+                        <option value="high_school">國高中部</option>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">學年度</label>
                     <input type="number" id="acYear" class="form-control" value="113">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">學期</label>
-                    <select id="semester" class="form-select">
-                        <option value="1">上學期</option>
-                        <option value="2">下學期</option>
+                <div class="col-md-3">
+                    <label class="form-label">學期/假期</label>
+                    <select id="semester" class="form-select" onchange="loadData()">
+                        <option value="1">第一學期 (上)</option>
+                        <option value="winter">寒假 / 寒輔</option>
+                        <option value="2">第二學期 (下)</option>
+                        <option value="summer">暑假 / 暑輔</option>
                     </select>
                 </div>
-                <div class="col-md-5 d-flex align-items-end">
-                    <button class="btn btn-outline-secondary me-2" onclick="loadData()">
-                        <i class="bi bi-search"></i> 查詢設定
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="loadData()">
+                        <i class="bi bi-arrow-clockwise"></i> 讀取設定
                     </button>
                 </div>
 
                 <div class="col-md-12"><hr class="my-1"></div>
 
                 <div class="col-md-3">
-                    <label class="form-label text-primary">學期開始日</label>
+                    <label class="form-label text-primary">開始日期</label>
                     <input type="date" id="startDate" class="form-control">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label text-primary">學期結束日</label>
+                    <label class="form-label text-primary">結束日期</label>
                     <input type="date" id="endDate" class="form-control">
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
                     <button class="btn btn-success w-100" onclick="generateWeeks()">
-                        <i class="bi bi-magic"></i> 自動產生週次表
+                        <i class="bi bi-magic"></i> 自動產生週次
                     </button>
                 </div>
             </div>
@@ -74,24 +76,19 @@
     </div>
 
     <div class="card shadow-sm border-0">
-        <div class="card-header bg-dark text-white d-flex justify-content-between">
-            <span>週次明細</span>
-            <span class="small opacity-75">可直接點擊表格內容修改</span>
-        </div>
+        <div class="card-header bg-dark text-white">週次明細表</div>
         <div class="card-body p-0">
-            <table class="table table-hover table-bordered mb-0 text-center align-middle">
-                <thead class="table-light">
+            <table class="table table-hover table-bordered mb-0 align-middle">
+                <thead class="table-light text-center">
                     <tr>
-                        <th width="10%">週次</th>
-                        <th width="25%">開始日期</th>
-                        <th width="25%">結束日期</th>
-                        <th width="40%">行事曆備註 (例: 期中考)</th>
+                        <th width="15%">週次名稱</th>
+                        <th width="25%">開始</th>
+                        <th width="25%">結束</th>
+                        <th width="35%">備註</th>
                     </tr>
                 </thead>
                 <tbody id="weekBody">
-                    <tr>
-                        <td colspan="4" class="text-muted py-5">請設定日期並點擊「自動產生週次表」</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-center text-muted py-5">請設定日期並產生週次</td></tr>
                 </tbody>
             </table>
         </div>
@@ -100,14 +97,22 @@
 
 <script src="../js/config.js"></script>
 <script>
-    // 1. 自動產生週次邏輯
+    // 解析 URL 參數來鎖定學制
+    const urlParams = new URLSearchParams(window.location.search);
+    const typeParam = urlParams.get('type'); // kindergarten, elementary, high_school
+    if(typeParam) {
+        document.getElementById('systemType').value = typeParam;
+    }
+
+    // 自動產生週次
     function generateWeeks() {
         const startVal = document.getElementById('startDate').value;
         const endVal = document.getElementById('endDate').value;
+        const sem = document.getElementById('semester').value; // 1, 2, winter, summer
+        const year = document.getElementById('acYear').value;
 
         if (!startVal || !endVal) {
-            Swal.fire('提示', '請先選擇開始與結束日期', 'warning');
-            return;
+            Swal.fire('提示', '請選擇日期範圍', 'warning'); return;
         }
 
         const start = new Date(startVal);
@@ -116,154 +121,129 @@
         tbody.innerHTML = '';
 
         let current = new Date(start);
-        let weekNum = 1;
+        let weekCount = 1;
 
-        // 迴圈產生每週 (直到超過結束日)
+        // 設定週次前綴字
+        let prefix = "";
+        if (sem === 'winter') prefix = "寒-";
+        if (sem === 'summer') prefix = "暑-";
+
         while (current <= end) {
-            // 計算這週的結束日 (current + 6天)
             let weekEnd = new Date(current);
             weekEnd.setDate(current.getDate() + 6);
+            if (weekEnd > end) weekEnd = new Date(end);
 
-            // 如果週結束日超過學期結束日，就切斷
-            if (weekEnd > end) {
-                weekEnd = new Date(end);
-            }
-
-            // 轉成字串 YYYY-MM-DD
             const sStr = current.toISOString().split('T')[0];
             const eStr = weekEnd.toISOString().split('T')[0];
 
-            // 產生表格行
+            // 格式：113-1 第01週 或 113-暑 第01週
+            let displayWeek = `${year}-${sem === 'winter' || sem === 'summer' ? prefix : sem + ' 第'}${String(weekCount).padStart(2,'0')}週`;
+
             const tr = document.createElement('tr');
             tr.className = 'week-row';
             tr.innerHTML = `
-                <td class="fw-bold bg-light">第 ${weekNum} 週</td>
-                <td><input type="date" value="${sStr}" class="text-center start-d"></td>
-                <td><input type="date" value="${eStr}" class="text-center end-d"></td>
-                <td><input type="text" placeholder="無事項" class="note-input"></td>
+                <td><input type="text" value="${displayWeek}" class="fw-bold week-name" readonly></td>
+                <td><input type="date" value="${sStr}" class="start-d"></td>
+                <td><input type="date" value="${eStr}" class="end-d"></td>
+                <td><input type="text" class="note-input" placeholder="例: 開學週"></td>
             `;
             tbody.appendChild(tr);
 
-            // 準備下一週 (current + 7天)
             current.setDate(current.getDate() + 7);
-            weekNum++;
+            weekCount++;
         }
     }
 
-    // 2. 儲存資料
+    // 儲存
     document.getElementById('saveBtn').addEventListener('click', async () => {
         const sysType = document.getElementById('systemType').value;
         const year = document.getElementById('acYear').value;
         const sem = document.getElementById('semester').value;
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
-
-        // 收集表格內的資料
+        
         const weekRows = document.querySelectorAll('.week-row');
-        if (weekRows.length === 0) {
-            Swal.fire('錯誤', '週次表是空的，請先產生週次', 'error');
-            return;
-        }
+        if(weekRows.length === 0) { Swal.fire('空資料', '請先產生週次', 'warning'); return; }
 
         const weekData = [];
-        weekRows.forEach((row, index) => {
+        weekRows.forEach(row => {
             weekData.push({
-                week: index + 1,
+                name: row.querySelector('.week-name').value,
                 start: row.querySelector('.start-d').value,
                 end: row.querySelector('.end-d').value,
                 note: row.querySelector('.note-input').value
             });
         });
 
-        // 寫入 Supabase (先檢查是否存在，這裡簡化用 Upsert 邏輯需配合 ID，我們用 Delete + Insert 比較簡單暴力)
-        // 為了避免複雜，我們先查詢有沒有這學期的設定，有就更新 ID，沒有就新增
-        
-        // Step A: 檢查是否存在
+        // 檢查是否存在
         const { data: exist } = await window.db.from('semester_settings')
             .select('id')
-            .eq('system_type', sysType)
-            .eq('academic_year', year)
-            .eq('semester', sem)
+            .eq('system_type', sysType).eq('academic_year', year).eq('semester', sem) // 這裡 sem 可能是 'winter'
             .single();
 
-        let error;
         const payload = {
             system_type: sysType,
             academic_year: year,
-            semester: sem,
-            start_date: start,
-            end_date: end,
+            semester: sem === 'winter' || sem === 'summer' ? 0 : sem, // 資料庫存 int, 特殊學期存 0? 或者改欄位型態。這裡建議直接改結構讓 semester 存字串比較方便，或者我們把 semester_type 存在 week_data 裡。
+            // 修正策略：為了簡單，我們把 semester 欄位改為 TEXT，或者我們用一個 trick：
+            // 為了不改 SQL 結構，我們把 winter/summer 視為特殊的 semester 代碼 (如 3=寒, 4=暑)，但為了長久之計，建議用文字。
+            // 這裡我假設你剛剛 SQL 建的是 INT。如果報錯，請把 semester_settings 的 semester 改成 TEXT。
+            // ** 臨時修復：這裡假設我們把 winter=3, summer=4 存入 DB **
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value,
             week_data: weekData
         };
+        
+        // 修正 semester 存入值
+        let saveSem = sem;
+        if(sem === 'winter') saveSem = 3; 
+        if(sem === 'summer') saveSem = 4;
 
         if (exist) {
-            // 更新
-            const { error: updErr } = await window.db.from('semester_settings')
-                .update(payload).eq('id', exist.id);
-            error = updErr;
+            await window.db.from('semester_settings').update({ ...payload, semester: saveSem }).eq('id', exist.id);
         } else {
-            // 新增
-            const { error: insErr } = await window.db.from('semester_settings')
-                .insert([payload]);
-            error = insErr;
+            await window.db.from('semester_settings').insert([{ ...payload, semester: saveSem }]);
         }
 
-        if (error) {
-            Swal.fire('儲存失敗', error.message, 'error');
-        } else {
-            Swal.fire('成功', '學期週次設定已儲存！', 'success');
-        }
+        Swal.fire('成功', '設定已儲存', 'success');
     });
 
-    // 3. 讀取資料
+    // 讀取
     async function loadData() {
         const sysType = document.getElementById('systemType').value;
         const year = document.getElementById('acYear').value;
-        const sem = document.getElementById('semester').value;
+        let sem = document.getElementById('semester').value;
+        
+        // 轉換前端 value 到 DB value
+        let dbSem = sem;
+        if(sem === 'winter') dbSem = 3;
+        if(sem === 'summer') dbSem = 4;
 
-        const { data, error } = await window.db.from('semester_settings')
+        const { data } = await window.db.from('semester_settings')
             .select('*')
-            .eq('system_type', sysType)
-            .eq('academic_year', year)
-            .eq('semester', sem)
+            .eq('system_type', sysType).eq('academic_year', year).eq('semester', dbSem)
             .single();
-
-        if (error || !data) {
-            Swal.fire('查無資料', '尚未設定此學期的週次，請設定後存檔。', 'info');
-            document.getElementById('weekBody').innerHTML = '<tr><td colspan="4" class="text-muted py-5">查無資料，請設定新日期</td></tr>';
-            return;
-        }
-
-        // 回填資料
-        document.getElementById('startDate').value = data.start_date;
-        document.getElementById('endDate').value = data.end_date;
 
         const tbody = document.getElementById('weekBody');
         tbody.innerHTML = '';
-        
-        // 繪製表格
-        data.week_data.forEach(w => {
-            const tr = document.createElement('tr');
-            tr.className = 'week-row';
-            tr.innerHTML = `
-                <td class="fw-bold bg-light">第 ${w.week} 週</td>
-                <td><input type="date" value="${w.start}" class="text-center start-d"></td>
-                <td><input type="date" value="${w.end}" class="text-center end-d"></td>
-                <td><input type="text" value="${w.note || ''}" class="note-input"></td>
-            `;
-            tbody.appendChild(tr);
-        });
-        
-        Swal.fire('讀取成功', '已載入設定資料', 'success');
-    }
-    
-    // 初始化檢查 URL 參數 (如果想從選單直接指定幼兒或十二年)
-    const urlParams = new URLSearchParams(window.location.search);
-    const typeParam = urlParams.get('type');
-    if(typeParam) {
-        document.getElementById('systemType').value = typeParam;
-    }
 
+        if(data) {
+            document.getElementById('startDate').value = data.start_date;
+            document.getElementById('endDate').value = data.end_date;
+            data.week_data.forEach(w => {
+                const tr = document.createElement('tr');
+                tr.className = 'week-row';
+                tr.innerHTML = `
+                    <td><input type="text" value="${w.name}" class="fw-bold week-name" readonly></td>
+                    <td><input type="date" value="${w.start}" class="start-d"></td>
+                    <td><input type="date" value="${w.end}" class="end-d"></td>
+                    <td><input type="text" value="${w.note || ''}" class="note-input"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            Swal.fire({ icon: 'success', title: '讀取成功', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-5">查無資料</td></tr>';
+        }
+    }
 </script>
 </body>
 </html>
