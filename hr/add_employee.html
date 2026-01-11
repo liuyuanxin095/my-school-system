@@ -71,7 +71,7 @@
             alert('請填寫必填欄位！'); return;
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await db
             .from('employees')
             .insert([ formData ])
             .select();
