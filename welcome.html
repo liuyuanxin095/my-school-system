@@ -1,4 +1,78 @@
-<div class="row mt-5">
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統儀表板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .system-card {
+            transition: transform 0.3s;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+        }
+        .system-card:hover { transform: translateY(-5px); }
+        .card-body { padding: 2rem !important; }
+        
+        .bg-primary-subtle { background-color: #cfe2ff; color: #084298; }
+        .bg-success-subtle { background-color: #d1e7dd; color: #0f5132; }
+        .bg-info-subtle    { background-color: #cff4fc; color: #055160; }
+        .bg-warning-subtle { background-color: #fff3cd; color: #664d03; }
+    </style>
+</head>
+<body class="bg-light p-4">
+
+<div class="container">
+    <h2 class="mb-4 text-secondary"><span id="welcomeName">歡迎回來</span></h2>
+    
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card system-card bg-primary-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">教務系統</h4>
+                    <hr>
+                    <p class="mb-3">開課、排課、選課管理</p>
+                    <button class="btn btn-primary btn-sm rounded-pill px-4">進入</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card system-card bg-success-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">學務系統</h4>
+                    <hr>
+                    <p class="mb-3">學籍、操行、社團紀錄</p>
+                    <button class="btn btn-success btn-sm rounded-pill px-4">進入</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card system-card bg-info-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">輔導系統</h4>
+                    <hr>
+                    <p class="mb-3">諮商紀錄、心理測驗</p>
+                    <button class="btn btn-info btn-sm text-white rounded-pill px-4">進入</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card system-card bg-warning-subtle h-100 shadow-sm" onclick="location.href='hr/add_employee.html'">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">人資系統</h4>
+                    <hr>
+                    <p class="mb-3">教職員資料、薪資考勤</p>
+                    <button class="btn btn-warning btn-sm text-dark rounded-pill px-4">開發中</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
         <div class="col-md-10 mx-auto">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
@@ -17,17 +91,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-    // 顯示使用者名稱 (原本的功能)
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user && user.name) {
         document.getElementById('welcomeName').textContent = "歡迎回來，" + user.name + " 老師";
     }
 
-    // ▼▼▼ 新增：載入最新公告 ▼▼▼
     async function loadNews() {
         const list = document.getElementById('newsList');
         
-        // 抓取最新的 5 筆公告
+        // 使用 db 變數 (來自 config.js)
         const { data: news, error } = await db
             .from('announcements')
             .select('*')
@@ -35,19 +107,19 @@
             .limit(5);
 
         if (error) {
-            list.innerHTML = '<li class="list-group-item text-danger">載入失敗</li>';
+            console.error(error); // 在 Console 顯示錯誤以便除錯
+            list.innerHTML = '<li class="list-group-item text-danger">載入失敗，請檢查資料庫權限</li>';
             return;
         }
 
-        if (news.length === 0) {
+        if (!news || news.length === 0) {
             list.innerHTML = '<li class="list-group-item text-muted text-center">目前沒有任何公告</li>';
             return;
         }
 
-        list.innerHTML = ''; // 清空載入中訊息
+        list.innerHTML = '';
 
         news.forEach(item => {
-            // 計算是不是 "New" (3天內發布的)
             const created = new Date(item.created_at);
             const now = new Date();
             const diffTime = Math.abs(now - created);
@@ -58,11 +130,11 @@
                 badgeHtml = '<span class="badge bg-danger rounded-pill ms-2">New</span>';
             }
 
-            // 分類標籤樣式
             let catColor = 'text-secondary';
             if(item.category === '系統公告') catColor = 'text-dark fw-bold';
             if(item.category === '教務通知') catColor = 'text-primary';
             if(item.category === '學務通知') catColor = 'text-success';
+            if(item.category === '人資快訊') catColor = 'text-warning';
 
             list.innerHTML += `
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -80,3 +152,6 @@
     // 啟動載入
     loadNews();
 </script>
+
+</body>
+</html>
