@@ -6,22 +6,61 @@
     <title>快樂國小 - 校務系統</title>
     <style>
         body { font-family: sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 300px; }
         h1 { color: #333; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
         button:hover { background-color: #0056b3; }
+        #dashboard { display: none; } /* 預設隱藏後台畫面 */
     </style>
 </head>
 <body>
 
-    <div class="login-box">
+    <div id="login-page" class="container">
         <h1>校務系統登入</h1>
         <p>歡迎來到快樂國小</p>
-        <input type="text" placeholder="請輸入帳號 (例如: admin)">
-        <input type="password" placeholder="請輸入密碼">
-        <button onclick="alert('這只是一個靜態頁面，還沒有連上資料庫喔！')">登入系統</button>
+        <input type="text" id="usernameInput" placeholder="帳號：admin">
+        <input type="password" id="passwordInput" placeholder="密碼：1234">
+        <button onclick="checkLogin()">登入系統</button>
     </div>
+
+    <div id="dashboard" class="container">
+        <h1 style="color: green;">登入成功！</h1>
+        <p>您好，管理員。</p>
+        <hr>
+        <p>目前學生人數：300 人</p>
+        <p>系統狀態：正常運作中</p>
+        <button onclick="logout()" style="background-color: #6c757d;">登出</button>
+    </div>
+
+    <script>
+        // 這裡是網頁的「大腦」
+        function checkLogin() {
+            // 1. 抓取使用者輸入的內容
+            var user = document.getElementById('usernameInput').value;
+            var pass = document.getElementById('passwordInput').value;
+
+            // 2. 進行判斷 (帳號 admin, 密碼 1234)
+            if (user === 'admin' && pass === '1234') {
+                alert('驗證成功！進入系統...');
+                
+                // 3. 切換畫面：隱藏登入頁，顯示後台
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } else {
+                alert('❌ 帳號或密碼錯誤！請再試一次。');
+            }
+        }
+
+        function logout() {
+            // 登出：隱藏後台，顯示登入頁
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('login-page').style.display = 'block';
+            // 清空輸入框
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('passwordInput').value = '';
+        }
+    </script>
 
 </body>
 </html>
