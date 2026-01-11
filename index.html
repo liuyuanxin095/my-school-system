@@ -5,52 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智慧校務整合系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
         .sidebar {
-            width: 240px;
+            width: 250px;
             background: #212529;
             color: white;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
         }
-        .sidebar-header { padding: 20px; text-align: center; background: #1a1d20; border-bottom: 1px solid #343a40; }
+        .sidebar-header { padding: 20px; background: #1a1d20; border-bottom: 1px solid #343a40; }
         
-        /* 獨立按鈕 */
-        .nav-btn {
+        /* 統一選單樣式 */
+        .menu-btn {
             display: block;
-            padding: 15px 20px;
-            color: #dee2e6;
-            text-decoration: none;
-            border-left: 4px solid transparent;
-            transition: 0.2s;
-        }
-        .nav-btn:hover { background-color: #343a40; color: white; }
-        .nav-btn.active { background-color: #343a40; color: white; border-left-color: #0d6efd; }
-
-        /* 折疊選單 */
-        .accordion-item { background-color: transparent; border: none; }
-        .accordion-button {
-            background-color: transparent;
-            color: #dee2e6;
-            box-shadow: none;
-            padding: 15px 20px;
-        }
-        .accordion-button:not(.collapsed) { background-color: #343a40; color: #fff; }
-        .accordion-button::after { display: none; }
-        .accordion-button:hover { background-color: #2c3034; color: white; }
-        
-        .submenu-link {
-            display: block;
-            padding: 10px 20px 10px 40px;
+            padding: 12px 20px;
             color: #adb5bd;
             text-decoration: none;
             transition: 0.2s;
-            font-size: 0.95rem;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
         }
-        .submenu-link:hover { color: white; background-color: #495057; }
+        .menu-btn:hover { background-color: #2c3034; color: white; }
+        .menu-btn.active { background-color: #343a40; color: white; border-left: 4px solid #0d6efd; }
+        
+        /* 折疊選單微調 */
+        .accordion-button {
+            background-color: transparent !important;
+            color: #adb5bd !important;
+            box-shadow: none !important;
+            padding: 12px 20px;
+        }
+        .accordion-button:not(.collapsed) { color: #fff !important; background-color: #343a40 !important; }
+        .accordion-button::after { filter: invert(0.5); }
+        .accordion-button:not(.collapsed)::after { filter: invert(1); }
+
+        .submenu-link {
+            display: block;
+            padding: 8px 20px 8px 50px;
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .submenu-link:hover { color: #fff; background-color: #495057; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; }
         iframe { width: 100%; height: 100%; border: none; }
@@ -65,97 +69,93 @@
 
     <div class="sidebar">
         <div class="sidebar-header">
-            <h5 class="mb-1">智慧校務系統</h5>
-            <small class="text-muted" id="userDisplay">使用者</small>
-        </div>
-
-        <div class="mt-2">
-            <a href="welcome.html" target="content-frame" class="nav-btn active" onclick="setActive(this)">
-                系統儀表板
-            </a>
+            <h5 class="mb-2 fw-bold"><i class="bi bi-building"></i> 智慧校務系統</h5>
+            <div class="d-flex align-items-center mt-3 text-light">
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px; height:32px;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div style="line-height: 1.2;">
+                    <span id="userNameDisplay" class="d-block fw-bold" style="font-size: 0.9rem;">載入中...</span>
+                    <small id="userRoleDisplay" class="text-muted" style="font-size: 0.75rem;">...</small>
+                </div>
+            </div>
         </div>
 
         <div class="accordion accordion-flush" id="menuAccordion">
             
             <div class="accordion-item">
+                <a href="welcome.html" target="content-frame" class="menu-btn active" onclick="setActive(this)">
+                    <i class="bi bi-speedometer2 me-2"></i> 系統儀表板
+                </a>
+            </div>
+
+            <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-academic">
-                        教務管理系統
+                        <i class="bi bi-journal-bookmark me-2"></i> 教務管理系統
                     </button>
                 </h2>
                 <div id="menu-academic" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <div class="accordion-body p-0">
-                        <a href="#" class="submenu-link">開課設定</a>
-                        <a href="#" class="submenu-link">排課作業</a>
-                    </div>
+                    <a href="#" class="submenu-link">開課設定</a>
+                    <a href="#" class="submenu-link">排課作業</a>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-student">
-                        學務管理系統
+                        <i class="bi bi-backpack me-2"></i> 學務管理系統
                     </button>
                 </h2>
                 <div id="menu-student" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <div class="accordion-body p-0">
-                        <a href="#" class="submenu-link">學籍管理</a>
-                        <a href="#" class="submenu-link">操行紀錄</a>
-                    </div>
+                    <a href="#" class="submenu-link">學籍管理</a>
+                    <a href="#" class="submenu-link">操行紀錄</a>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-counseling">
-                        輔導管理系統
+                        <i class="bi bi-heart-pulse me-2"></i> 輔導管理系統
                     </button>
                 </h2>
                 <div id="menu-counseling" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <div class="accordion-body p-0">
-                        <a href="#" class="submenu-link">個案紀錄</a>
-                        <a href="#" class="submenu-link">心理測驗</a>
-                    </div>
+                    <a href="#" class="submenu-link">個案紀錄</a>
+                    <a href="#" class="submenu-link">心理測驗</a>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-hr">
-                        人資管理系統
+                        <i class="bi bi-people me-2"></i> 人資管理系統
                     </button>
                 </h2>
                 <div id="menu-hr" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <div class="accordion-body p-0">
-                        <a href="hr/add_employee.html" target="content-frame" class="submenu-link">新增教職員</a>
-                        <a href="hr/list_employee.html" target="content-frame" class="submenu-link">教職員清單</a>
-                        <a href="hr/attendance.html" target="content-frame" class="submenu-link">考勤打卡</a>
-                    </div>
+                    <a href="hr/add_employee.html" target="content-frame" class="submenu-link">新增教職員</a>
+                    <a href="hr/list_employee.html" target="content-frame" class="submenu-link">教職員清單</a>
+                    <a href="hr/attendance.html" target="content-frame" class="submenu-link">考勤打卡</a>
                 </div>
             </div>
 
             <div class="accordion-item">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-admin">
-                        系統管理中心
+                        <i class="bi bi-gear me-2"></i> 系統管理中心
                     </button>
                 </h2>
                 <div id="menu-admin" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <div class="accordion-body p-0">
-                        <a href="admin/account_manager.html" target="content-frame" class="submenu-link">帳號權限管理</a>
-                        <a href="admin/announcement_manager.html" target="content-frame" class="submenu-link">系統公告發布</a>
-                    </div>
+                    <a href="admin/account_manager.html" target="content-frame" class="submenu-link">帳號權限管理</a>
+                    <a href="admin/announcement_manager.html" target="content-frame" class="submenu-link">系統公告發布</a>
+                    <a href="admin/change_password.html" target="content-frame" class="submenu-link">修改個人密碼</a>
                 </div>
             </div>
 
         </div>
 
         <div class="mt-auto p-3 border-top border-secondary">
-            <a href="admin/change_password.html" target="content-frame" class="btn btn-outline-light w-100 btn-sm mb-2 text-start">
-                修改個人密碼
-            </a>
-            <button id="logoutBtn" class="btn btn-danger w-100 btn-sm text-start">
-                登出系統
+            <button id="logoutBtn" class="btn btn-outline-danger w-100 btn-sm text-start ps-3">
+                <i class="bi bi-box-arrow-right me-2"></i> 登出系統
             </button>
         </div>
     </div>
@@ -168,20 +168,33 @@
     <script>
         const user = JSON.parse(localStorage.getItem('currentUser'));
         if (user) {
-            document.getElementById('userDisplay').textContent = user.name + " (" + user.role + ")";
+            document.getElementById('userNameDisplay').textContent = user.name;
+            let roleName = "教職員";
+            if(user.role === 'admin') roleName = "系統管理員";
+            if(user.role === 'student') roleName = "學生";
+            document.getElementById('userRoleDisplay').textContent = roleName;
         }
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            if(confirm('確定要登出嗎？')) {
-                localStorage.removeItem('currentUser');
-                window.location.href = 'login.html';
-            }
+            Swal.fire({
+                title: '確定要登出嗎？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: '登出',
+                cancelButtonText: '取消'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('currentUser');
+                    window.location.href = 'login.html';
+                }
+            })
         });
 
         function setActive(el) {
-            document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
-            document.querySelectorAll('.accordion-button').forEach(n => n.classList.add('collapsed'));
-            document.querySelectorAll('.accordion-collapse').forEach(n => n.classList.remove('show'));
+            document.querySelectorAll('.menu-btn').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.accordion-button').forEach(n => n.classList.remove('active')); // 移除折疊選單的高亮
             el.classList.add('active');
         }
     </script>
