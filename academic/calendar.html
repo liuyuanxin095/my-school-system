@@ -16,7 +16,7 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
-            background-color: #dee2e6; /* 格線顏色 */
+            background-color: #dee2e6;
             border: 1px solid #dee2e6;
         }
         .calendar-header {
@@ -28,7 +28,7 @@
         }
         .calendar-day {
             background-color: white;
-            min-height: 120px; /* 格子高度 */
+            min-height: 120px;
             padding: 5px;
             position: relative;
             transition: 0.2s;
@@ -52,6 +52,7 @@
             font-size: 1.1rem;
         }
         .other-month { background-color: #f1f3f5; color: #adb5bd; }
+        .text-weekend { color: #dc3545; } /* 六日紅字 */
 
         /* 事件樣式 */
         .event-item {
@@ -71,11 +72,10 @@
         /* 列印專用樣式 */
         @media print {
             body { padding: 0; background: white; }
-            .no-print { display: none !important; } /* 隱藏按鈕、選單 */
+            .no-print { display: none !important; }
             .calendar-day { min-height: 100px; border: 1px solid #ddd; }
             .calendar-grid { gap: 0; border: 1px solid #000; }
             .week-label { font-size: 0.6rem; padding: 1px 3px; border: 1px solid #000; color: #000; background: #eee; }
-            /* 強制列印背景色 */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
@@ -86,6 +86,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <div class="d-flex gap-2">
             <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="sysType" id="type_a" value="admin" onchange="renderCalendar()">
+                <label class="btn btn-outline-dark" for="type_a">行政行事曆</label>
+
                 <input type="radio" class="btn-check" name="sysType" id="type_k" value="kindergarten" checked onchange="renderCalendar()">
                 <label class="btn btn-outline-dark" for="type_k">幼兒園行事曆</label>
 
@@ -118,22 +121,21 @@
     <h3 class="text-center fw-bold mb-3" id="calendarTitle">113學年度 行事曆</h3>
 
     <div class="calendar-grid mb-0 text-center">
-        <div class="calendar-header bg-danger">日</div>
         <div class="calendar-header">一</div>
         <div class="calendar-header">二</div>
         <div class="calendar-header">三</div>
         <div class="calendar-header">四</div>
         <div class="calendar-header">五</div>
         <div class="calendar-header bg-success">六</div>
+        <div class="calendar-header bg-danger">日</div>
     </div>
 
-    <div id="calendarBody" class="calendar-grid">
-        </div>
+    <div id="calendarBody" class="calendar-grid"></div>
 </div>
 
 <script src="../js/config.js"></script>
 <script>
-    // 初始化年份選單 (前後3年)
+    // 初始化年份
     const yearSelect = document.getElementById('yearSelect');
     const currentYear = new Date().getFullYear();
     for(let y = currentYear-1; y <= currentYear+2; y++) {
@@ -141,34 +143,43 @@
     }
     document.getElementById('monthSelect').value = new Date().getMonth() + 1;
 
-    // 全域變數：儲存讀取到的週次設定 (優化效能用)
-    let cachedWeeks = [];
-
     async function renderCalendar() {
         const sysType = document.querySelector('input[name="sysType"]:checked').value;
         const year = parseInt(document.getElementById('yearSelect').value);
         const month = parseInt(document.getElementById('monthSelect').value);
 
-        // 1. 設定標題
-        const typeName = sysType === 'kindergarten' ? '幼兒園' : (sysType === 'elementary' ? '國小部' : '國高中部');
-        document.getElementById('calendarTitle').textContent = `${year}年 ${month}月 ${typeName}行事曆 (含行政)`;
-
-        // 2. 抓取該學制的週次設定 (如果還沒抓過)
-        // 這裡邏輯：要抓「包含這個年月」的學期設定。
-        // 為了簡化，我們先抓最近的所有設定，然後再比對日期
-        const { data: settings } = await window.db.from('semester_settings')
-            .select('*').eq('system_type', sysType);
+        // 1. 設定標題 (不加"含行政")
+        let typeName = "";
+        if(sysType === 'admin') typeName = "行政";
+        else if(sysType === 'kindergarten') typeName = "幼兒園";
+        else if(sysType === 'elementary') typeName = "國小部";
+        else if(sysType === 'high_school') typeName = "國高中部";
         
-        // 3. 抓取活動 (Target + Admin)
-        // SQL: category IN (sysType, 'admin') AND date within range
-        // 簡化：抓當月所有，前端過濾
+        document.getElementById('calendarTitle').textContent = `${year}年 ${month}月 ${typeName}行事曆`;
+
+        // 2. 抓週次設定 (如果不是純行政)
+        let settings = null;
+        if (sysType !== 'admin') {
+            const { data } = await window.db.from('semester_settings')
+                .select('*').eq('system_type', sysType);
+            settings = data;
+        }
+        
+        // 3. 抓活動
         const startStr = `${year}-${String(month).padStart(2,'0')}-01`;
         const endStr = `${year}-${String(month).padStart(2,'0')}-31`;
         
+        // 如果是 admin 類別，只抓 admin
+        // 如果是 其他類別，抓 自己 + admin
+        let filterOr = `category.eq.${sysType}`;
+        if (sysType !== 'admin') {
+            filterOr += `,category.eq.admin`;
+        }
+
         const { data: events } = await window.db.from('calendar_events')
             .select('*')
             .gte('event_date', startStr).lte('event_date', endStr)
-            .or(`category.eq.${sysType},category.eq.admin`);
+            .or(filterOr);
 
         // 4. 繪製月曆
         const calendarBody = document.getElementById('calendarBody');
@@ -177,37 +188,38 @@
         const firstDay = new Date(year, month - 1, 1);
         const lastDay = new Date(year, month, 0);
         
-        // 補前月空白
-        let paddingDays = firstDay.getDay(); 
+        // 計算空白 (週一為0, 但JS getDay() 週日是0, 週一1)
+        // 目標: Mon(1)->0, Tue(2)->1 ... Sun(0)->6
+        let dayOfWeek = firstDay.getDay(); 
+        let paddingDays = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+
         for(let i=0; i<paddingDays; i++) {
             calendarBody.innerHTML += `<div class="calendar-day other-month"></div>`;
         }
 
         // 填入日期
+        // 追蹤當前格子是星期幾 (0=Mon, ..., 6=Sun)
+        let currentDayIndex = paddingDays; 
+
         for(let d=1; d<=lastDay.getDate(); d++) {
             const dateObj = new Date(year, month - 1, d);
-            const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+            const dateStr = dateObj.toISOString().split('T')[0];
             
-            // A. 計算週次文字
+            // A. 計算週次 (只在週一 currentDayIndex===0 顯示)
             let weekLabel = "";
-            if (settings) {
-                // 遍歷所有學期設定，看這一天落在哪一週
+            if (settings && currentDayIndex === 0) { // 只有週一顯示
                 settings.forEach(sem => {
                     if (sem.week_data) {
                         sem.week_data.forEach(w => {
                             if (dateStr >= w.start && dateStr <= w.end) {
-                                // 只有在每週的第一天(或該月第一天)顯示標籤，避免太亂? 
-                                // 不，需求說要標註，我們標在每週日，或如果是該月1號也標
-                                if (dateObj.getDay() === 1 || d === 1) { // 設為每週一 (1) 顯示，或每週日(0)
-                                     weekLabel = `<span class="week-label">${w.name}</span>`;
-                                }
+                                weekLabel = `<span class="week-label">${w.name}</span>`;
                             }
                         });
                     }
                 });
             }
 
-            // B. 篩選當日活動
+            // B. 活動
             let eventHtml = '';
             if (events) {
                 const dayEvents = events.filter(e => e.event_date === dateStr);
@@ -219,20 +231,25 @@
                 });
             }
 
+            // 六日紅字
+            let numClass = (currentDayIndex >= 5) ? 'text-weekend' : 'text-dark';
+
             calendarBody.innerHTML += `
                 <div class="calendar-day" onclick="addEventModal('${dateStr}')">
                     ${weekLabel}
-                    <span class="date-num text-${(dateObj.getDay()===0 || dateObj.getDay()===6)?'danger':'dark'}">${d}</span>
+                    <span class="date-num ${numClass}">${d}</span>
                     <div class="mt-4">${eventHtml}</div>
                 </div>
             `;
+            
+            // 迴圈 index + 1 (0~6)
+            currentDayIndex = (currentDayIndex + 1) % 7;
         }
     }
 
-    // 新增活動 Modal (簡易版 using SweetAlert)
     async function addEventModal(dateStr = '') {
         const { value: formValues } = await Swal.fire({
-            title: '新增行事曆活動',
+            title: '新增活動',
             html: `
                 <input id="swal-date" type="date" class="form-control mb-2" value="${dateStr}">
                 <input id="swal-title" type="text" class="form-control mb-2" placeholder="活動名稱">
@@ -265,11 +282,10 @@
                 category: formValues.cat,
                 is_holiday: formValues.holiday
             }]);
-            renderCalendar(); // 重繪
+            renderCalendar();
         }
     }
 
-    // 初始執行
     renderCalendar();
 </script>
 </body>
