@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統公告管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-light p-4">
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>系統公告發布中心</h3>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+            發布新公告
+        </button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <span>歷史公告清單</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped mb-0 text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th width="15%">發布日期</th>
+                        <th width="10%">分類</th>
+                        <th width="10%">重要性</th>
+                        <th width="50%" class="text-start">標題</th>
+                        <th width="15%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="listBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">發布新公告</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addForm">
+                    <div class="mb-3">
+                        <label>公告分類</label>
+                        <select id="m_category" class="form-select">
+                            <option value="系統公告">系統公告 (System)</option>
+                            <option value="教務通知">教務通知 (Academic)</option>
+                            <option value="學務通知">學務通知 (Student)</option>
+                            <option value="人資快訊">人資快訊 (HR)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>重要性</label>
+                        <select id="m_priority" class="form-select">
+                            <option value="normal">一般消息</option>
+                            <option value="urgent">緊急/重要</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>標題</label>
+                        <input type="text" id="m_title" class="form-control" placeholder="請輸入標題" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>詳細內容</label>
+                        <textarea id="m_content" class="form-control" rows="5" placeholder="請輸入公告內容..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" id="saveBtn" class="btn btn-primary">確認發布</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 1. 載入列表
+    async function loadData() {
+        const { data: list, error } = await db
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false }); // 最新在上面
+
+        const tbody = document.getElementById('listBody');
+        tbody.innerHTML = '';
+
+        if (error) { console.error(error); return; }
+
+        list.forEach(item => {
+            const date = item.created_at.split('T')[0];
+            
+            // 處理標籤顏色 (純文字用 badge 區分)
+            let badgeClass = 'bg-secondary';
+            if (item.category === '系統公告') badgeClass = 'bg-dark';
+            if (item.category === '教務通知') badgeClass = 'bg-primary';
+            if (item.category === '學務通知') badgeClass = 'bg-success';
+            if (item.priority === 'urgent') badgeClass = 'bg-danger'; // 緊急蓋過其他顏色
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-muted">${date}</td>
+                    <td><span class="badge ${badgeClass}">${item.category}</span></td>
+                    <td>${item.priority === 'urgent' ? '<span class="text-danger fw-bold">緊急</span>' : '一般'}</td>
+                    <td class="text-start">${item.title}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})">刪除</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 2. 發布公告
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        
+        const formData = {
+            category: document.getElementById('m_category').value,
+            priority: document.getElementById('m_priority').value,
+            title: document.getElementById('m_title').value,
+            content: document.getElementById('m_content').value,
+            created_by: user ? user.username : 'admin'
+        };
+
+        const { error } = await db.from('announcements').insert([formData]);
+        
+        if (error) alert('發布失敗: ' + error.message);
+        else {
+            alert('公告已發布！');
+            location.reload();
+        }
+    });
+
+    // 3. 刪除
+    window.deleteItem = async (id) => {
+        if(!confirm('確定要刪除此公告嗎？')) return;
+        const { error } = await db.from('announcements').delete().eq('id', id);
+        if(!error) loadData();
+    };
+
+    loadData();
+</script>
+</body>
+</html>
