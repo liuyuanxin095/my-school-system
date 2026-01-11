@@ -55,8 +55,8 @@
         const supabaseUrl = 'https://blzkbhjjoqylinywxtyy.supabase.co';
         const supabaseKey = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
         
-        // 啟動 Supabase
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        // 啟動 Supabase (修正處：這裡改名為 db)
+        const db = supabase.createClient(supabaseUrl, supabaseKey);
 
         // 登入功能
         function checkLogin() {
@@ -64,7 +64,6 @@
             var pass = document.getElementById('passwordInput').value;
 
             if (user === 'admin' && pass === '1234') {
-                // 切換畫面
                 document.getElementById('login-page').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 // 登入成功後，立刻去抓資料
@@ -74,22 +73,20 @@
             }
         }
 
-        // 抓取資料的功能 (這是最重要的一段！)
+        // 抓取資料的功能
         async function fetchData() {
-            // 去 'students' 表格把所有資料 (*) 抓出來
-            const { data, error } = await supabase
+            // 修正處：這裡使用 db 來抓資料
+            const { data, error } = await db
                 .from('students')
                 .select('*');
 
             if (error) {
                 console.error('抓取失敗:', error);
-                alert('讀取資料庫失敗！請檢查你的 Console');
+                alert('讀取資料庫失敗！請看 Console');
             } else {
-                // 把抓到的資料顯示在表格上
                 const tableBody = document.getElementById('tableBody');
-                tableBody.innerHTML = ""; // 先清空舊資料
+                tableBody.innerHTML = ""; 
                 
-                // 跑迴圈，把每一筆資料變成表格的一列
                 data.forEach(student => {
                     const row = `<tr>
                         <td>${student.student_id}</td>
@@ -102,7 +99,7 @@
         }
 
         function logout() {
-            location.reload(); // 重新整理網頁就是登出
+            location.reload(); 
         }
     </script>
 
