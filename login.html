@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校務系統 - 登入</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -17,38 +19,46 @@
         .login-card {
             width: 100%;
             max-width: 400px;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.98);
             padding: 40px;
         }
-        .brand-title {
-            color: #1e3c72;
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: bold;
-        }
+        .brand-title { color: #1e3c72; text-align: center; margin-bottom: 25px; font-weight: 800; }
+        .links { font-size: 0.9rem; margin-top: 15px; display: flex; justify-content: space-between; }
+        .links a { text-decoration: none; color: #6c757d; transition: 0.2s; }
+        .links a:hover { color: #0d6efd; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <h3 class="brand-title">智慧校務系統</h3>
+    <h3 class="brand-title"><i class="bi bi-building"></i> 智慧校務系統</h3>
     
     <form id="loginForm">
         <div class="mb-3">
-            <label class="form-label text-muted">帳號 / 員工編號</label>
-            <input type="text" id="username" class="form-control form-control-lg" placeholder="例如: HR001" required>
+            <label class="form-label text-muted small fw-bold">帳號 / 員工編號</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                <input type="text" id="username" class="form-control" placeholder="ID" required>
+            </div>
         </div>
         <div class="mb-3">
-            <label class="form-label text-muted">密碼</label>
-            <input type="password" id="password" class="form-control form-control-lg" placeholder="預設為身分證字號" required>
+            <label class="form-label text-muted small fw-bold">密碼</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
+                <input type="password" id="password" class="form-control" placeholder="Password" required>
+            </div>
         </div>
         <div class="d-grid gap-2 mt-4">
-            <button type="submit" class="btn btn-primary btn-lg fw-bold">登入系統</button>
+            <button type="submit" class="btn btn-primary fw-bold py-2">登入系統</button>
+        </div>
+        
+        <div class="links">
+            <a href="#"><i class="bi bi-check-circle"></i> 啟用帳號</a>
+            <a href="#"><i class="bi bi-question-circle"></i> 忘記密碼?</a>
         </div>
     </form>
-    <div id="errorMsg" class="text-danger text-center mt-3 small"></div>
 </div>
 
 <script src="js/config.js"></script>
@@ -57,36 +67,49 @@
         e.preventDefault();
         const userIn = document.getElementById('username').value;
         const passIn = document.getElementById('password').value;
-        const msg = document.getElementById('errorMsg');
 
-        msg.textContent = "驗證中...";
-        msg.className = "text-muted text-center mt-3 small";
-
-        const { data: user, error } = await db
-            .from('system_users')
+        // 1. 登入檢查
+        const { data: user, error } = await db.from('system_users')
             .select('*')
             .eq('username', userIn)
             .eq('password', passIn)
             .single();
 
         if (error || !user) {
-            msg.className = "text-danger text-center mt-3 small";
-            msg.textContent = "帳號或密碼錯誤，或帳號已停用";
+            Swal.fire({ icon: 'error', title: '登入失敗', text: '帳號或密碼錯誤' });
         } else {
             if (!user.is_active) {
-                msg.className = "text-danger text-center mt-3 small";
-                msg.textContent = "此帳號已被停用";
+                Swal.fire({ icon: 'warning', title: '帳號停用', text: '此帳號已被停用，請聯繫管理員' });
                 return;
             }
-            
+
+            // 2. 檢查密碼是否過期 (三個月 = 90天)
+            if (user.last_pwd_update) {
+                const lastUpdate = new Date(user.last_pwd_update);
+                const today = new Date();
+                const diffDays = (today - lastUpdate) / (1000 * 60 * 60 * 24);
+                
+                if (diffDays > 90) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '密碼已過期',
+                        text: '您的密碼已超過 3 個月未更換，請聯繫管理員或進行重置。',
+                        confirmButtonText: '知道了'
+                    });
+                    // 這裡可以選擇是否要強制阻擋登入，目前先讓他也進去，但跳警告
+                }
+            }
+
+            // 登入成功
             localStorage.setItem('currentUser', JSON.stringify(user));
             
-            msg.className = "text-success text-center mt-3 small";
-            msg.textContent = "登入成功！正在跳轉...";
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 1500,
+                didOpen: (toast) => { toast.addEventListener('mouseenter', Swal.stopTimer); toast.addEventListener('mouseleave', Swal.resumeTimer); }
+            });
+            Toast.fire({ icon: 'success', title: '登入成功' });
             
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1000);
+            setTimeout(() => { window.location.href = 'index.html'; }, 1000);
         }
     });
 </script>
