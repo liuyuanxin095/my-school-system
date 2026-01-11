@@ -5,28 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智慧校務整合系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
         .sidebar {
             width: 250px;
-            background: #212529; /* 統一深色背景 */
+            background: #212529; /* 設定統一的黑色背景 */
             color: white;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
+            border-right: 1px solid #333; /* 右側加一點點邊界感，避免跟內容混在一起 */
         }
         
-        /* 標題調整：移除多餘間距，讓它緊湊一點 */
-        .sidebar-header { padding: 15px 15px; background: #1a1d20; border-bottom: 1px solid #343a40; }
-        .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; }
+        /* 標題區塊：顏色跟 sidebar 一樣，移除底線 */
+        .sidebar-header { 
+            padding: 20px 15px; 
+            background: #212529; 
+            border-bottom: 1px solid #373b3e; /* 很淡的分隔線，或者設 none 也可以 */
+        }
+        .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; color: #fff; }
 
-        /* 統一選單按鈕樣式 (移除 active 的背景色塊，只改文字顏色) */
+        /* 選單按鈕樣式 */
         .menu-btn, .accordion-button {
-            background-color: transparent !important; /* 強制背景透明 */
-            color: #adb5bd !important;
+            background-color: #212529 !important; /* 強制黑色 */
+            color: #adb5bd !important;            /* 文字灰色 */
             box-shadow: none !important;
             padding: 12px 20px;
             border: none;
@@ -35,35 +40,38 @@
             text-decoration: none;
         }
         
-        /* 滑鼠移過去的效果 */
-        .menu-btn:hover, .accordion-button:hover { color: #fff !important; }
+        /* 滑鼠移過去 */
+        .menu-btn:hover, .accordion-button:hover { 
+            background-color: #2c3034 !important; /* 稍微變亮一點點就好 */
+            color: #fff !important; 
+        }
 
-        /* 被展開或選中時的效果 (只變亮，不變背景) */
+        /* 被選中/展開 */
         .menu-btn.active, .accordion-button:not(.collapsed) { 
             color: #fff !important; 
             font-weight: bold;
+            background-color: #212529 !important; /* 維持黑色 */
         }
 
-        /* 隱藏預設箭頭，改用自定義或不顯示 */
-        .accordion-button::after { filter: invert(0.5); transform: scale(0.8); }
-        .accordion-button:not(.collapsed)::after { filter: invert(1); }
+        /* 隱藏箭頭 */
+        .accordion-button::after { display: none; }
 
         /* 子選單樣式 */
         .submenu-link {
             display: block;
-            padding: 8px 20px 8px 54px; /* 縮排 */
-            color: #6c757d;
+            padding: 8px 20px 8px 54px; 
+            color: #888;
             text-decoration: none;
             font-size: 0.9rem;
             transition: 0.2s;
+            background-color: #1c1f23; /* 子選單比背景再深一點點，增加層次感 */
         }
-        .submenu-link:hover { color: #fff; background-color: rgba(255,255,255,0.05); }
+        .submenu-link:hover { color: #fff; background-color: #2c3034; }
         
         .main-content { flex-grow: 1; display: flex; flex-direction: column; }
         iframe { width: 100%; height: 100%; border: none; }
     </style>
     <script>
-        // 未登入攔截
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'login.html';
         }
@@ -115,7 +123,7 @@
             <div class="accordion-item" id="nav-student">
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-student">
-                        <i class="bi bi-backpack-fill me-2"></i> 學務管理系統
+                        <i class="bi bi-backpack2-fill me-2"></i> 學務管理系統
                     </button>
                 </h2>
                 <div id="menu-student" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
@@ -144,8 +152,8 @@
                     </button>
                 </h2>
                 <div id="menu-general" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="#" class="submenu-link">財產管理 (開發中)</a>
-                    <a href="#" class="submenu-link">修繕報修 (開發中)</a>
+                    <a href="#" class="submenu-link">財產管理</a>
+                    <a href="#" class="submenu-link">修繕報修</a>
                 </div>
             </div>
 
@@ -188,7 +196,7 @@
 
         </div>
 
-        <div class="mt-auto p-3 border-top border-secondary">
+        <div class="mt-auto p-3 border-top" style="border-color: #373b3e !important;">
             <button id="logoutBtn" class="btn btn-outline-danger w-100 btn-sm text-start ps-3">
                 <i class="bi bi-box-arrow-right me-2"></i> 登出系統
             </button>
@@ -203,46 +211,22 @@
     <script>
         const user = JSON.parse(localStorage.getItem('currentUser'));
         
-        // 1. 顯示使用者資訊
         if (user) {
             document.getElementById('userNameDisplay').textContent = user.name;
-            // 簡單的角色翻譯
-            const roleMap = {
-                'admin': '系統管理員',
-                'staff': '教職員',
-                'student': '學生',
-                'teacher': '教師'
-            };
+            const roleMap = { 'admin': '系統管理員', 'staff': '教職員', 'student': '學生', 'teacher': '教師' };
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
-            
-            // 2. 執行權限過濾 (重點！)
             checkPermissions(user.role);
         }
 
-        // 權限控制邏輯
         function checkPermissions(role) {
-            // 先把所有選單 ID 列出來
-            const allNavs = [
-                'nav-dashboard', 'nav-academic', 'nav-student', 
-                'nav-counseling', 'nav-general', 'nav-message', 
-                'nav-hr', 'nav-admin'
-            ];
-
-            // 定義「誰」可以看到「哪些」選單
-            // 如果你是 admin，預設全開，不用寫在這裡
+            const allNavs = ['nav-dashboard', 'nav-academic', 'nav-student', 'nav-counseling', 'nav-general', 'nav-message', 'nav-hr', 'nav-admin'];
             const rules = {
-                'staff': ['nav-dashboard', 'nav-hr', 'nav-general', 'nav-message', 'nav-admin'], // 職員：人資+總務+訊息
-                'teacher': ['nav-dashboard', 'nav-academic', 'nav-student', 'nav-counseling', 'nav-message'], // 教師：教務+學務+輔導+訊息
-                'student': ['nav-dashboard', 'nav-student', 'nav-message'] // 學生：學務+訊息
+                'staff': ['nav-dashboard', 'nav-hr', 'nav-general', 'nav-message', 'nav-admin'],
+                'teacher': ['nav-dashboard', 'nav-academic', 'nav-student', 'nav-counseling', 'nav-message'],
+                'student': ['nav-dashboard', 'nav-student', 'nav-message']
             };
-
-            // 如果是 admin，直接 return，不隱藏任何東西
             if (role === 'admin') return;
-
-            // 取得該角色的允許列表
-            const allowed = rules[role] || ['nav-dashboard']; // 預設只給看儀表板
-
-            // 跑迴圈：如果這個 ID 不在允許列表內，就隱藏它
+            const allowed = rules[role] || ['nav-dashboard'];
             allNavs.forEach(navId => {
                 const el = document.getElementById(navId);
                 if (el && !allowed.includes(navId)) {
@@ -251,7 +235,6 @@
             });
         }
 
-        // 登出
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
@@ -269,10 +252,8 @@
             })
         });
 
-        // 點擊高亮邏輯
         function setActive(el) {
             document.querySelectorAll('.menu-btn').forEach(n => n.classList.remove('active'));
-            // 這裡不移除 accordion 的 collapsed 狀態，讓使用者自己決定開關
             el.classList.add('active');
         }
     </script>
