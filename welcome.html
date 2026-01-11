@@ -5,68 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>系統儀表板</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         .system-card {
             transition: transform 0.3s;
             cursor: pointer;
             border: none;
-            border-radius: 15px;
+            border-radius: 10px;
         }
         .system-card:hover { transform: translateY(-5px); }
-        .card-icon { font-size: 3rem; margin-bottom: 10px; }
-        .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
-        .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); color: white; }
-        .bg-gradient-info    { background: linear-gradient(45deg, #36b9cc, #258391); color: white; }
-        .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: white; }
+        /* 移除圖示樣式，改用間距調整 */
+        .card-body { padding: 2rem !important; }
+        
+        .bg-primary-subtle { background-color: #cfe2ff; color: #084298; }
+        .bg-success-subtle { background-color: #d1e7dd; color: #0f5132; }
+        .bg-info-subtle    { background-color: #cff4fc; color: #055160; }
+        .bg-warning-subtle { background-color: #fff3cd; color: #664d03; }
     </style>
 </head>
 <body class="bg-light p-4">
 
 <div class="container">
-    <h2 class="mb-4 text-secondary">👋 歡迎回到校務整合系統</h2>
+    <h2 class="mb-4 text-secondary"><span id="welcomeName">歡迎回來</span></h2>
     
     <div class="row g-4">
         <div class="col-md-6 col-lg-3">
-            <div class="card system-card bg-gradient-primary h-100 shadow">
-                <div class="card-body text-center p-4">
-                    <div class="card-icon"><i class="bi bi-journal-bookmark-fill"></i></div>
-                    <h4>教務系統</h4>
-                    <p class="small opacity-75">開課、排課、選課管理</p>
-                    <button class="btn btn-light btn-sm text-primary rounded-pill mt-2">進入系統</button>
+            <div class="card system-card bg-primary-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">教務系統</h4>
+                    <hr>
+                    <p class="mb-3">開課、排課、選課管理</p>
+                    <button class="btn btn-primary btn-sm rounded-pill px-4">進入</button>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <div class="card system-card bg-gradient-success h-100 shadow">
-                <div class="card-body text-center p-4">
-                    <div class="card-icon"><i class="bi bi-backpack4-fill"></i></div>
-                    <h4>學務系統</h4>
-                    <p class="small opacity-75">學籍、操行、社團紀錄</p>
-                    <button class="btn btn-light btn-sm text-success rounded-pill mt-2">進入系統</button>
+            <div class="card system-card bg-success-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">學務系統</h4>
+                    <hr>
+                    <p class="mb-3">學籍、操行、社團紀錄</p>
+                    <button class="btn btn-success btn-sm rounded-pill px-4">進入</button>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <div class="card system-card bg-gradient-info h-100 shadow">
-                <div class="card-body text-center p-4">
-                    <div class="card-icon"><i class="bi bi-chat-heart-fill"></i></div>
-                    <h4>輔導系統</h4>
-                    <p class="small opacity-75">諮商紀錄、心理測驗</p>
-                    <button class="btn btn-light btn-sm text-info rounded-pill mt-2">進入系統</button>
+            <div class="card system-card bg-info-subtle h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">輔導系統</h4>
+                    <hr>
+                    <p class="mb-3">諮商紀錄、心理測驗</p>
+                    <button class="btn btn-info btn-sm text-white rounded-pill px-4">進入</button>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <div class="card system-card bg-gradient-warning h-100 shadow" onclick="location.href='hr/add_employee.html'">
-                <div class="card-body text-center p-4">
-                    <div class="card-icon"><i class="bi bi-person-lines-fill"></i></div>
-                    <h4>人資系統</h4>
-                    <p class="small opacity-75">教職員資料、薪資考勤</p>
-                    <button class="btn btn-light btn-sm text-warning rounded-pill mt-2">開發中 🛠️</button>
+            <div class="card system-card bg-warning-subtle h-100 shadow-sm" onclick="location.href='hr/add_employee.html'">
+                <div class="card-body text-center">
+                    <h4 class="fw-bold">人資系統</h4>
+                    <hr>
+                    <p class="mb-3">教職員資料、薪資考勤</p>
+                    <button class="btn btn-warning btn-sm text-dark rounded-pill px-4">開發中</button>
                 </div>
             </div>
         </div>
@@ -74,20 +75,26 @@
 
     <div class="row mt-5">
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white fw-bold">📢 最新公告</div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">最新公告</div>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        系統維護通知：人資模組上線測試中
+                        系統升級通知：新增帳號管理與登入功能
                         <span class="badge bg-danger rounded-pill">New</span>
                     </li>
-                    <li class="list-group-item text-muted">教務系統預計下個月進行排課測試...</li>
-                    <li class="list-group-item text-muted">請各位老師記得更新個人基本資料...</li>
+                    <li class="list-group-item text-muted">請所有教職員確認個人密碼是否已更改。</li>
                 </ul>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (user && user.name) {
+        document.getElementById('welcomeName').textContent = "歡迎回來，" + user.name + " 老師";
+    }
+</script>
 
 </body>
 </html>
