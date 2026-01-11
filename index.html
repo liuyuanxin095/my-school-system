@@ -6,55 +6,63 @@
     <title>快樂國小 - 校務系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 基礎設定 */
+        /* V7.0 風格設定 */
         body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f5f7fa; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 700px; } /* 寬度加寬一點 */
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 800px; } /* 再寬一點容納更多資訊 */
         
         h1 { color: #2c3e50; margin-bottom: 20px; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
-        .version-tag { font-size: 14px; color: #fff; background-color: #8e44ad; padding: 2px 8px; border-radius: 4px; vertical-align: middle; font-weight: normal; } /* V6 改紫色 */
+        .version-tag { font-size: 14px; color: #fff; background-color: #e67e22; padding: 2px 8px; border-radius: 4px; vertical-align: middle; font-weight: normal; }
 
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; transition: 0.3s; background: white; }
+        /* 輸入框與選單優化 */
+        input, select { padding: 10px; margin: 5px 0; border: 1px solid #e0e0e0; border-radius: 6px; box-sizing: border-box; background: white; }
         input:focus, select:focus { border-color: #3498db; outline: none; }
 
+        /* 按鈕群組 */
         .btn { width: 100%; padding: 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
         .btn:hover { opacity: 0.9; }
         .btn-blue { background-color: #3498db; }
-        .btn-green { background-color: #2ecc71; }
+        .btn-green { background-color: #2ecc71; } /* 新增按鈕 */
+        .btn-purple { background-color: #9b59b6; } /* 批次點名按鈕 */
         .btn-gray { background-color: #95a5a6; }
         
-        .btn-sm { padding: 6px 12px; font-size: 14px; margin: 0 4px; width: auto; display: inline-block; }
+        /* 表格內小按鈕 */
+        .btn-sm { padding: 5px 10px; font-size: 14px; margin: 0 2px; width: auto; border-radius: 4px; border:none; color:white; cursor:pointer;}
         .btn-red { background-color: #e74c3c; }
         .btn-yellow { background-color: #f1c40f; color: #333; }
-        .btn-purple { background-color: #9b59b6; } /* 點名按鈕 */
 
         #dashboard { display: none; }
         #loading { display: none; color: #7f8c8d; text-align: center; margin-top: 10px; }
 
+        /* 資料表格 */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: center; color: #34495e; }
         th { background-color: #fafafa; color: #7f8c8d; font-weight: 600; }
         
-        .add-box { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-        .add-box h3 { margin-top: 0; color: #2c3e50; font-size: 18px; margin-bottom: 15px; }
+        .control-panel { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px;}
+        .filter-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .input-row { display: flex; gap: 10px; }
 
-        /* 浮動視窗共用樣式 */
+        /* 浮動視窗 (Modal) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center; z-index: 1000;
         }
         .modal-box {
-            background: white; padding: 30px; border-radius: 12px; width: 350px; text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: popUp 0.3s ease-out;
+            background: white; padding: 30px; border-radius: 12px; width: 500px; text-align: center; /* 批次點名視窗要寬一點 */
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: popUp 0.3s ease-out; max-height: 80vh; overflow-y: auto;
         }
-        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes popUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-btn-group { display: flex; gap: 10px; margin-top: 20px; }
+
+        /* 批次點名列表樣式 */
+        .batch-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .batch-select { width: 100px; padding: 5px; margin: 0; }
     </style>
 </head>
 <body>
 
     <div id="login-page" class="container">
-        <h1>校務系統登入 <span class="version-tag">v6.0</span></h1>
-        <p style="color: #7f8c8d; margin-bottom: 20px;">請使用管理員帳號登入</p>
+        <h1>校務系統登入 <span class="version-tag">v7.0</span></h1>
         <input type="email" id="emailInput" placeholder="Email">
         <input type="password" id="passwordInput" placeholder="密碼">
         <button class="btn btn-blue" onclick="handleLogin()">登入</button>
@@ -62,26 +70,36 @@
     </div>
 
     <div id="dashboard" class="container">
-        <h1>校務管理後台 <span class="version-tag">v6.0</span></h1>
+        <h1>校務管理後台 <span class="version-tag">v7.0</span></h1>
         
-        <div class="add-box">
-            <h3>新增學生資料</h3>
-            <div style="display: flex; gap: 10px;">
+        <div class="control-panel">
+            <div class="filter-row">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span>🔍 班級篩選：</span>
+                    <select id="classFilter" onchange="fetchData()" style="width: 150px;">
+                        <option value="ALL">全部顯示</option>
+                        </select>
+                </div>
+                <button class="btn btn-purple" style="width: auto; margin:0;" onclick="openBatchModal()">⚡ 全班批次點名</button>
+            </div>
+
+            <div class="input-row">
+                <input type="text" id="newClass" placeholder="班級 (例: 101)" style="flex: 0.8;">
                 <input type="text" id="newId" placeholder="學號" style="flex: 1;">
                 <input type="text" id="newName" placeholder="姓名" style="flex: 1;">
-                <input type="number" id="newScore" placeholder="成績" style="flex: 1;">
+                <input type="number" id="newScore" placeholder="成績" style="flex: 0.8;">
             </div>
-            <button class="btn btn-green" onclick="addData()">確認新增</button>
+            <button class="btn btn-green" style="margin-top:0;" onclick="addData()">新增學生</button>
         </div>
 
-        <h3>學生列表</h3>
         <table id="studentTable">
             <thead>
                 <tr>
+                    <th>班級</th>
                     <th>學號</th>
                     <th>姓名</th>
                     <th>成績</th>
-                    <th>點名與操作</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -91,37 +109,33 @@
     </div>
 
     <div id="editModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 style="margin-top: 0;">✏️ 修改成績</h3>
-            <p id="modalStudentName" style="color: #666; margin-bottom: 20px;">學生姓名</p>
+        <div class="modal-box" style="width: 350px;">
+            <h3>✏️ 修改成績</h3>
+            <p id="modalStudentName" style="color: #666;">...</p>
             <input type="number" id="modalScoreInput" placeholder="輸入新成績">
             <div class="modal-btn-group">
-                <button class="btn btn-gray" onclick="closeEditModal()">取消</button>
-                <button class="btn btn-blue" onclick="saveEdit()">儲存修改</button>
+                <button class="btn btn-gray" onclick="document.getElementById('editModal').style.display='none'">取消</button>
+                <button class="btn btn-blue" onclick="saveEdit()">儲存</button>
             </div>
         </div>
     </div>
 
-    <div id="attendanceModal" class="modal-overlay">
+    <div id="batchModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="margin-top: 0;">📝 學生點名</h3>
-            <p id="attendName" style="color: #666; margin-bottom: 20px; font-weight: bold;">...</p>
+            <h3>⚡ 快速點名</h3>
+            <p style="color:#666; font-size: 14px;">預設為「出席」，請手動調整缺席學生</p>
             
-            <label style="display:block; text-align:left; color:#666; margin-bottom:5px;">日期：</label>
-            <input type="date" id="attendDate">
-            
-            <label style="display:block; text-align:left; color:#666; margin-bottom:5px;">狀態：</label>
-            <select id="attendStatus">
-                <option value="出席">✅ 出席</option>
-                <option value="遲到">⚠️ 遲到</option>
-                <option value="缺席">❌ 缺席</option>
-                <option value="事假">📄 事假</option>
-                <option value="病假">😷 病假</option>
-            </select>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label>日期：</label>
+                <input type="date" id="batchDate" style="width: 100%;">
+            </div>
+
+            <div id="batchListArea" style="text-align: left; max-height: 300px; overflow-y: auto;">
+                </div>
 
             <div class="modal-btn-group">
-                <button class="btn btn-gray" onclick="closeAttendModal()">取消</button>
-                <button class="btn btn-purple" onclick="saveAttendance()">確認點名</button>
+                <button class="btn btn-gray" onclick="document.getElementById('batchModal').style.display='none'">取消</button>
+                <button class="btn btn-purple" onclick="saveBatchAttendance()">送出全班紀錄</button>
             </div>
         </div>
     </div>
@@ -135,8 +149,8 @@
         // =======================================================
 
         const db = supabase.createClient(supabaseUrl, supabaseKey);
-        let currentEditingId = null; // 修改成績用
-        let currentAttendId = null;  // 點名用 (存學號 string)
+        let currentEditingId = null;
+        let allStudentsCache = []; // 暫存所有學生資料，方便批次處理
 
         checkSession();
 
@@ -149,20 +163,12 @@
             const email = document.getElementById('emailInput').value;
             const password = document.getElementById('passwordInput').value;
             document.getElementById('loading').style.display = 'block';
-
-            const { data, error } = await db.auth.signInWithPassword({ email, password });
-            if (error) {
-                alert("登入失敗：" + error.message);
-                document.getElementById('loading').style.display = 'none';
-            } else {
-                showDashboard();
-            }
+            const { error } = await db.auth.signInWithPassword({ email, password });
+            if (error) { alert("登入失敗"); document.getElementById('loading').style.display = 'none'; }
+            else showDashboard();
         }
 
-        async function handleLogout() {
-            await db.auth.signOut();
-            location.reload();
-        }
+        async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
         function showDashboard() {
             document.getElementById('login-page').style.display = 'none';
@@ -170,41 +176,87 @@
             fetchData();
         }
 
+        // --- 核心功能：讀取與篩選 ---
         async function fetchData() {
+            // 1. 抓取所有學生
             const { data, error } = await db
                 .from('students')
                 .select('*')
-                .order('student_id', { ascending: true });
+                .order('class_name', { ascending: true }) // 先照班級排
+                .order('student_id', { ascending: true }); // 再照學號排
 
-            if (error) console.error(error);
-            else {
-                const tableBody = document.getElementById('tableBody');
-                tableBody.innerHTML = ""; 
-                data.forEach(s => {
-                    tableBody.innerHTML += `
-                    <tr>
-                        <td>${s.student_id}</td>
-                        <td>${s.name}</td>
-                        <td><span style="font-weight:bold; color: #2c3e50;">${s.score}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-purple" onclick="openAttendModal('${s.student_id}', '${s.name}')">點名</button>
-                            <span style="color:#ddd; margin:0 5px;">|</span>
-                            <button class="btn btn-sm btn-yellow" onclick="openEditModal('${s.id}', '${s.name}', '${s.score}')">修改</button>
-                            <button class="btn btn-sm btn-red" onclick="deleteStudent('${s.id}', '${s.name}')">刪除</button>
-                        </td>
-                    </tr>`;
-                });
+            if (error) { console.error(error); return; }
+            
+            allStudentsCache = data; // 存起來給批次功能用
+
+            // 2. 處理「班級選單」的選項 (自動找出有哪些班級)
+            updateClassFilterOptions(data);
+
+            // 3. 根據選單篩選資料
+            const filterValue = document.getElementById('classFilter').value;
+            const filteredData = filterValue === 'ALL' 
+                ? data 
+                : data.filter(s => s.class_name === filterValue);
+
+            // 4. 顯示表格
+            renderTable(filteredData);
+        }
+
+        function updateClassFilterOptions(students) {
+            const filterSelect = document.getElementById('classFilter');
+            const currentVal = filterSelect.value; // 記住現在選的，避免重整後跳掉
+            
+            // 找出所有不重複的班級
+            const classes = [...new Set(students.map(s => s.class_name).filter(c => c))];
+            
+            // 重新產生選項
+            filterSelect.innerHTML = '<option value="ALL">全部顯示</option>';
+            classes.forEach(c => {
+                filterSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            
+            // 嘗試選回剛剛選的值
+            if (classes.includes(currentVal)) {
+                filterSelect.value = currentVal;
             }
+        }
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = ""; 
+            data.forEach(s => {
+                // 如果沒有班級，顯示未分班
+                const className = s.class_name || "未分班";
+                tableBody.innerHTML += `
+                <tr>
+                    <td><span style="background:#f0f0f0; padding:2px 6px; border-radius:4px; font-size:12px;">${className}</span></td>
+                    <td>${s.student_id}</td>
+                    <td>${s.name}</td>
+                    <td>${s.score}</td>
+                    <td>
+                        <button class="btn-sm btn-yellow" onclick="openEditModal('${s.id}', '${s.name}', '${s.score}')">修改</button>
+                        <button class="btn-sm btn-red" onclick="deleteStudent('${s.id}', '${s.name}')">刪除</button>
+                    </td>
+                </tr>`;
+            });
         }
 
         // --- CRUD 功能 ---
         async function addData() {
+            const cls = document.getElementById('newClass').value;
             const id = document.getElementById('newId').value;
             const name = document.getElementById('newName').value;
             const score = document.getElementById('newScore').value;
             if (!id || !name || !score) { alert("請填寫完整"); return; }
-            const { error } = await db.from('students').insert({ student_id: id, name: name, score: score });
-            if (error) alert("新增失敗：" + error.message);
+
+            const { error } = await db.from('students').insert({ 
+                class_name: cls, // 新增班級欄位
+                student_id: id, 
+                name: name, 
+                score: score 
+            });
+            
+            if (error) alert("新增失敗");
             else {
                 document.getElementById('newId').value = '';
                 document.getElementById('newName').value = '';
@@ -214,66 +266,92 @@
         }
 
         async function deleteStudent(id, name) {
-            if (confirm(`確定要刪除 ${name} 嗎？`)) {
-                const { error } = await db.from('students').delete().eq('id', id);
-                if (!error) fetchData();
+            if (confirm(`確定刪除 ${name}?`)) {
+                await db.from('students').delete().eq('id', id);
+                fetchData();
             }
         }
 
-        // --- 修改成績視窗邏輯 ---
-        function openEditModal(id, name, currentScore) {
+        function openEditModal(id, name, score) {
             currentEditingId = id;
-            document.getElementById('modalStudentName').innerText = `正在修改：${name}`;
-            document.getElementById('modalScoreInput').value = currentScore;
+            document.getElementById('modalStudentName').innerText = name;
+            document.getElementById('modalScoreInput').value = score;
             document.getElementById('editModal').style.display = 'flex';
         }
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
-            currentEditingId = null;
-        }
+
         async function saveEdit() {
-            const newScore = document.getElementById('modalScoreInput').value;
-            if (!newScore) { alert("請輸入成績"); return; }
-            const { error } = await db.from('students').update({ score: newScore }).eq('id', currentEditingId);
-            if (error) alert("修改失敗"); else { closeEditModal(); fetchData(); }
+            const val = document.getElementById('modalScoreInput').value;
+            await db.from('students').update({ score: val }).eq('id', currentEditingId);
+            document.getElementById('editModal').style.display='none';
+            fetchData();
         }
 
-        // --- 🔥 點名視窗邏輯 ---
-        function openAttendModal(studentId, name) {
-            currentAttendId = studentId; // 這次我們存的是 "學號" (S001)，不是資料庫的 id
-            document.getElementById('attendName').innerText = `學生：${name} (${studentId})`;
+        // =========================================
+        // 🔥 批次點名邏輯 (Batch Attendance)
+        // =========================================
+        function openBatchModal() {
+            // 1. 取得目前篩選的班級
+            const filterValue = document.getElementById('classFilter').value;
             
-            // 自動填入今天的日期
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('attendDate').value = today;
-            
-            document.getElementById('attendanceModal').style.display = 'flex';
-        }
+            // 2. 決定要點名哪些人
+            const targets = filterValue === 'ALL' 
+                ? allStudentsCache 
+                : allStudentsCache.filter(s => s.class_name === filterValue);
 
-        function closeAttendModal() {
-            document.getElementById('attendanceModal').style.display = 'none';
-            currentAttendId = null;
-        }
+            if (targets.length === 0) { alert("目前列表沒有學生可以點名喔！"); return; }
 
-        async function saveAttendance() {
-            const date = document.getElementById('attendDate').value;
-            const status = document.getElementById('attendStatus').value;
+            // 3. 設定日期為今天
+            document.getElementById('batchDate').value = new Date().toISOString().split('T')[0];
 
-            // 寫入 attendance 表格
-            const { error } = await db.from('attendance').insert({
-                student_id: currentAttendId,
-                record_date: date,
-                status: status
+            // 4. 產生點名列表 HTML
+            const listArea = document.getElementById('batchListArea');
+            listArea.innerHTML = ""; // 清空
+
+            targets.forEach(s => {
+                // 每個人都有一個隱藏的 ID 標籤，和一個下拉選單
+                listArea.innerHTML += `
+                <div class="batch-list-item">
+                    <span>${s.student_id} ${s.name}</span>
+                    <select class="batch-select" data-student-id="${s.student_id}">
+                        <option value="出席" selected>✅ 出席</option>
+                        <option value="遲到">⚠️ 遲到</option>
+                        <option value="缺席">❌ 缺席</option>
+                        <option value="事假">📄 事假</option>
+                        <option value="病假">😷 病假</option>
+                    </select>
+                </div>`;
             });
+
+            document.getElementById('batchModal').style.display = 'flex';
+        }
+
+        async function saveBatchAttendance() {
+            const date = document.getElementById('batchDate').value;
+            
+            // 1. 抓取所有選單的結果
+            const selects = document.querySelectorAll('.batch-select');
+            const records = [];
+
+            selects.forEach(select => {
+                records.push({
+                    student_id: select.getAttribute('data-student-id'),
+                    record_date: date,
+                    status: select.value
+                });
+            });
+
+            // 2. 一次把所有資料送進 Supabase (這叫 Bulk Insert)
+            const { error } = await db.from('attendance').insert(records);
 
             if (error) {
                 console.error(error);
-                alert("點名失敗！請確認你有在 Supabase 建立 attendance 表格。");
+                alert("點名失敗！請檢查 Console");
             } else {
-                alert("點名成功！✅");
-                closeAttendModal();
+                alert(`成功送出 ${records.length} 筆點名紀錄！`);
+                document.getElementById('batchModal').style.display = 'none';
             }
         }
+
     </script>
 </body>
 </html>
