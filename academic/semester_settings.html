@@ -10,9 +10,12 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; }
+        /* 輸入框樣式 */
         .week-row input { border: none; background: transparent; width: 100%; text-align: center; }
         .week-row input:focus { outline: 1px solid #ced4da; background: white; }
-        .locked-select { background-color: #e9ecef; pointer-events: none; }
+        /* 分頁籤樣式 */
+        .nav-tabs .nav-link { color: #495057; cursor: pointer; font-weight: bold; }
+        .nav-tabs .nav-link.active { color: #0d6efd; background-color: #fff; border-bottom-color: #fff; border-top: 3px solid #0d6efd; }
     </style>
 </head>
 <body>
@@ -25,18 +28,22 @@
         </button>
     </div>
 
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" onclick="switchSys('kindergarten', this)">幼兒園</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" onclick="switchSys('elementary', this)">國小部</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" onclick="switchSys('high_school', this)">國(高)中部</a>
+        </li>
+    </ul>
+
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white fw-bold">參數設定</div>
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">學制 (自動鎖定)</label>
-                    <select id="systemType" class="form-select fw-bold locked-select">
-                        <option value="kindergarten">幼兒園</option>
-                        <option value="elementary">國小部</option>
-                        <option value="high_school">國高中部</option>
-                    </select>
-                </div>
                 <div class="col-md-2">
                     <label class="form-label">學年度</label>
                     <input type="number" id="acYear" class="form-control" value="113">
@@ -50,45 +57,44 @@
                         <option value="summer">暑假 / 暑輔</option>
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-outline-secondary w-100" onclick="loadData()">
+                <input type="hidden" id="systemType" value="kindergarten">
+
+                <div class="col-md-7 d-flex align-items-end justify-content-end gap-2">
+                     <button class="btn btn-outline-secondary" onclick="loadData()">
                         <i class="bi bi-arrow-clockwise"></i> 讀取設定
+                    </button>
+                    <button class="btn btn-success" onclick="generateWeeks()">
+                        <i class="bi bi-magic"></i> 自動產生週次
                     </button>
                 </div>
 
                 <div class="col-md-12"><hr class="my-1"></div>
 
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label class="form-label text-primary">開始日期</label>
                     <input type="date" id="startDate" class="form-control">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-6">
                     <label class="form-label text-primary">結束日期</label>
                     <input type="date" id="endDate" class="form-control">
-                </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <button class="btn btn-success w-100" onclick="generateWeeks()">
-                        <i class="bi bi-magic"></i> 自動產生週次
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="card shadow-sm border-0">
-        <div class="card-header bg-dark text-white">週次明細表</div>
+        <div class="card-header bg-dark text-white text-center">週次明細表</div>
         <div class="card-body p-0">
             <table class="table table-hover table-bordered mb-0 align-middle">
                 <thead class="table-light text-center">
                     <tr>
-                        <th width="15%">週次名稱</th>
-                        <th width="25%">開始</th>
-                        <th width="25%">結束</th>
-                        <th width="35%">備註</th>
+                        <th width="30%">週次名稱</th>
+                        <th width="35%">開始日期</th>
+                        <th width="35%">結束日期</th>
                     </tr>
                 </thead>
                 <tbody id="weekBody">
-                    <tr><td colspan="4" class="text-center text-muted py-5">請設定日期並產生週次</td></tr>
+                    <tr><td colspan="3" class="text-center text-muted py-5">請設定日期並產生週次</td></tr>
                 </tbody>
             </table>
         </div>
@@ -97,18 +103,27 @@
 
 <script src="../js/config.js"></script>
 <script>
-    // 解析 URL 參數來鎖定學制
-    const urlParams = new URLSearchParams(window.location.search);
-    const typeParam = urlParams.get('type'); // kindergarten, elementary, high_school
-    if(typeParam) {
-        document.getElementById('systemType').value = typeParam;
+    // 預設學制
+    let currentSys = 'kindergarten';
+
+    // 切換學制分頁
+    function switchSys(sys, el) {
+        currentSys = sys;
+        document.getElementById('systemType').value = sys;
+        
+        // UI 更新
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        el.classList.add('active');
+
+        // 重新讀取該學制的資料
+        loadData();
     }
 
     // 自動產生週次
     function generateWeeks() {
         const startVal = document.getElementById('startDate').value;
         const endVal = document.getElementById('endDate').value;
-        const sem = document.getElementById('semester').value; // 1, 2, winter, summer
+        const sem = document.getElementById('semester').value; 
         const year = document.getElementById('acYear').value;
 
         if (!startVal || !endVal) {
@@ -136,7 +151,6 @@
             const sStr = current.toISOString().split('T')[0];
             const eStr = weekEnd.toISOString().split('T')[0];
 
-            // 格式：113-1 第01週 或 113-暑 第01週
             let displayWeek = `${year}-${sem === 'winter' || sem === 'summer' ? prefix : sem + ' 第'}${String(weekCount).padStart(2,'0')}週`;
 
             const tr = document.createElement('tr');
@@ -145,7 +159,6 @@
                 <td><input type="text" value="${displayWeek}" class="fw-bold week-name" readonly></td>
                 <td><input type="date" value="${sStr}" class="start-d"></td>
                 <td><input type="date" value="${eStr}" class="end-d"></td>
-                <td><input type="text" class="note-input" placeholder="例: 開學週"></td>
             `;
             tbody.appendChild(tr);
 
@@ -156,7 +169,7 @@
 
     // 儲存
     document.getElementById('saveBtn').addEventListener('click', async () => {
-        const sysType = document.getElementById('systemType').value;
+        const sysType = currentSys;
         const year = document.getElementById('acYear').value;
         const sem = document.getElementById('semester').value;
         
@@ -168,58 +181,50 @@
             weekData.push({
                 name: row.querySelector('.week-name').value,
                 start: row.querySelector('.start-d').value,
-                end: row.querySelector('.end-d').value,
-                note: row.querySelector('.note-input').value
+                end: row.querySelector('.end-d').value
             });
         });
+
+        // 處理學期代碼
+        let dbSem = sem; 
 
         // 檢查是否存在
         const { data: exist } = await window.db.from('semester_settings')
             .select('id')
-            .eq('system_type', sysType).eq('academic_year', year).eq('semester', sem) // 這裡 sem 可能是 'winter'
+            .eq('system_type', sysType).eq('academic_year', year).eq('semester', dbSem)
             .single();
 
         const payload = {
             system_type: sysType,
             academic_year: year,
-            semester: sem === 'winter' || sem === 'summer' ? 0 : sem, // 資料庫存 int, 特殊學期存 0? 或者改欄位型態。這裡建議直接改結構讓 semester 存字串比較方便，或者我們把 semester_type 存在 week_data 裡。
-            // 修正策略：為了簡單，我們把 semester 欄位改為 TEXT，或者我們用一個 trick：
-            // 為了不改 SQL 結構，我們把 winter/summer 視為特殊的 semester 代碼 (如 3=寒, 4=暑)，但為了長久之計，建議用文字。
-            // 這裡我假設你剛剛 SQL 建的是 INT。如果報錯，請把 semester_settings 的 semester 改成 TEXT。
-            // ** 臨時修復：這裡假設我們把 winter=3, summer=4 存入 DB **
+            semester: dbSem, 
             start_date: document.getElementById('startDate').value,
             end_date: document.getElementById('endDate').value,
             week_data: weekData
         };
-        
-        // 修正 semester 存入值
-        let saveSem = sem;
-        if(sem === 'winter') saveSem = 3; 
-        if(sem === 'summer') saveSem = 4;
 
+        let error;
         if (exist) {
-            await window.db.from('semester_settings').update({ ...payload, semester: saveSem }).eq('id', exist.id);
+            const { error: updErr } = await window.db.from('semester_settings').update(payload).eq('id', exist.id);
+            error = updErr;
         } else {
-            await window.db.from('semester_settings').insert([{ ...payload, semester: saveSem }]);
+            const { error: insErr } = await window.db.from('semester_settings').insert([payload]);
+            error = insErr;
         }
 
-        Swal.fire('成功', '設定已儲存', 'success');
+        if(error) Swal.fire('儲存失敗', error.message, 'error');
+        else Swal.fire('成功', '設定已儲存', 'success');
     });
 
     // 讀取
     async function loadData() {
-        const sysType = document.getElementById('systemType').value;
+        const sysType = currentSys;
         const year = document.getElementById('acYear').value;
-        let sem = document.getElementById('semester').value;
+        const sem = document.getElementById('semester').value;
         
-        // 轉換前端 value 到 DB value
-        let dbSem = sem;
-        if(sem === 'winter') dbSem = 3;
-        if(sem === 'summer') dbSem = 4;
-
         const { data } = await window.db.from('semester_settings')
             .select('*')
-            .eq('system_type', sysType).eq('academic_year', year).eq('semester', dbSem)
+            .eq('system_type', sysType).eq('academic_year', year).eq('semester', sem)
             .single();
 
         const tbody = document.getElementById('weekBody');
@@ -235,15 +240,19 @@
                     <td><input type="text" value="${w.name}" class="fw-bold week-name" readonly></td>
                     <td><input type="date" value="${w.start}" class="start-d"></td>
                     <td><input type="date" value="${w.end}" class="end-d"></td>
-                    <td><input type="text" value="${w.note || ''}" class="note-input"></td>
                 `;
                 tbody.appendChild(tr);
             });
             Swal.fire({ icon: 'success', title: '讀取成功', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
         } else {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-5">查無資料</td></tr>';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-5">查無資料</td></tr>';
         }
     }
+    
+    // 初始載入
+    loadData();
 </script>
 </body>
 </html>
