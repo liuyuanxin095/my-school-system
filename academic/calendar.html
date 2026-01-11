@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學校行事曆</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        
+        /* 行事曆 Grid 設定 */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #dee2e6; /* 格線顏色 */
+            border: 1px solid #dee2e6;
+        }
+        .calendar-header {
+            background-color: #212529;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .calendar-day {
+            background-color: white;
+            min-height: 120px; /* 格子高度 */
+            padding: 5px;
+            position: relative;
+            transition: 0.2s;
+        }
+        .calendar-day:hover { background-color: #f8f9fa; }
+        
+        /* 左上角週次標籤 */
+        .week-label {
+            font-size: 0.75rem;
+            color: #fff;
+            background-color: #0d6efd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .date-num {
+            position: absolute;
+            top: 5px; right: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .other-month { background-color: #f1f3f5; color: #adb5bd; }
+
+        /* 事件樣式 */
+        .event-item {
+            font-size: 0.85rem;
+            padding: 2px 5px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .evt-admin { background-color: #fff3cd; color: #856404; border-left: 3px solid #ffc107; }
+        .evt-dept { background-color: #e3f2fd; color: #0d47a1; border-left: 3px solid #0d6efd; }
+        .evt-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; }
+
+        /* 列印專用樣式 */
+        @media print {
+            body { padding: 0; background: white; }
+            .no-print { display: none !important; } /* 隱藏按鈕、選單 */
+            .calendar-day { min-height: 100px; border: 1px solid #ddd; }
+            .calendar-grid { gap: 0; border: 1px solid #000; }
+            .week-label { font-size: 0.6rem; padding: 1px 3px; border: 1px solid #000; color: #000; background: #eee; }
+            /* 強制列印背景色 */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="sysType" id="type_k" value="kindergarten" checked onchange="renderCalendar()">
+                <label class="btn btn-outline-dark" for="type_k">幼兒園行事曆</label>
+
+                <input type="radio" class="btn-check" name="sysType" id="type_e" value="elementary" onchange="renderCalendar()">
+                <label class="btn btn-outline-dark" for="type_e">國小行事曆</label>
+
+                <input type="radio" class="btn-check" name="sysType" id="type_h" value="high_school" onchange="renderCalendar()">
+                <label class="btn btn-outline-dark" for="type_h">國高中行事曆</label>
+            </div>
+            
+            <select id="yearSelect" class="form-select w-auto" onchange="renderCalendar()"></select>
+            <select id="monthSelect" class="form-select w-auto" onchange="renderCalendar()">
+                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+            </select>
+        </div>
+        
+        <div>
+            <button class="btn btn-outline-primary me-2" onclick="addEventModal()">
+                <i class="bi bi-plus-lg"></i> 新增活動
+            </button>
+            <button class="btn btn-dark" onclick="window.print()">
+                <i class="bi bi-printer"></i> 列印/下載
+            </button>
+        </div>
+    </div>
+
+    <h3 class="text-center fw-bold mb-3" id="calendarTitle">113學年度 行事曆</h3>
+
+    <div class="calendar-grid mb-0 text-center">
+        <div class="calendar-header bg-danger">日</div>
+        <div class="calendar-header">一</div>
+        <div class="calendar-header">二</div>
+        <div class="calendar-header">三</div>
+        <div class="calendar-header">四</div>
+        <div class="calendar-header">五</div>
+        <div class="calendar-header bg-success">六</div>
+    </div>
+
+    <div id="calendarBody" class="calendar-grid">
+        </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    // 初始化年份選單 (前後3年)
+    const yearSelect = document.getElementById('yearSelect');
+    const currentYear = new Date().getFullYear();
+    for(let y = currentYear-1; y <= currentYear+2; y++) {
+        yearSelect.innerHTML += `<option value="${y}" ${y===currentYear?'selected':''}>${y}年</option>`;
+    }
+    document.getElementById('monthSelect').value = new Date().getMonth() + 1;
+
+    // 全域變數：儲存讀取到的週次設定 (優化效能用)
+    let cachedWeeks = [];
+
+    async function renderCalendar() {
+        const sysType = document.querySelector('input[name="sysType"]:checked').value;
+        const year = parseInt(document.getElementById('yearSelect').value);
+        const month = parseInt(document.getElementById('monthSelect').value);
+
+        // 1. 設定標題
+        const typeName = sysType === 'kindergarten' ? '幼兒園' : (sysType === 'elementary' ? '國小部' : '國高中部');
+        document.getElementById('calendarTitle').textContent = `${year}年 ${month}月 ${typeName}行事曆 (含行政)`;
+
+        // 2. 抓取該學制的週次設定 (如果還沒抓過)
+        // 這裡邏輯：要抓「包含這個年月」的學期設定。
+        // 為了簡化，我們先抓最近的所有設定，然後再比對日期
+        const { data: settings } = await window.db.from('semester_settings')
+            .select('*').eq('system_type', sysType);
+        
+        // 3. 抓取活動 (Target + Admin)
+        // SQL: category IN (sysType, 'admin') AND date within range
+        // 簡化：抓當月所有，前端過濾
+        const startStr = `${year}-${String(month).padStart(2,'0')}-01`;
+        const endStr = `${year}-${String(month).padStart(2,'0')}-31`;
+        
+        const { data: events } = await window.db.from('calendar_events')
+            .select('*')
+            .gte('event_date', startStr).lte('event_date', endStr)
+            .or(`category.eq.${sysType},category.eq.admin`);
+
+        // 4. 繪製月曆
+        const calendarBody = document.getElementById('calendarBody');
+        calendarBody.innerHTML = '';
+
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        
+        // 補前月空白
+        let paddingDays = firstDay.getDay(); 
+        for(let i=0; i<paddingDays; i++) {
+            calendarBody.innerHTML += `<div class="calendar-day other-month"></div>`;
+        }
+
+        // 填入日期
+        for(let d=1; d<=lastDay.getDate(); d++) {
+            const dateObj = new Date(year, month - 1, d);
+            const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            // A. 計算週次文字
+            let weekLabel = "";
+            if (settings) {
+                // 遍歷所有學期設定，看這一天落在哪一週
+                settings.forEach(sem => {
+                    if (sem.week_data) {
+                        sem.week_data.forEach(w => {
+                            if (dateStr >= w.start && dateStr <= w.end) {
+                                // 只有在每週的第一天(或該月第一天)顯示標籤，避免太亂? 
+                                // 不，需求說要標註，我們標在每週日，或如果是該月1號也標
+                                if (dateObj.getDay() === 1 || d === 1) { // 設為每週一 (1) 顯示，或每週日(0)
+                                     weekLabel = `<span class="week-label">${w.name}</span>`;
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            // B. 篩選當日活動
+            let eventHtml = '';
+            if (events) {
+                const dayEvents = events.filter(e => e.event_date === dateStr);
+                dayEvents.forEach(e => {
+                    let cls = 'evt-dept';
+                    if (e.category === 'admin') cls = 'evt-admin';
+                    if (e.is_holiday) cls = 'evt-holiday';
+                    eventHtml += `<div class="event-item ${cls}">${e.title}</div>`;
+                });
+            }
+
+            calendarBody.innerHTML += `
+                <div class="calendar-day" onclick="addEventModal('${dateStr}')">
+                    ${weekLabel}
+                    <span class="date-num text-${(dateObj.getDay()===0 || dateObj.getDay()===6)?'danger':'dark'}">${d}</span>
+                    <div class="mt-4">${eventHtml}</div>
+                </div>
+            `;
+        }
+    }
+
+    // 新增活動 Modal (簡易版 using SweetAlert)
+    async function addEventModal(dateStr = '') {
+        const { value: formValues } = await Swal.fire({
+            title: '新增行事曆活動',
+            html: `
+                <input id="swal-date" type="date" class="form-control mb-2" value="${dateStr}">
+                <input id="swal-title" type="text" class="form-control mb-2" placeholder="活動名稱">
+                <select id="swal-cat" class="form-select mb-2">
+                    <option value="admin">行政 (全校可見)</option>
+                    <option value="kindergarten">幼兒園</option>
+                    <option value="elementary">國小部</option>
+                    <option value="high_school">國高中部</option>
+                </select>
+                <div class="form-check text-start">
+                    <input class="form-check-input" type="checkbox" id="swal-holiday">
+                    <label class="form-check-label" for="swal-holiday">紅字假期</label>
+                </div>
+            `,
+            focusConfirm: false,
+            preConfirm: () => {
+                return {
+                    date: document.getElementById('swal-date').value,
+                    title: document.getElementById('swal-title').value,
+                    cat: document.getElementById('swal-cat').value,
+                    holiday: document.getElementById('swal-holiday').checked
+                }
+            }
+        });
+
+        if (formValues) {
+            await window.db.from('calendar_events').insert([{
+                event_date: formValues.date,
+                title: formValues.title,
+                category: formValues.cat,
+                is_holiday: formValues.holiday
+            }]);
+            renderCalendar(); // 重繪
+        }
+    }
+
+    // 初始執行
+    renderCalendar();
+</script>
+</body>
+</html>
