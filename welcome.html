@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統儀表板</title>
+    <title>系統首頁</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,15 +18,20 @@
             color: inherit;
         }
         .system-card:hover { transform: translateY(-5px); }
-        .card-body { padding: 2.5rem 1.5rem !important; }
-        
-        /* 卡片內的圖示大小 */
+        .card-body { padding: 2rem 1rem !important; }
         .card-icon { font-size: 2.5rem; margin-bottom: 15px; display: block; }
 
-        .bg-academic   { background-color: #e3f2fd; color: #0d47a1; }
-        .bg-student    { background-color: #e8f5e9; color: #1b5e20; }
-        .bg-counseling { background-color: #f3e5f5; color: #4a148c; }
-        .bg-hr         { background-color: #fff3cd; color: #856404; }
+        /* 卡片顏色定義 */
+        .bg-academic   { background-color: #e3f2fd; color: #0d47a1; } /* 教務-藍 */
+        .bg-student    { background-color: #e8f5e9; color: #1b5e20; } /* 學務-綠 */
+        .bg-counseling { background-color: #f3e5f5; color: #4a148c; } /* 輔導-紫 */
+        .bg-general    { background-color: #e0f7fa; color: #006064; } /* 總務-青 */
+        .bg-message    { background-color: #ffebee; color: #b71c1c; } /* 訊息-紅 */
+        .bg-hr         { background-color: #fff3cd; color: #856404; } /* 人資-黃 */
+
+        /* 公告列表樣式 */
+        .news-item { cursor: pointer; transition: background-color 0.2s; }
+        .news-item:hover { background-color: #f8f9fa; }
     </style>
 </head>
 <body class="bg-light p-4">
@@ -38,45 +43,67 @@
     
     <div class="row g-4 mb-5">
         
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
             <a href="#" class="card system-card bg-academic h-100 shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-journal-bookmark-fill card-icon"></i>
                     <h3 class="fw-bold mb-3">教務系統</h3>
-                    <p class="mb-0 opacity-75">學生學籍、課程維護<br>成績管理</p>
+                    <p class="mb-0 opacity-75 small">學生學籍、課程維護<br>成績管理</p>
                     <span class="btn btn-sm btn-outline-primary rounded-pill mt-3 px-3">開發中 🛠️</span>
                 </div>
             </a>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
             <a href="#" class="card system-card bg-student h-100 shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-backpack2-fill card-icon"></i>
                     <h3 class="fw-bold mb-3">學務系統</h3>
-                    <p class="mb-0 opacity-75">學生操行、巡堂紀錄</p>
+                    <p class="mb-0 opacity-75 small">學生操行、巡堂紀錄</p>
                     <span class="btn btn-sm btn-outline-success rounded-pill mt-3 px-3">開發中 🛠️</span>
                 </div>
             </a>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
             <a href="#" class="card system-card bg-counseling h-100 shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-heart-pulse-fill card-icon"></i>
                     <h3 class="fw-bold mb-3">輔導系統</h3>
-                    <p class="mb-0 opacity-75">個案紀錄、心理測驗</p>
+                    <p class="mb-0 opacity-75 small">個案紀錄、心理測驗</p>
                     <span class="btn btn-sm btn-outline-info rounded-pill mt-3 px-3">開發中 🛠️</span>
                 </div>
             </a>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
+            <a href="#" class="card system-card bg-general h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-tools card-icon"></i>
+                    <h3 class="fw-bold mb-3">總務系統</h3>
+                    <p class="mb-0 opacity-75 small">財產管理、設備報修<br>出納支付</p>
+                    <span class="btn btn-sm btn-outline-dark rounded-pill mt-3 px-3">開發中 🛠️</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="admin/announcement_manager.html" class="card system-card bg-message h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-megaphone-fill card-icon"></i>
+                    <h3 class="fw-bold mb-3">訊息系統</h3>
+                    <p class="mb-0 opacity-75 small">校園公告、模組作業推播</p>
+                    <span class="btn btn-sm btn-outline-danger rounded-pill mt-3 px-3">開發中 🛠️</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
             <a href="hr/add_employee.html" class="card system-card bg-hr h-100 shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-people-fill card-icon"></i>
                     <h3 class="fw-bold mb-3">人資系統</h3>
-                    <p class="mb-0 opacity-75">職員資料、鐘點計算<br>薪資考勤、表單流程</p>
+                    <p class="mb-0 opacity-75 small">職員資料、薪資考勤<br>表單流程</p>
                     <span class="btn btn-sm btn-warning text-dark rounded-pill mt-3 px-3">進入系統</span>
                 </div>
             </a>
@@ -86,7 +113,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center py-3">
-            <span>📢 最新系統公告</span>
+            <span>📢 最新系統公告 (點擊查看詳情)</span>
             <button class="btn btn-sm btn-outline-secondary" onclick="loadNews()">重新整理</button>
         </div>
         <ul class="list-group list-group-flush" id="newsList">
@@ -95,12 +122,35 @@
     </div>
 </div>
 
+<div class="modal fade" id="newsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="modalTitle">公告標題</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalContent" style="white-space: pre-wrap;">
+                公告內容...
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto" id="modalDate">發布日期</small>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="js/config.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (user && user.name) {
         document.getElementById('welcomeName').textContent = "👋 歡迎回來，" + user.name + " (" + user.role + ")";
     }
+
+    // 儲存公告資料的暫存區
+    let currentNewsData = [];
 
     async function loadNews() {
         const list = document.getElementById('newsList');
@@ -121,8 +171,10 @@
             return;
         }
 
+        currentNewsData = news; // 存起來給 Modal 用
         list.innerHTML = '';
-        news.forEach(item => {
+        
+        news.forEach((item, index) => {
             const dateStr = item.created_at.split('T')[0];
             const isNew = (new Date() - new Date(item.created_at)) / (1000 * 3600 * 24) <= 3;
             const badge = isNew ? '<span class="badge bg-danger rounded-pill ms-2">New</span>' : '';
@@ -133,8 +185,9 @@
             if(item.category === '學務通知') colorClass = 'bg-success';
             if(item.category === '人資快訊') colorClass = 'bg-warning text-dark';
 
+            // 加入 onclick 事件，傳入 index
             list.innerHTML += `
-                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <li class="list-group-item news-item d-flex justify-content-between align-items-center py-3" onclick="openNews(${index})">
                     <div>
                         <span class="badge ${colorClass} me-2">${item.category}</span>
                         <span class="fw-bold text-dark">${item.title}</span>
@@ -144,6 +197,19 @@
                 </li>
             `;
         });
+    }
+
+    // 打開公告詳情
+    function openNews(index) {
+        const item = currentNewsData[index];
+        document.getElementById('modalTitle').textContent = item.title;
+        // 如果內容是空的，顯示預設文字
+        document.getElementById('modalContent').textContent = item.content || "（無詳細內容）";
+        document.getElementById('modalDate').textContent = "發布於： " + item.created_at.split('T')[0];
+        
+        // 使用 Bootstrap Modal API 顯示
+        const myModal = new bootstrap.Modal(document.getElementById('newsModal'));
+        myModal.show();
     }
 
     loadNews();
