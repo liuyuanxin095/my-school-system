@@ -13,7 +13,7 @@
         /* --- 側邊欄全黑設定 --- */
         .sidebar {
             width: 260px;
-            background-color: #212529; /* 深黑背景 */
+            background-color: #212529;
             color: white;
             flex-shrink: 0;
             display: flex;
@@ -38,54 +38,47 @@
             width: 100%;
             text-align: left;
             text-decoration: none;
-            border-left: 4px solid transparent; /* 預留左邊框位置 */
+            border-left: 4px solid transparent;
             display: flex;
             align-items: center;
         }
 
-        /* 滑鼠移過 */
         .menu-btn:hover, .accordion-button:hover { 
             background-color: #2c3034 !important; 
             color: #fff !important; 
         }
 
-        /* 子選單連結 */
         .submenu-link {
             display: block;
-            padding: 8px 10px 8px 54px; /* 縮排 */
+            padding: 8px 10px 8px 54px;
             color: #888;
             text-decoration: none;
             font-size: 0.9rem;
             transition: 0.2s;
             border-left: 4px solid transparent;
-            background-color: #15171a; /* 比側邊欄稍深 */
+            background-color: #15171a;
         }
         .submenu-link:hover { color: #fff; background-color: #2c3034; }
 
-        /* --- 核心：被點選的狀態 (藍色高亮) --- */
-        
-        /* 1. 第一層按鈕被點選 (如系統首頁、表單系統) */
+        /* --- 藍色高亮狀態 --- */
         .menu-btn.active {
             color: #fff !important;
             background-color: #212529 !important;
-            border-left-color: #0d6efd; /* 藍色邊框 */
+            border-left-color: #0d6efd;
         }
 
-        /* 2. 子選單連結被點選 */
         .submenu-link.active {
             color: #fff !important;
             background-color: #2c3034;
             border-left-color: #0d6efd;
         }
 
-        /* 3. Accordion 展開時標題變亮 */
         .accordion-button:not(.collapsed) { 
             color: #fff !important; 
             font-weight: bold;
             background-color: #212529 !important;
         }
 
-        /* 隱藏預設箭頭 */
         .accordion-button::after { display: none; }
         .accordion-item { background-color: transparent; border: none; }
         
@@ -93,7 +86,6 @@
         iframe { width: 100%; height: 100%; border: none; }
     </style>
     <script>
-        // 安全檢查：沒登入就踢回登入頁
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'login.html';
         }
@@ -135,8 +127,7 @@
                 </h2>
                 <div id="menu-academic" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
                     <a href="academic/calendar.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">行事曆維護</a>
-                    <a href="academic/semester_settings.html?type=kindergarten" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定（幼兒）</a>
-                    <a href="academic/semester_settings.html?type=elementary" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定（十二）</a>
+                    <a href="academic/semester_settings.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學生學籍資料維護</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">課程維護作業</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">調代課作業</a>
@@ -246,7 +237,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 顯示登入者資訊
         const user = JSON.parse(localStorage.getItem('currentUser'));
         if (user) {
             document.getElementById('userNameDisplay').textContent = user.name;
@@ -254,7 +244,6 @@
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
         }
 
-        // 登出功能 (SweetAlert2)
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
@@ -272,13 +261,10 @@
             })
         });
 
-        // 處理選單點擊高亮 (解決藍條殘留問題)
         function handleMenuClick(clickedEl) {
-            // 1. 移除所有按鈕的 active
             document.querySelectorAll('.menu-btn, .submenu-link').forEach(el => {
                 el.classList.remove('active');
             });
-            // 2. 幫當前點擊的加上 active
             clickedEl.classList.add('active');
         }
     </script>
