@@ -10,10 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; }
-        /* 輸入框樣式 */
         .week-row input { border: none; background: transparent; width: 100%; text-align: center; }
         .week-row input:focus { outline: 1px solid #ced4da; background: white; }
-        /* 分頁籤樣式 */
         .nav-tabs .nav-link { color: #495057; cursor: pointer; font-weight: bold; }
         .nav-tabs .nav-link.active { color: #0d6efd; background-color: #fff; border-bottom-color: #fff; border-top: 3px solid #0d6efd; }
     </style>
@@ -24,7 +22,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-secondary"><i class="bi bi-calendar-range"></i> 學期週次設定</h3>
         <button id="saveBtn" class="btn btn-primary">
-            <i class="bi bi-save"></i> 儲存週次設定
+            <i class="bi bi-save"></i> 儲存設定
         </button>
     </div>
 
@@ -46,12 +44,12 @@
             <div class="row g-3">
                 <div class="col-md-2">
                     <label class="form-label">學年度</label>
-                    <input type="number" id="acYear" class="form-control" value="113">
+                    <input type="number" id="acYear" class="form-control" value="114">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">學期/假期</label>
                     <select id="semester" class="form-select" onchange="loadData()">
-                        <option value="1">第一學期 (上)</option>
+                        <option value="1" selected>第一學期 (上)</option>
                         <option value="winter">寒假 / 寒輔</option>
                         <option value="2">第二學期 (下)</option>
                         <option value="summer">暑假 / 暑輔</option>
@@ -71,11 +69,11 @@
                 <div class="col-md-12"><hr class="my-1"></div>
 
                 <div class="col-md-6">
-                    <label class="form-label text-primary">開始日期</label>
+                    <label class="form-label text-primary fw-bold">開學日期 (開始)</label>
                     <input type="date" id="startDate" class="form-control">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label text-primary">結束日期</label>
+                    <label class="form-label text-primary fw-bold">結業式日期 (結束)</label>
                     <input type="date" id="endDate" class="form-control">
                 </div>
             </div>
@@ -103,23 +101,31 @@
 
 <script src="../js/config.js"></script>
 <script>
-    // 預設學制
     let currentSys = 'kindergarten';
 
-    // 切換學制分頁
+    // 取得 URL 參數來預設分頁 (如果有的話)
+    const urlParams = new URLSearchParams(window.location.search);
+    const typeParam = urlParams.get('type');
+    if(typeParam) {
+        currentSys = typeParam;
+        document.getElementById('systemType').value = typeParam;
+        // 更新 UI active 狀態
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if(link.textContent.includes(typeParam === 'kindergarten' ? '幼兒' : (typeParam === 'elementary' ? '國小' : '高中'))) {
+                link.classList.add('active');
+            }
+        });
+    }
+
     function switchSys(sys, el) {
         currentSys = sys;
         document.getElementById('systemType').value = sys;
-        
-        // UI 更新
         document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
         el.classList.add('active');
-
-        // 重新讀取該學制的資料
         loadData();
     }
 
-    // 自動產生週次
     function generateWeeks() {
         const startVal = document.getElementById('startDate').value;
         const endVal = document.getElementById('endDate').value;
@@ -138,11 +144,6 @@
         let current = new Date(start);
         let weekCount = 1;
 
-        // 設定週次前綴字
-        let prefix = "";
-        if (sem === 'winter') prefix = "寒-";
-        if (sem === 'summer') prefix = "暑-";
-
         while (current <= end) {
             let weekEnd = new Date(current);
             weekEnd.setDate(current.getDate() + 6);
@@ -151,7 +152,15 @@
             const sStr = current.toISOString().split('T')[0];
             const eStr = weekEnd.toISOString().split('T')[0];
 
-            let displayWeek = `${year}-${sem === 'winter' || sem === 'summer' ? prefix : sem + ' 第'}${String(weekCount).padStart(2,'0')}週`;
+            // 格式設定
+            let displayWeek = "";
+            if (sem === 'winter') {
+                displayWeek = `${year}-寒 第${String(weekCount).padStart(2,'0')}週`;
+            } else if (sem === 'summer') {
+                displayWeek = `${year}-暑 第${String(weekCount).padStart(2,'0')}週`;
+            } else {
+                displayWeek = `${year}-${sem} 第${String(weekCount).padStart(2,'0')}週`;
+            }
 
             const tr = document.createElement('tr');
             tr.className = 'week-row';
@@ -167,7 +176,6 @@
         }
     }
 
-    // 儲存
     document.getElementById('saveBtn').addEventListener('click', async () => {
         const sysType = currentSys;
         const year = document.getElementById('acYear').value;
@@ -185,19 +193,16 @@
             });
         });
 
-        // 處理學期代碼
-        let dbSem = sem; 
-
-        // 檢查是否存在
+        // 資料庫操作
         const { data: exist } = await window.db.from('semester_settings')
             .select('id')
-            .eq('system_type', sysType).eq('academic_year', year).eq('semester', dbSem)
+            .eq('system_type', sysType).eq('academic_year', year).eq('semester', sem)
             .single();
 
         const payload = {
             system_type: sysType,
             academic_year: year,
-            semester: dbSem, 
+            semester: sem, // 直接存字串 (1, 2, winter, summer)
             start_date: document.getElementById('startDate').value,
             end_date: document.getElementById('endDate').value,
             week_data: weekData
@@ -216,7 +221,6 @@
         else Swal.fire('成功', '設定已儲存', 'success');
     });
 
-    // 讀取
     async function loadData() {
         const sysType = currentSys;
         const year = document.getElementById('acYear').value;
@@ -243,7 +247,7 @@
                 `;
                 tbody.appendChild(tr);
             });
-            Swal.fire({ icon: 'success', title: '讀取成功', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ icon: 'success', title: '讀取成功', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
         } else {
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
