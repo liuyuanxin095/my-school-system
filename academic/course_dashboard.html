@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課程維護系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .system-header { background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        
+        .func-card {
+            border: none; border-radius: 12px; transition: 0.3s;
+            text-align: center; padding: 25px 15px; height: 100%; cursor: pointer;
+            background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-decoration: none; color: inherit; display: block;
+        }
+        .func-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .icon-box { font-size: 2.5rem; margin-bottom: 15px; display: inline-block; padding: 10px; border-radius: 50%; width: 80px; height: 80px; line-height: 60px; }
+        
+        .c-basic { background-color: #e3f2fd; color: #0d47a1; }
+        .c-assign { background-color: #e8f5e9; color: #1b5e20; }
+        .c-sched { background-color: #fff3cd; color: #856404; }
+        
+        .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 10px; background: #eee; color: #666; margin-top: 10px; display: inline-block; }
+        .status-dev { background: #ffeeba; color: #856404; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="system-header d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="fw-bold text-primary mb-1"><i class="bi bi-journal-album"></i> 課程維護系統</h3>
+            <small class="text-muted">目前的作業學期：<span id="currentSem" class="fw-bold text-dark">讀取中...</span></small>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise"></i> 重新整理
+        </button>
+    </div>
+
+    <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-primary ps-2">基本開課作業</h5>
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <a href="course_settings.html?tab=semester" class="func-card">
+                <div class="icon-box c-basic"><i class="bi bi-calendar-check"></i></div>
+                <h5 class="fw-bold">學期設定連動</h5>
+                <p class="text-muted small mb-0">設定本學期起訖週次</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="course_settings.html?tab=subject" class="func-card">
+                <div class="icon-box c-basic"><i class="bi bi-book"></i></div>
+                <h5 class="fw-bold">課程資料維護</h5>
+                <p class="text-muted small mb-0">科目代碼、名稱與屬性</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="course_settings.html?tab=period" class="func-card">
+                <div class="icon-box c-basic"><i class="bi bi-clock-history"></i></div>
+                <h5 class="fw-bold">節數與作息</h5>
+                <p class="text-muted small mb-0">每日節次時間設定</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="course_settings.html?tab=classroom" class="func-card">
+                <div class="icon-box c-basic"><i class="bi bi-building"></i></div>
+                <h5 class="fw-bold">教室資料管理</h5>
+                <p class="text-muted small mb-0">專科教室與班級教室</p>
+            </a>
+        </div>
+    </div>
+
+    <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-success ps-2">配課與條件設定</h5>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <a href="#" class="func-card" onclick="alert('開發中')">
+                <div class="icon-box c-assign"><i class="bi bi-person-video3"></i></div>
+                <h5 class="fw-bold">教師配課作業</h5>
+                <p class="text-muted small mb-0">指定 班級-科目-教師</p>
+                <span class="status-badge status-dev">開發中</span>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="#" class="func-card" onclick="alert('開發中')">
+                <div class="icon-box c-assign"><i class="bi bi-sliders"></i></div>
+                <h5 class="fw-bold">排課條件設定</h5>
+                <p class="text-muted small mb-0">不排課時段、連堂設定</p>
+                <span class="status-badge status-dev">開發中</span>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="#" class="func-card" onclick="alert('開發中')">
+                <div class="icon-box c-assign"><i class="bi bi-people"></i></div>
+                <h5 class="fw-bold">班級資料維護</h5>
+                <p class="text-muted small mb-0">班級與導師設定</p>
+                <span class="status-badge status-dev">開發中</span>
+            </a>
+        </div>
+    </div>
+
+    <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-warning ps-2">智慧排課作業</h5>
+    <div class="row g-4">
+        <div class="col-md-6">
+            <a href="#" class="func-card" onclick="alert('核心演算法開發中')">
+                <div class="icon-box c-sched"><i class="bi bi-cpu"></i></div>
+                <h5 class="fw-bold">自動排課執行</h5>
+                <p class="text-muted small mb-0">系統自動運算課表</p>
+                <span class="status-badge status-dev">開發中</span>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a href="#" class="func-card" onclick="alert('開發中')">
+                <div class="icon-box c-sched"><i class="bi bi-table"></i></div>
+                <h5 class="fw-bold">課表檢視與調整</h5>
+                <p class="text-muted small mb-0">手動微調與衝堂檢查</p>
+                <span class="status-badge status-dev">開發中</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+    
+    // 這裡我們直接使用 config.js 的 window.db，但為了確保載入順序，簡單做個顯示
+    async function init() {
+        // 抓取目前最新的學期設定 (這裡假設抓取最新一筆 semester_settings)
+        // 實務上應該要有個 "current_semester" 的全域設定，我們先抓第一筆當範例
+        const { data } = await window.db.from('semester_settings')
+            .select('*')
+            .order('academic_year', { ascending: false })
+            .limit(1)
+            .single();
+            
+        if(data) {
+            let semName = data.semester;
+            if(semName === '1') semName = '上學期';
+            if(semName === '2') semName = '下學期';
+            document.getElementById('currentSem').textContent = `${data.academic_year} 學年度 ${semName} (${data.system_type === 'kindergarten'?'幼兒':'十二年'})`;
+        } else {
+            document.getElementById('currentSem').textContent = "尚未設定學期";
+        }
+    }
+    
+    // 延遲一點點執行以確保 db 已載入
+    setTimeout(init, 500);
+</script>
+
+</body>
+</html>
