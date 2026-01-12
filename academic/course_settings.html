@@ -14,6 +14,15 @@
         .nav-tabs .nav-link.active { color: #0d6efd; border-top: 3px solid #0d6efd; }
         .tab-content { background: white; padding: 20px; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 5px 5px; }
         .action-btn { width: 32px; height: 32px; padding: 0; line-height: 32px; }
+        
+        /* Excel 貼上區樣式 */
+        .excel-paste-area {
+            width: 100%; height: 200px;
+            font-family: monospace; font-size: 0.9rem;
+            border: 1px solid #ced4da; padding: 10px;
+            white-space: pre; overflow: auto;
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
@@ -22,7 +31,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="fw-bold text-primary"><i class="bi bi-sliders"></i> 基本開課資料維護</h3>
-            <small class="text-muted">設定學期、科目、教室與作息時間</small>
+            <small class="text-muted">設定全校共用學期、科目、教室與作息</small>
         </div>
         <a href="course_dashboard.html" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-return-left"></i> 回儀表板
@@ -47,16 +56,15 @@
     <div class="tab-content shadow-sm">
         
         <div class="tab-pane fade show active" id="pane-sem">
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill"></i> 請選擇本系統目前要進行排課作業的學期。設定後，所有的開課資料將會綁定至該學期。
+            <div class="alert alert-primary">
+                <i class="bi bi-info-circle-fill"></i> <strong>全校統一排課學期：</strong> 請選擇一個學期作為目前排課系統的基準。此設定將套用於國小、國中及高中部。
             </div>
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>學制</th>
                         <th>學年度</th>
                         <th>學期</th>
-                        <th>狀態</th>
+                        <th>排課狀態</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -67,14 +75,19 @@
         <div class="tab-pane fade" id="pane-subj">
             <div class="d-flex justify-content-between mb-3">
                 <h5 class="fw-bold">全校科目列表</h5>
-                <button class="btn btn-primary btn-sm" onclick="addSubject()">
-                    <i class="bi bi-plus-lg"></i> 新增科目
-                </button>
+                <div>
+                    <button class="btn btn-success btn-sm me-2" onclick="openSubjectImport()">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Excel 快速匯入
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openSubjectModal()">
+                        <i class="bi bi-plus-lg"></i> 新增科目
+                    </button>
+                </div>
             </div>
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>代碼</th>
+                        <th>代碼 (Max 4)</th>
                         <th>科目名稱</th>
                         <th>領域/類別</th>
                         <th>預設節數</th>
@@ -87,17 +100,26 @@
 
         <div class="tab-pane fade" id="pane-room">
             <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold">專科教室列表</h5>
-                <button class="btn btn-primary btn-sm" onclick="addClassroom()">
-                    <i class="bi bi-plus-lg"></i> 新增教室
-                </button>
+                <h5 class="fw-bold">教室列表 (含分校)</h5>
+                <div>
+                    <button class="btn btn-success btn-sm me-2" onclick="openRoomImport()">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Excel 快速匯入
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="openRoomModal()">
+                        <i class="bi bi-plus-lg"></i> 新增教室
+                    </button>
+                </div>
+            </div>
+            <div class="mb-2 small text-muted">
+                代碼規則：分校代碼 (A~I) + 教室號碼。例如：A校本部 + 101 = <strong>A101</strong>
             </div>
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th>完整代碼</th>
+                        <th>分校</th>
                         <th>教室名稱</th>
                         <th>類型</th>
-                        <th>容納人數</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -109,15 +131,14 @@
             <div class="d-flex justify-content-between mb-3">
                 <h5 class="fw-bold">每日作息時間表</h5>
                 <div>
-                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="initDefaultPeriods()">
-                        <i class="bi bi-arrow-repeat"></i> 載入預設值
+                    <button class="btn btn-warning btn-sm me-2 text-dark" onclick="initDefaultPeriods()">
+                        <i class="bi bi-arrow-counterclockwise"></i> 恢復系統預設值
                     </button>
                     <button class="btn btn-success btn-sm" onclick="savePeriods()">
                         <i class="bi bi-save"></i> 儲存作息設定
                     </button>
                 </div>
             </div>
-            <div class="alert alert-warning py-2 small">注意：請務必先在「學期連動設定」中選定學期，此處設定將套用於該學期。</div>
             <table class="table table-bordered text-center align-middle">
                 <thead class="table-light">
                     <tr>
@@ -125,7 +146,7 @@
                         <th width="25%">節次名稱</th>
                         <th width="25%">開始時間</th>
                         <th width="25%">結束時間</th>
-                        <th width="15%">排課節次</th>
+                        <th width="15%">是否排課</th>
                         <th width="10%">刪除</th>
                     </tr>
                 </thead>
@@ -139,28 +160,160 @@
     </div>
 </div>
 
+<div class="modal fade" id="subjModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="subjModalTitle">科目維護</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="s_id">
+                <div class="mb-3">
+                    <label>科目代碼 (最多4碼)</label>
+                    <input id="s_code" class="form-control" maxlength="4" placeholder="例: C001">
+                </div>
+                <div class="mb-3">
+                    <label>科目名稱</label>
+                    <input id="s_name" class="form-control" placeholder="例: 國語">
+                </div>
+                <div class="mb-3">
+                    <label>領域/類別</label>
+                    <input id="s_cat" class="form-control" placeholder="例: 語文">
+                </div>
+                <div class="mb-3">
+                    <label>預設每週節數</label>
+                    <input id="s_hours" type="number" class="form-control" value="4">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" onclick="saveSubject()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importSubjModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">科目 Excel 快速匯入</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">請在 Excel 中複製資料（不含標題列），格式順序：<br><strong>代碼(4碼) | 科目名稱 | 領域 | 節數</strong></p>
+                <textarea id="importSubjText" class="excel-paste-area" placeholder="請在此貼上 Excel 內容..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-success" onclick="processSubjImport()">開始匯入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="roomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="roomModalTitle">教室維護</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="r_id">
+                <div class="mb-3">
+                    <label>所屬分校</label>
+                    <select id="r_campus" class="form-select" onchange="updateRoomPreview()">
+                        <option value="A">A - 校本部</option>
+                        <option value="B">B - 文化分校</option>
+                        <option value="C">C - 東興分校</option>
+                        <option value="D">D - 元化分校</option>
+                        <option value="E">E - 瑞溪分校</option>
+                        <option value="F">F - 中壢分校</option>
+                        <option value="G">G - 內壢分校</option>
+                        <option value="H">H - 桃市府分校</option>
+                        <option value="I">I - 過嶺分校</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>教室號碼</label>
+                    <input id="r_num" class="form-control" placeholder="例: 101" oninput="updateRoomPreview()">
+                </div>
+                <div class="mb-3">
+                    <label>預覽完整代碼</label>
+                    <input id="r_full" class="form-control bg-light fw-bold" readonly>
+                </div>
+                <div class="mb-3">
+                    <label>教室名稱</label>
+                    <input id="r_name" class="form-control" placeholder="例: A101 一般教室">
+                </div>
+                <div class="mb-3">
+                    <label>類型</label>
+                    <select id="r_type" class="form-select">
+                        <option value="general">一般教室</option>
+                        <option value="special">專科教室</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>容納人數</label>
+                    <input id="r_cap" type="number" class="form-control" value="30">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-primary" onclick="saveRoom()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importRoomModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">教室 Excel 快速匯入</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">格式順序：<br><strong>分校代碼(A~I) | 教室號碼 | 教室名稱 | 類型(一般/專科) | 人數</strong></p>
+                <textarea id="importRoomText" class="excel-paste-area" placeholder="請在此貼上 Excel 內容...&#10;例：A	101	一年一班	一般	30"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-success" onclick="processRoomImport()">開始匯入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // --- 共用：取得目前的 Active 學期 ---
-    let currentSemesterId = null;
+    // Modal 物件
+    let subjModal, roomModal, importSubjModal, importRoomModal;
 
-    async function checkActiveSemester() {
-        const { data } = await window.db.from('semester_settings')
-            .select('*')
-            .eq('is_active_for_scheduling', true)
-            .single();
+    document.addEventListener('DOMContentLoaded', () => {
+        subjModal = new bootstrap.Modal(document.getElementById('subjModal'));
+        roomModal = new bootstrap.Modal(document.getElementById('roomModal'));
+        importSubjModal = new bootstrap.Modal(document.getElementById('importSubjModal'));
+        importRoomModal = new bootstrap.Modal(document.getElementById('importRoomModal'));
+
+        loadSemesters();
+        loadSubjects();
+        loadClassrooms();
         
-        if (data) {
-            currentSemesterId = data.id;
-            return data; // 回傳學期物件
-        }
-        return null;
-    }
+        // 載入預設學期作息
+        checkActiveSemester().then(data => {
+            if(data) loadPeriods(data.academic_year, data.semester);
+        });
+    });
 
-    // --- Tab 1: 學期連動設定 ---
+    // --- Tab 1: 學期連動設定 (合併顯示) ---
     async function loadSemesters() {
+        // 我們這裡只顯示 "unique" 的學年+學期，不分學制
+        // 因為 Supabase 沒有 DISTINCT ON 的簡單 JS 語法，我們抓全部後前端過濾
         const { data: list } = await window.db.from('semester_settings')
             .select('*')
             .order('academic_year', { ascending: false })
@@ -169,30 +322,38 @@
         const tbody = document.getElementById('semTable');
         tbody.innerHTML = '';
 
+        // 用 Map 過濾重複的學年學期
+        const uniqueSem = new Map();
         list.forEach(sem => {
+            const key = `${sem.academic_year}-${sem.semester}`;
+            if (!uniqueSem.has(key)) {
+                uniqueSem.set(key, sem); // 存入第一筆遇到的 (通常是 kindergarten 或 elementary)
+            }
+            // 如果這群裡面有任何一個是 active，標記起來
+            if (sem.is_active_for_scheduling) {
+                uniqueSem.get(key).isActiveGlobal = true;
+            }
+        });
+
+        uniqueSem.forEach(sem => {
             let semName = sem.semester;
             if(semName === '1') semName = '上學期';
             else if(semName === '2') semName = '下學期';
             else if(semName === 'W') semName = '寒輔';
             else if(semName === 'S') semName = '暑輔';
 
-            let typeName = sem.system_type;
-            if(typeName === 'kindergarten') typeName = '幼兒園';
-            if(typeName === 'elementary') typeName = '國小部';
-            if(typeName === 'high_school') typeName = '國高中部';
-
-            const isActive = sem.is_active_for_scheduling;
+            const isActive = sem.isActiveGlobal;
             const statusBadge = isActive 
                 ? '<span class="badge bg-success">排課中</span>' 
                 : '<span class="badge bg-secondary">非使用中</span>';
             
+            // 設定時，我們傳入學年和學期，讓後端去找所有符合的設為 active
             const btnHtml = isActive 
                 ? '<button class="btn btn-sm btn-outline-secondary" disabled>使用中</button>'
-                : `<button class="btn btn-sm btn-primary" onclick="setActiveSem(${sem.id})">設為排課學期</button>`;
+                : `<button class="btn btn-sm btn-primary" onclick="setGlobalActive('${sem.academic_year}', '${sem.semester}')">設為排課學期</button>`;
 
             tbody.innerHTML += `
                 <tr class="${isActive ? 'table-success' : ''}">
-                    <td>${typeName}</td>
                     <td>${sem.academic_year}</td>
                     <td>${semName}</td>
                     <td>${statusBadge}</td>
@@ -202,21 +363,29 @@
         });
     }
 
-    async function setActiveSem(id) {
-        // 呼叫資料庫函數 (Step 1 建立的)
-        const { error } = await window.db.rpc('set_active_semester', { target_id: id });
+    async function setGlobalActive(year, sem) {
+        // 先把全部設 false
+        await window.db.from('semester_settings').update({ is_active_for_scheduling: false }).neq('id', 0);
+        // 再把符合該學年學期的所有設 true
+        const { error } = await window.db.from('semester_settings')
+            .update({ is_active_for_scheduling: true })
+            .eq('academic_year', year)
+            .eq('semester', sem);
+
         if(error) Swal.fire('錯誤', error.message, 'error');
         else {
-            await Swal.fire('成功', '已切換排課學期', 'success');
+            Swal.fire('成功', '已設定全校排課學期', 'success');
             loadSemesters();
-            // 切換學期後，重整節次表
-            checkActiveSemester().then(data => {
-                if(data) loadPeriods(data.academic_year, data.semester);
-            });
+            loadPeriods(year, sem);
         }
     }
 
-    // --- Tab 2: 科目管理 ---
+    async function checkActiveSemester() {
+        const { data } = await window.db.from('semester_settings').select('*').eq('is_active_for_scheduling', true).limit(1).single();
+        return data;
+    }
+
+    // --- Tab 2: 科目管理 (新增/編輯/匯入) ---
     async function loadSubjects() {
         const { data: list } = await window.db.from('subjects').select('*').order('code');
         const tbody = document.getElementById('subjTable');
@@ -224,11 +393,12 @@
         list.forEach(s => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${s.code || '-'}</td>
+                    <td class="font-monospace">${s.code || '-'}</td>
                     <td class="fw-bold">${s.name}</td>
                     <td>${s.category || ''}</td>
                     <td>${s.default_hours}</td>
                     <td>
+                        <button class="btn btn-sm btn-outline-primary action-btn me-1" onclick='openSubjectModal(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button>
                         <button class="btn btn-sm btn-outline-danger action-btn" onclick="delSubject(${s.id})"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
@@ -236,103 +406,217 @@
         });
     }
 
-    async function addSubject() {
-        const { value: formValues } = await Swal.fire({
-            title: '新增科目',
-            html: `
-                <input id="swal-code" class="form-control mb-2" placeholder="科目代碼 (例: C01)">
-                <input id="swal-name" class="form-control mb-2" placeholder="科目名稱 (例: 國語)">
-                <input id="swal-cat" class="form-control mb-2" placeholder="領域/類別 (例: 語文)">
-                <input id="swal-hours" type="number" class="form-control mb-2" placeholder="預設每週節數" value="4">
-            `,
-            focusConfirm: false,
-            preConfirm: () => {
-                return {
-                    code: document.getElementById('swal-code').value,
-                    name: document.getElementById('swal-name').value,
-                    category: document.getElementById('swal-cat').value,
-                    default_hours: document.getElementById('swal-hours').value
-                }
-            }
-        });
+    // 開啟編輯/新增視窗
+    window.openSubjectModal = (data = null) => {
+        if(data) {
+            document.getElementById('subjModalTitle').textContent = "編輯科目";
+            document.getElementById('s_id').value = data.id;
+            document.getElementById('s_code').value = data.code;
+            document.getElementById('s_name').value = data.name;
+            document.getElementById('s_cat').value = data.category;
+            document.getElementById('s_hours').value = data.default_hours;
+        } else {
+            document.getElementById('subjModalTitle').textContent = "新增科目";
+            document.getElementById('s_id').value = "";
+            document.getElementById('s_code').value = "";
+            document.getElementById('s_name').value = "";
+            document.getElementById('s_cat').value = "";
+            document.getElementById('s_hours').value = "4";
+        }
+        subjModal.show();
+    }
 
-        if (formValues) {
-            await window.db.from('subjects').insert([formValues]);
-            loadSubjects();
+    // 儲存科目 (含代碼 4 碼檢查)
+    window.saveSubject = async () => {
+        const id = document.getElementById('s_id').value;
+        const code = document.getElementById('s_code').value;
+        const name = document.getElementById('s_name').value;
+        
+        if(code.length > 4) { Swal.fire('代碼過長', '科目代碼限制 4 碼以內', 'warning'); return; }
+        if(!name) { Swal.fire('錯誤', '請輸入科目名稱', 'warning'); return; }
+
+        const payload = {
+            code: code,
+            name: name,
+            category: document.getElementById('s_cat').value,
+            default_hours: document.getElementById('s_hours').value
+        };
+
+        if(id) {
+            await window.db.from('subjects').update(payload).eq('id', id);
+        } else {
+            await window.db.from('subjects').insert([payload]);
+        }
+        subjModal.hide();
+        loadSubjects();
+    }
+
+    // 大量匯入科目
+    window.openSubjectImport = () => {
+        document.getElementById('importSubjText').value = "";
+        importSubjModal.show();
+    }
+
+    window.processSubjImport = async () => {
+        const text = document.getElementById('importSubjText').value;
+        const rows = text.trim().split('\n');
+        const inserts = [];
+        
+        for(let row of rows) {
+            const cols = row.split('\t'); // Excel 複製是 Tab 分隔
+            if(cols.length >= 2) {
+                let code = cols[0].trim().substring(0, 4); // 強制截斷
+                inserts.push({
+                    code: code,
+                    name: cols[1].trim(),
+                    category: cols[2] ? cols[2].trim() : '',
+                    default_hours: cols[3] ? parseInt(cols[3]) : 4
+                });
+            }
+        }
+
+        if(inserts.length > 0) {
+            const { error } = await window.db.from('subjects').insert(inserts);
+            if(error) Swal.fire('匯入失敗', error.message, 'error');
+            else {
+                Swal.fire('成功', `已匯入 ${inserts.length} 筆科目`, 'success');
+                importSubjModal.hide();
+                loadSubjects();
+            }
         }
     }
 
-    async function delSubject(id) {
-        if(confirm('確定刪除此科目？')) {
+    window.delSubject = async (id) => {
+        if(confirm('刪除科目可能影響已設定的配課，確定刪除？')) {
             await window.db.from('subjects').delete().eq('id', id);
             loadSubjects();
         }
     }
 
-    // --- Tab 3: 教室管理 ---
+
+    // --- Tab 3: 教室管理 (含分校 A-I 邏輯) ---
+    const campusMap = {
+        'A': '本部', 'B': '文化', 'C': '東興', 'D': '元化',
+        'E': '瑞溪', 'F': '中壢', 'G': '內壢', 'H': '桃市府', 'I': '過嶺'
+    };
+
     async function loadClassrooms() {
-        const { data: list } = await window.db.from('classrooms').select('*').order('name');
+        const { data: list } = await window.db.from('classrooms').select('*').order('full_code');
         const tbody = document.getElementById('roomTable');
         tbody.innerHTML = '';
         list.forEach(r => {
-            let typeName = r.type === 'special' ? '專科教室' : '一般教室';
+            let typeStr = r.type === 'special' ? '專科' : '一般';
+            let campusStr = campusMap[r.campus] || r.campus;
             tbody.innerHTML += `
                 <tr>
-                    <td class="fw-bold">${r.name}</td>
-                    <td>${typeName}</td>
-                    <td>${r.capacity || '-'}</td>
+                    <td class="fw-bold text-primary">${r.full_code || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${r.campus} - ${campusStr}</span></td>
+                    <td>${r.name}</td>
+                    <td>${typeStr}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-danger action-btn" onclick="delClassroom(${r.id})"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-danger action-btn" onclick="delRoom(${r.id})"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
             `;
         });
     }
 
-    async function addClassroom() {
-        const { value: formValues } = await Swal.fire({
-            title: '新增教室',
-            html: `
-                <input id="swal-rname" class="form-control mb-2" placeholder="教室名稱 (例: 音樂教室)">
-                <select id="swal-rtype" class="form-select mb-2">
-                    <option value="special">專科教室</option>
-                    <option value="general">一般教室</option>
-                </select>
-                <input id="swal-rcap" type="number" class="form-control mb-2" placeholder="容納人數" value="30">
-            `,
-            preConfirm: () => {
-                return {
-                    name: document.getElementById('swal-rname').value,
-                    type: document.getElementById('swal-rtype').value,
-                    capacity: document.getElementById('swal-rcap').value
-                }
-            }
-        });
+    // 教室代碼預覽
+    window.updateRoomPreview = () => {
+        const c = document.getElementById('r_campus').value;
+        const n = document.getElementById('r_num').value;
+        document.getElementById('r_full').value = c + n;
+    }
 
-        if (formValues) {
-            await window.db.from('classrooms').insert([formValues]);
+    window.openRoomModal = () => {
+        document.getElementById('roomModalTitle').textContent = "新增教室";
+        document.getElementById('r_campus').value = "A";
+        document.getElementById('r_num').value = "";
+        document.getElementById('r_full').value = "";
+        document.getElementById('r_name').value = "";
+        document.getElementById('r_type').value = "general";
+        document.getElementById('r_cap').value = "30";
+        roomModal.show();
+    }
+
+    window.saveRoom = async () => {
+        const campus = document.getElementById('r_campus').value;
+        const num = document.getElementById('r_num').value;
+        const full = campus + num;
+        
+        if(!num) { Swal.fire('錯誤', '請輸入教室號碼', 'warning'); return; }
+
+        const payload = {
+            campus: campus,
+            code_num: num,
+            full_code: full,
+            name: document.getElementById('r_name').value,
+            type: document.getElementById('r_type').value,
+            capacity: document.getElementById('r_cap').value
+        };
+
+        const { error } = await window.db.from('classrooms').insert([payload]);
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else {
+            roomModal.hide();
             loadClassrooms();
         }
     }
 
-    async function delClassroom(id) {
+    window.delRoom = async (id) => {
         if(confirm('確定刪除此教室？')) {
             await window.db.from('classrooms').delete().eq('id', id);
             loadClassrooms();
         }
     }
 
+    // 大量匯入教室
+    window.openRoomImport = () => {
+        document.getElementById('importRoomText').value = "";
+        importRoomModal.show();
+    }
+
+    window.processRoomImport = async () => {
+        const text = document.getElementById('importRoomText').value;
+        const rows = text.trim().split('\n');
+        const inserts = [];
+        
+        // 格式: 分校 | 號碼 | 名稱 | 類型 | 人數
+        for(let row of rows) {
+            const cols = row.split('\t');
+            if(cols.length >= 3) {
+                let camp = cols[0].trim().toUpperCase();
+                let num = cols[1].trim();
+                let full = camp + num;
+                let typeRaw = cols[3] ? cols[3].trim() : '一般';
+                let type = (typeRaw.includes('專科')) ? 'special' : 'general';
+
+                inserts.push({
+                    campus: camp,
+                    code_num: num,
+                    full_code: full,
+                    name: cols[2].trim(),
+                    type: type,
+                    capacity: cols[4] ? parseInt(cols[4]) : 30
+                });
+            }
+        }
+
+        if(inserts.length > 0) {
+            const { error } = await window.db.from('classrooms').insert(inserts);
+            if(error) Swal.fire('匯入失敗', error.message, 'error');
+            else {
+                Swal.fire('成功', `已匯入 ${inserts.length} 間教室`, 'success');
+                importRoomModal.hide();
+                loadClassrooms();
+            }
+        }
+    }
+
     // --- Tab 4: 節數與作息 ---
-    // 這部分要跟「當前選中的學期」連動
     async function loadPeriods(year, sem) {
-        // 先清空
         const tbody = document.getElementById('periodTable');
         tbody.innerHTML = '';
-
-        if (!year || !sem) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-danger py-4">請先在「學期連動設定」選擇一個排課學期</td></tr>';
-            return;
-        }
 
         const { data: list } = await window.db.from('period_settings')
             .select('*')
@@ -341,18 +625,15 @@
             .order('sort_order');
 
         if (!list || list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted py-4">目前無設定，請點選「載入預設值」</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted py-4">目前無設定，請點選「恢復系統預設值」</td></tr>';
             return;
         }
 
-        list.forEach(p => {
-            renderPeriodRow(p);
-        });
+        list.forEach(p => renderPeriodRow(p));
     }
 
     function renderPeriodRow(data = {}) {
         const tbody = document.getElementById('periodTable');
-        // 如果目前是空訊息，先清掉
         if(tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
 
         const index = tbody.children.length + 1;
@@ -373,36 +654,32 @@
         tbody.appendChild(tr);
     }
 
-    function addPeriodRow() {
-        renderPeriodRow();
-    }
+    function addPeriodRow() { renderPeriodRow(); }
 
-    // 載入預設值
     function initDefaultPeriods() {
-        if(!confirm('這將會清空目前表格並填入預設值，確定嗎？')) return;
+        if(!confirm('確定要載入預設值？這會覆蓋目前的設定。')) return;
+        document.getElementById('periodTable').innerHTML = '';
         const defaults = [
             { sort_order: 1, period_name: '早自習', start_time: '07:50', end_time: '08:10', is_class_period: false },
             { sort_order: 2, period_name: '第一節', start_time: '08:15', end_time: '09:00', is_class_period: true },
             { sort_order: 3, period_name: '第二節', start_time: '09:10', end_time: '09:55', is_class_period: true },
             { sort_order: 4, period_name: '第三節', start_time: '10:10', end_time: '10:55', is_class_period: true },
             { sort_order: 5, period_name: '第四節', start_time: '11:05', end_time: '11:50', is_class_period: true },
-            { sort_order: 6, period_name: '午休時間', start_time: '11:50', end_time: '13:00', is_class_period: false },
+            { sort_order: 6, period_name: '午休', start_time: '11:50', end_time: '13:00', is_class_period: false },
             { sort_order: 7, period_name: '第五節', start_time: '13:05', end_time: '13:50', is_class_period: true },
             { sort_order: 8, period_name: '第六節', start_time: '14:00', end_time: '14:45', is_class_period: true },
             { sort_order: 9, period_name: '第七節', start_time: '14:55', end_time: '15:40', is_class_period: true },
-            { sort_order: 10, period_name: '打掃時間', start_time: '15:40', end_time: '16:00', is_class_period: false },
+            { sort_order: 10, period_name: '打掃', start_time: '15:40', end_time: '16:00', is_class_period: false }
         ];
-        document.getElementById('periodTable').innerHTML = '';
         defaults.forEach(d => renderPeriodRow(d));
     }
 
     async function savePeriods() {
         const activeSem = await checkActiveSemester();
-        if(!activeSem) { Swal.fire('錯誤', '請先到「學期連動設定」選擇一個使用中的學期', 'error'); return; }
+        if(!activeSem) { Swal.fire('錯誤', '請先在「學期連動設定」選擇一個排課學期', 'error'); return; }
 
         const rows = document.querySelectorAll('.period-row');
         const periodData = [];
-        
         rows.forEach(row => {
             periodData.push({
                 academic_year: activeSem.academic_year,
@@ -415,28 +692,13 @@
             });
         });
 
-        // 先刪除舊的 (該學期的)，再新增
-        await window.db.from('period_settings')
-            .delete()
-            .eq('academic_year', activeSem.academic_year)
-            .eq('semester', activeSem.semester);
-        
+        // 重置該學期設定
+        await window.db.from('period_settings').delete().eq('academic_year', activeSem.academic_year).eq('semester', activeSem.semester);
         const { error } = await window.db.from('period_settings').insert(periodData);
-        if(error) Swal.fire('儲存失敗', error.message, 'error');
-        else Swal.fire('成功', '作息設定已更新', 'success');
-    }
-
-    // --- 初始化 ---
-    document.addEventListener('DOMContentLoaded', () => {
-        loadSemesters();
-        loadSubjects();
-        loadClassrooms();
         
-        // 檢查是否有選中的學期，若有則載入作息
-        checkActiveSemester().then(data => {
-            if(data) loadPeriods(data.academic_year, data.semester);
-        });
-    });
+        if(error) Swal.fire('失敗', error.message, 'error');
+        else Swal.fire('成功', '作息設定已儲存', 'success');
+    }
 
 </script>
 </body>
