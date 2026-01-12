@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師配課作業</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .table-input { border: none; background: transparent; width: 100%; text-align: center; }
+        .table-input:focus { outline: 1px solid #86b7fe; background: white; }
+        .teacher-select, .subject-select { border: 1px solid transparent; background: transparent; width: 100%; }
+        .teacher-select:focus, .subject-select:focus { outline: 1px solid #86b7fe; background: white; border-color: #ced4da; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-success"><i class="bi bi-person-video3"></i> 教師配課作業</h3>
+            <small class="text-muted">
+                作業學期：<span id="activeSemText" class="fw-bold text-dark">讀取中...</span>
+            </small>
+        </div>
+        <div>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-return-left"></i> 回儀表板
+            </a>
+            <button class="btn btn-primary" onclick="saveAssignments()">
+                <i class="bi bi-save"></i> 儲存配課結果
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex align-items-center gap-3">
+            <label class="fw-bold text-nowrap">選擇班級：</label>
+            <select id="classSelect" class="form-select w-auto fw-bold" onchange="loadAssignments()">
+                <option value="">(請先選擇班級)</option>
+            </select>
+            
+            <div class="vr mx-2"></div>
+            
+            <div class="text-muted small">
+                <i class="bi bi-info-circle"></i> 
+                導師：<span id="homeroomTeacher" class="text-dark fw-bold">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">課程與授課教師設定</h5>
+            <button class="btn btn-sm btn-outline-success" onclick="addRow()">
+                <i class="bi bi-plus-lg"></i> 新增科目
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover table-bordered mb-0 align-middle text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th width="30%">科目名稱</th>
+                        <th width="15%">每週節數</th>
+                        <th width="30%">授課教師</th>
+                        <th width="15%">連堂設定 (預留)</th>
+                        <th width="10%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="assignTable">
+                    <tr><td colspan="5" class="text-center py-5 text-muted">請選擇上方班級以開始配課</td></tr>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td class="text-end fw-bold">合計節數：</td>
+                        <td class="fw-bold text-primary" id="totalHours">0</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    // 全域變數
+    let currentSemester = null; // 存學期物件 {year, sem}
+    let subjectsMap = [];       // 存所有科目
+    let teachersMap = [];       // 存所有老師
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initData();
+    });
+
+    // 1. 初始化資料 (學期、班級、科目、老師)
+    async function initData() {
+        // A. 抓作業學期
+        const { data: sem } = await window.db.from('semester_settings')
+            .select('*').eq('is_active_for_scheduling', true).single();
+        
+        if (!sem) {
+            Swal.fire('錯誤', '未設定排課學期，請先至「基本開課資料維護」設定。', 'error')
+                .then(() => window.location.href = 'course_settings.html');
+            return;
+        }
+        currentSemester = sem;
+        
+        let semName = sem.semester === '1' ? '上學期' : (sem.semester === '2' ? '下學期' : (sem.semester === 'W' ? '寒輔' : '暑輔'));
+        document.getElementById('activeSemText').textContent = `${sem.academic_year} 學年 ${semName}`;
+
+        // B. 抓班級列表
+        const { data: classes } = await window.db.from('classes').select('id, class_name, grade_level, homeroom_teacher_id').order('grade_level').order('class_name');
+        const cSelect = document.getElementById('classSelect');
+        // 保存班級資料供後續查導師用
+        window.allClasses = classes; 
+        
+        if (classes) {
+            classes.forEach(c => {
+                cSelect.innerHTML += `<option value="${c.id}">${c.grade_level}年 ${c.class_name}</option>`;
+            });
+        }
+
+        // C. 抓科目 (供下拉選單用)
+        const { data: subs } = await window.db.from('subjects').select('*').order('id');
+        subjectsMap = subs || [];
+
+        // D. 抓老師 (供下拉選單用)
+        const { data: teachers } = await window.db.from('employees').select('employee_id, name');
+        teachersMap = teachers || [];
+    }
+
+    // 2. 讀取該班級目前的配課
+    async function loadAssignments() {
+        const classId = document.getElementById('classSelect').value;
+        const tbody = document.getElementById('assignTable');
+        const teacherSpan = document.getElementById('homeroomTeacher');
+        
+        // 重置
+        tbody.innerHTML = '';
+        document.getElementById('totalHours').textContent = '0';
+        teacherSpan.textContent = '-';
+
+        if (!classId) return;
+
+        // 顯示導師名字
+        const cls = window.allClasses.find(c => c.id == classId);
+        if (cls && cls.homeroom_teacher_id) {
+            const t = teachersMap.find(tm => tm.employee_id === cls.homeroom_teacher_id);
+            teacherSpan.textContent = t ? t.name : '(未知ID)';
+        }
+
+        // 查詢配課表
+        const { data: assigns } = await window.db.from('teaching_assignments')
+            .select('*')
+            .eq('academic_year', currentSemester.academic_year)
+            .eq('semester', currentSemester.semester)
+            .eq('class_id', classId)
+            .order('id');
+
+        if (assigns && assigns.length > 0) {
+            assigns.forEach(a => addRow(a));
+        } else {
+            // 如果沒資料，是否要自動預帶一些科目？目前先留白
+            // 也可以考慮做「一鍵帶入年級預設科目」的功能 (未來擴充)
+        }
+        calculateTotal();
+    }
+
+    // 3. 增加一列 (科目 | 節數 | 老師)
+    function addRow(data = null) {
+        const tbody = document.getElementById('assignTable');
+        
+        // 如果目前是空提示文字，先清空
+        if(tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+        const tr = document.createElement('tr');
+        tr.className = 'assign-row';
+
+        // 準備科目下拉
+        let subOpts = '<option value="">(選擇科目)</option>';
+        subjectsMap.forEach(s => {
+            const selected = (data && data.subject_id === s.id) ? 'selected' : '';
+            // 把預設節數藏在 data-hours 屬性裡方便 JS 抓
+            subOpts += `<option value="${s.id}" data-hours="${s.default_hours}" ${selected}>${s.name}</option>`;
+        });
+
+        // 準備老師下拉
+        let teaOpts = '<option value="">(未指定)</option>';
+        teachersMap.forEach(t => {
+            const selected = (data && data.teacher_id === t.employee_id) ? 'selected' : '';
+            teaOpts += `<option value="${t.employee_id}" ${selected}>${t.name}</option>`;
+        });
+
+        tr.innerHTML = `
+            <td>
+                <select class="form-select subject-select" onchange="autoFillHours(this)">${subOpts}</select>
+            </td>
+            <td>
+                <input type="number" class="form-control table-input hours-input" value="${data ? data.hours_per_week : 0}" onchange="calculateTotal()">
+            </td>
+            <td>
+                <select class="form-select teacher-select">${teaOpts}</select>
+            </td>
+            <td>
+                <input type="checkbox" class="form-check-input" disabled title="開發中">
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger border-0" onclick="removeRow(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        if(!data) calculateTotal(); // 新增空行時重算
+    }
+
+    // 輔助：選科目後自動帶入節數
+    window.autoFillHours = (selectEl) => {
+        const option = selectEl.options[selectEl.selectedIndex];
+        const defaultHours = option.getAttribute('data-hours');
+        if (defaultHours) {
+            // 找到同一列的節數輸入框
+            const row = selectEl.closest('tr');
+            row.querySelector('.hours-input').value = defaultHours;
+            calculateTotal();
+        }
+    }
+
+    window.removeRow = (btn) => {
+        btn.closest('tr').remove();
+        calculateTotal();
+    }
+
+    // 計算總節數
+    window.calculateTotal = () => {
+        let total = 0;
+        document.querySelectorAll('.hours-input').forEach(inp => {
+            total += parseInt(inp.value || 0);
+        });
+        document.getElementById('totalHours').textContent = total;
+    }
+
+    // 4. 儲存配課
+    async function saveAssignments() {
+        const classId = document.getElementById('classSelect').value;
+        if (!classId) { Swal.fire('提示', '請先選擇班級', 'warning'); return; }
+
+        const rows = document.querySelectorAll('.assign-row');
+        const payload = [];
+        
+        // 收集資料
+        for (let row of rows) {
+            const subId = row.querySelector('.subject-select').value;
+            const teaId = row.querySelector('.teacher-select').value;
+            const hours = row.querySelector('.hours-input').value;
+
+            if (subId) { // 有選科目才存
+                payload.push({
+                    academic_year: currentSemester.academic_year,
+                    semester: currentSemester.semester,
+                    class_id: classId,
+                    subject_id: subId,
+                    teacher_id: teaId || null,
+                    hours_per_week: hours || 0
+                });
+            }
+        }
+
+        // 策略：先刪除該班級本學期的所有配課，再重新插入 (最簡單的同步方式)
+        try {
+            // 1. 刪除舊的
+            const { error: delErr } = await window.db.from('teaching_assignments')
+                .delete()
+                .eq('academic_year', currentSemester.academic_year)
+                .eq('semester', currentSemester.semester)
+                .eq('class_id', classId);
+            
+            if (delErr) throw delErr;
+
+            // 2. 插入新的 (如果有資料)
+            if (payload.length > 0) {
+                const { error: insErr } = await window.db.from('teaching_assignments').insert(payload);
+                if (insErr) throw insErr;
+            }
+
+            Swal.fire({
+                icon: 'success', 
+                title: '儲存成功', 
+                text: `已更新 ${payload.length} 筆配課資料`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+        } catch (err) {
+            Swal.fire('儲存失敗', err.message, 'error');
+        }
+    }
+</script>
+</body>
+</html>
