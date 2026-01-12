@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動排課作業</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .log-box { height: 300px; overflow-y: auto; background: #000; color: #0f0; font-family: monospace; padding: 15px; border-radius: 5px; }
+        .schedule-cell { font-size: 0.8rem; text-align: center; height: 60px; vertical-align: middle; }
+        .cell-subject { font-weight: bold; display: block; }
+        .cell-teacher { font-size: 0.75rem; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-primary"><i class="bi bi-cpu"></i> 自動排課作業</h3>
+            <small class="text-muted">系統將依據配課資料自動運算課表</small>
+        </div>
+        <a href="course_dashboard.html" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-return-left"></i> 回儀表板
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i> 
+                <strong>注意：</strong> 執行自動排課將會「清空」目前該學期所有的課表資料，並重新計算。
+            </div>
+            <div class="d-flex gap-3 align-items-center">
+                <button id="startBtn" class="btn btn-lg btn-primary px-5" onclick="runAutoSchedule()">
+                    <i class="bi bi-play-fill"></i> 開始排課
+                </button>
+                <div id="statusText" class="fw-bold text-secondary">準備就緒</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-dark text-white">運算日誌</div>
+        <div class="card-body p-0">
+            <div id="consoleLog" class="log-box"></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">排課結果預覽</h5>
+            <select id="previewClass" class="form-select w-auto" onchange="loadClassSchedule()">
+                <option value="">(選擇班級預覽)</option>
+            </select>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th width="10%">節次</th>
+                        <th width="18%">週一</th>
+                        <th width="18%">週二</th>
+                        <th width="18%">週三</th>
+                        <th width="18%">週四</th>
+                        <th width="18%">週五</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleTable">
+                    <tr><td colspan="6" class="text-center py-5 text-muted">尚未產生課表</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    // 全域變數
+    let currentSemester = null;
+    let allAssignments = []; // 所有的配課任務
+    let allPeriods = [];     // 所有的節次 (1~7節)
+    let classList = [];      // 班級清單
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initData();
+    });
+
+    async function initData() {
+        // 1. 抓學期
+        const { data: sem } = await window.db.from('semester_settings').select('*').eq('is_active_for_scheduling', true).single();
+        if(!sem) { Swal.fire('錯誤', '未設定排課學期', 'error'); return; }
+        currentSemester = sem;
+        log(`讀取學期設定：${sem.academic_year}學年 ${sem.semester}`);
+
+        // 2. 抓節次 (只抓 is_class_period = true 的，例如第1~7節)
+        const { data: periods } = await window.db.from('period_settings')
+            .select('*')
+            .eq('academic_year', sem.academic_year)
+            .eq('semester', sem.semester)
+            .eq('is_class_period', true)
+            .order('sort_order');
+        allPeriods = periods;
+        log(`讀取排課節次：共 ${periods.length} 節`);
+
+        // 3. 抓班級 (供預覽用)
+        const { data: classes } = await window.db.from('classes').select('*').order('grade_level').order('class_name');
+        classList = classes;
+        const sel = document.getElementById('previewClass');
+        classes.forEach(c => {
+            sel.innerHTML += `<option value="${c.id}">${c.class_name}</option>`;
+        });
+    }
+
+    // 寫入 Log
+    function log(msg) {
+        const box = document.getElementById('consoleLog');
+        const time = new Date().toLocaleTimeString();
+        box.innerHTML += `[${time}] ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // --- 核心演算法 ---
+    async function runAutoSchedule() {
+        const btn = document.getElementById('startBtn');
+        const status = document.getElementById('statusText');
+        
+        // 1. 確認
+        const confirm = await Swal.fire({
+            title: '確定執行？',
+            text: '這將會刪除此學期舊的課表紀錄，重新進行運算。',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '執行',
+            confirmButtonColor: '#d33'
+        });
+        if (!confirm.isConfirmed) return;
+
+        btn.disabled = true;
+        status.textContent = "運算中...";
+        status.className = "fw-bold text-primary";
+        document.getElementById('consoleLog').innerHTML = ''; // 清空 Log
+
+        try {
+            // 2. 清空舊資料
+            log("正在清空舊課表資料...");
+            await window.db.from('course_schedules')
+                .delete()
+                .eq('academic_year', currentSemester.academic_year)
+                .eq('semester', currentSemester.semester);
+            
+            // 3. 讀取所有配課任務 (Join Subject 拿名稱)
+            log("讀取配課任務中...");
+            const { data: assigns } = await window.db.from('teaching_assignments')
+                .select('*, subjects(name)')
+                .eq('academic_year', currentSemester.academic_year)
+                .eq('semester', currentSemester.semester);
+            
+            if(!assigns || assigns.length === 0) {
+                throw new Error("沒有配課資料，請先至「教師配課作業」設定。");
+            }
+            log(`取得 ${assigns.length} 筆配課設定`);
+
+            // 4. 準備排課矩陣 (用來檢查衝突)
+            // 格式: occupied[day][period][resourceId] = true
+            // resourceId 可以是 "C-{classId}" 或 "T-{teacherId}"
+            let occupied = {}; 
+
+            function isOccupied(day, period, classId, teacherId) {
+                if (!occupied[day]) return false;
+                if (!occupied[day][period]) return false;
+                // 檢查班級是否已有課 OR 老師是否已有課
+                return occupied[day][period][`C-${classId}`] || occupied[day][period][`T-${teacherId}`];
+            }
+
+            function setOccupied(day, period, classId, teacherId) {
+                if (!occupied[day]) occupied[day] = {};
+                if (!occupied[day][period]) occupied[day][period] = {};
+                occupied[day][period][`C-${classId}`] = true;
+                occupied[day][period][`T-${teacherId}`] = true;
+            }
+
+            // 5. 開始排課
+            let results = [];
+            let failCount = 0;
+
+            // 為了讓課程均勻，我們可以先隨機打亂任務順序 (簡單優化)
+            // assignments = assigns.sort(() => Math.random() - 0.5); 
+            // 暫時照順序，方便除錯
+
+            for (let task of assigns) {
+                const totalHours = task.hours_per_week;
+                let assignedCount = 0;
+                
+                log(`正在排: 班級${task.class_id} - ${task.subjects.name} (${totalHours}節)`);
+
+                // 嘗試排入每一節
+                // 這裡使用簡單的「貪婪演算法」：從週一第1節開始找空位
+                // 進階優化：可以加入「盡量不排同一天」的邏輯
+                
+                // 建立一個可用時間池 (1~5, 所有的 periods)
+                let slots = [];
+                for(let d=1; d<=5; d++) {
+                    allPeriods.forEach(p => {
+                        slots.push({ day: d, period: p.sort_order });
+                    });
+                }
+                
+                // 隨機打亂時間池，讓課表不要都擠在週一
+                slots.sort(() => Math.random() - 0.5);
+
+                for (let slot of slots) {
+                    if (assignedCount >= totalHours) break; // 排完了
+
+                    // 檢查衝突
+                    if (!isOccupied(slot.day, slot.period, task.class_id, task.teacher_id)) {
+                        // 沒衝突 -> 排入
+                        setOccupied(slot.day, slot.period, task.class_id, task.teacher_id);
+                        
+                        results.push({
+                            academic_year: currentSemester.academic_year,
+                            semester: currentSemester.semester,
+                            class_id: task.class_id,
+                            subject_id: task.subject_id,
+                            teacher_id: task.teacher_id,
+                            weekday: slot.day,
+                            period_order: slot.period
+                        });
+                        
+                        assignedCount++;
+                    }
+                }
+
+                if (assignedCount < totalHours) {
+                    log(`⚠️ 警告：班級${task.class_id} 的 ${task.subjects.name} 還有 ${totalHours - assignedCount} 節排不進去！`);
+                    failCount++;
+                }
+            }
+
+            // 6. 寫入資料庫
+            if (results.length > 0) {
+                log(`運算完成，正在寫入 ${results.length} 筆課表資料...`);
+                // 分批寫入避免爆掉
+                const chunkSize = 100;
+                for (let i = 0; i < results.length; i += chunkSize) {
+                    const chunk = results.slice(i, i + chunkSize);
+                    await window.db.from('course_schedules').insert(chunk);
+                }
+                log("寫入完成！");
+            }
+
+            status.textContent = "排課完成";
+            status.className = "fw-bold text-success";
+            
+            if (failCount > 0) {
+                Swal.fire('排課完成', `有 ${failCount} 個科目無法完全排入，請查看日誌。`, 'warning');
+            } else {
+                Swal.fire('成功', '自動排課成功！所有課程已排入。', 'success');
+            }
+            
+            // 如果有選預覽班級，刷新一下
+            loadClassSchedule();
+
+        } catch (err) {
+            console.error(err);
+            log(`❌ 錯誤：${err.message}`);
+            status.textContent = "發生錯誤";
+            status.className = "fw-bold text-danger";
+            Swal.fire('系統錯誤', err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // --- 預覽課表 ---
+    async function loadClassSchedule() {
+        const classId = document.getElementById('previewClass').value;
+        const tbody = document.getElementById('scheduleTable');
+        
+        if (!classId) return;
+
+        // 準備空表
+        tbody.innerHTML = '';
+        allPeriods.forEach(p => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="table-light fw-bold">${p.period_name}</td>
+                    <td id="cell-1-${p.sort_order}" class="schedule-cell"></td>
+                    <td id="cell-2-${p.sort_order}" class="schedule-cell"></td>
+                    <td id="cell-3-${p.sort_order}" class="schedule-cell"></td>
+                    <td id="cell-4-${p.sort_order}" class="schedule-cell"></td>
+                    <td id="cell-5-${p.sort_order}" class="schedule-cell"></td>
+                </tr>
+            `;
+        });
+
+        // 讀取該班課表
+        // 我們需要 Join Subject 和 Teacher 拿名字
+        // Supabase join 寫法： select(*, subjects(name), employees(name)) ... 但 employees 是 text id 無法直接 foreign key join 除非有設 FK
+        // 這裡為了簡單，我們分開抓，或者假設 user 已經有 cache
+        // 先抓 raw data
+        const { data: schedules } = await window.db.from('course_schedules')
+            .select(`
+                weekday, period_order, teacher_id,
+                subjects ( name )
+            `)
+            .eq('academic_year', currentSemester.academic_year)
+            .eq('semester', currentSemester.semester)
+            .eq('class_id', classId);
+        
+        if (schedules) {
+            // 還缺老師名字，我們去 employees 補抓 (或是用 cached map)
+            // 這裡簡單抓一次所有老師 map
+            const { data: teachers } = await window.db.from('employees').select('employee_id, name');
+            const tMap = {};
+            teachers.forEach(t => tMap[t.employee_id] = t.name);
+
+            schedules.forEach(s => {
+                const cell = document.getElementById(`cell-${s.weekday}-${s.period_order}`);
+                if (cell) {
+                    const subName = s.subjects ? s.subjects.name : '未知';
+                    const teaName = tMap[s.teacher_id] || s.teacher_id || '';
+                    cell.innerHTML = `
+                        <span class="cell-subject">${subName}</span>
+                        <span class="cell-teacher">${teaName}</span>
+                    `;
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>
