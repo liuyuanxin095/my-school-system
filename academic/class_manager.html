@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級資料管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-success"><i class="bi bi-people-fill"></i> 班級資料維護</h3>
+            <small class="text-muted">設定全校班級、導師與預設教室</small>
+        </div>
+        <div>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-return-left"></i> 回儀表板
+            </a>
+            <button class="btn btn-success" onclick="openModal()">
+                <i class="bi bi-plus-lg"></i> 新增班級
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>年級</th>
+                        <th>班級名稱</th>
+                        <th>班級群組</th>
+                        <th>導師 (來自人資)</th>
+                        <th>預設教室 (來自場地)</th>
+                        <th class="text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="classTable">
+                    <tr><td colspan="6" class="text-center py-4 text-muted">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="classModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalTitle">新增班級</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">年級</label>
+                        <select id="m_grade" class="form-select">
+                            <option value="1">一年級</option>
+                            <option value="2">二年級</option>
+                            <option value="3">三年級</option>
+                            <option value="4">四年級</option>
+                            <option value="5">五年級</option>
+                            <option value="6">六年級</option>
+                            <option value="7">七年級 (國一)</option>
+                            <option value="8">八年級 (國二)</option>
+                            <option value="9">九年級 (國三)</option>
+                            <option value="10">十年級 (高一)</option>
+                            <option value="11">十一年級 (高二)</option>
+                            <option value="12">十二年級 (高三)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">班級名稱</label>
+                        <input type="text" id="m_name" class="form-control" placeholder="例: 101, 忠班">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label">班級群組 (選填)</label>
+                        <input type="text" id="m_group" class="form-control" placeholder="例: 普通科, 雙語班, 體育班">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">導師</label>
+                        <select id="m_teacher" class="form-select">
+                            <option value="">(未指定)</option>
+                            </select>
+                        <div class="form-text small">資料來源：人資管理系統 (employees)</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">預設教室</label>
+                        <select id="m_room" class="form-select">
+                            <option value="">(未指定)</option>
+                            </select>
+                        <div class="form-text small">資料來源：基本開課資料 (classrooms)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="saveClass()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let modal;
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', async () => {
+        modal = new bootstrap.Modal(document.getElementById('classModal'));
+        await loadOptions(); // 先載入下拉選單
+        loadClasses();       // 再載入列表
+    });
+
+    // 1. 載入導師與教室選項
+    async function loadOptions() {
+        // 抓員工 (假設所有員工都可以是導師，或者你可以加 filter status='active')
+        const { data: emps } = await window.db.from('employees').select('employee_id, name').order('employee_id');
+        const tSelect = document.getElementById('m_teacher');
+        if(emps) {
+            emps.forEach(e => {
+                tSelect.innerHTML += `<option value="${e.employee_id}">${e.name} (${e.employee_id})</option>`;
+            });
+        }
+
+        // 抓教室
+        const { data: rooms } = await window.db.from('classrooms').select('id, name').order('name');
+        const rSelect = document.getElementById('m_room');
+        if(rooms) {
+            rooms.forEach(r => {
+                rSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
+            });
+        }
+    }
+
+    // 2. 載入班級列表
+    async function loadClasses() {
+        // 使用 join 查詢 (Supabase 語法) 抓取關聯資料
+        // classes table: id, grade_level, class_name, class_group, homeroom_teacher_id, classroom_id
+        // 我們需要手動 mapping 或用 SQL View，這裡用簡單的二次查詢或 ID 對照
+        // 為了效能與簡單，我們前端用 ID 對照表 (因為資料量不大)
+        
+        const { data: list, error } = await window.db.from('classes').select('*').order('grade_level').order('class_name');
+        
+        if (error) { console.error(error); return; }
+
+        // 為了顯示導師名字和教室名字，我們需要 mapping
+        // 這裡重新抓一次完整的 reference map (實務上可以 cache)
+        const { data: emps } = await window.db.from('employees').select('employee_id, name');
+        const { data: rooms } = await window.db.from('classrooms').select('id, name');
+        
+        const empMap = {};
+        if(emps) emps.forEach(e => empMap[e.employee_id] = e.name);
+        
+        const roomMap = {};
+        if(rooms) rooms.forEach(r => roomMap[r.id] = r.name);
+
+        const tbody = document.getElementById('classTable');
+        tbody.innerHTML = '';
+
+        if(list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">目前無班級資料</td></tr>';
+            return;
+        }
+
+        list.forEach(c => {
+            const tName = empMap[c.homeroom_teacher_id] || '<span class="text-muted">-</span>';
+            const rName = roomMap[c.classroom_id] || '<span class="text-muted">-</span>';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge bg-secondary">${c.grade_level} 年級</span></td>
+                    <td class="fw-bold">${c.class_name}</td>
+                    <td>${c.class_group || ''}</td>
+                    <td>${tName}</td>
+                    <td>${rName}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='editClass(${JSON.stringify(c)})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteClass(${c.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 3. 開啟新增/編輯視窗
+    window.openModal = () => {
+        document.getElementById('modalTitle').textContent = "新增班級";
+        document.getElementById('editId').value = "";
+        document.getElementById('m_grade').value = "1";
+        document.getElementById('m_name').value = "";
+        document.getElementById('m_group').value = "";
+        document.getElementById('m_teacher').value = "";
+        document.getElementById('m_room').value = "";
+        modal.show();
+    }
+
+    window.editClass = (c) => {
+        document.getElementById('modalTitle').textContent = "編輯班級";
+        document.getElementById('editId').value = c.id;
+        document.getElementById('m_grade').value = c.grade_level;
+        document.getElementById('m_name').value = c.class_name;
+        document.getElementById('m_group').value = c.class_group || "";
+        document.getElementById('m_teacher').value = c.homeroom_teacher_id || "";
+        document.getElementById('m_room').value = c.classroom_id || "";
+        modal.show();
+    }
+
+    // 4. 儲存
+    window.saveClass = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            grade_level: document.getElementById('m_grade').value,
+            class_name: document.getElementById('m_name').value,
+            class_group: document.getElementById('m_group').value,
+            homeroom_teacher_id: document.getElementById('m_teacher').value || null,
+            classroom_id: document.getElementById('m_room').value || null
+        };
+
+        if(!payload.class_name) {
+            Swal.fire('欄位未填', '請輸入班級名稱', 'warning'); return;
+        }
+
+        let error;
+        if(id) {
+            const { error: err } = await window.db.from('classes').update(payload).eq('id', id);
+            error = err;
+        } else {
+            const { error: err } = await window.db.from('classes').insert([payload]);
+            error = err;
+        }
+
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else {
+            modal.hide();
+            loadClasses();
+            Swal.fire({ icon: 'success', title: '儲存成功', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+        }
+    }
+
+    // 5. 刪除
+    window.deleteClass = async (id) => {
+        if(confirm('確定刪除此班級？')) {
+            const { error } = await window.db.from('classes').delete().eq('id', id);
+            if(error) Swal.fire('錯誤', error.message, 'error');
+            else loadClasses();
+        }
+    }
+
+</script>
+</body>
+</html>
