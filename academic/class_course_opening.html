@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級開課作業</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-success"><i class="bi bi-layers-half"></i> 班級開課作業</h3>
+            <small class="text-muted">設定排課節數分配 (例: 1,1,2)</small>
+        </div>
+        <div>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-return-left"></i> 回儀表板
+            </a>
+            <button class="btn btn-primary" onclick="saveDistribution()">
+                <i class="bi bi-save"></i> 儲存設定
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex align-items-center gap-3">
+            <label class="fw-bold">選擇班級：</label>
+            <select id="classSelect" class="form-select w-auto fw-bold" onchange="loadData()">
+                <option value="">(請先選擇班級)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="alert alert-info m-3 small">
+                <i class="bi bi-lightbulb"></i> <strong>設定說明：</strong> 
+                請輸入每週上課的節次組合，使用逗號分隔。例如每週4節：
+                <ul>
+                    <li><code>1,1,1,1</code> = 上4次，每次1節 (分散)</li>
+                    <li><code>2,2</code> = 上2次，每次2節 (連堂)</li>
+                    <li><code>1,1,2</code> = 上3次，其中一次連堂</li>
+                </ul>
+            </div>
+            <table class="table table-hover table-bordered mb-0 align-middle text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th width="20%">科目</th>
+                        <th width="20%">授課教師</th>
+                        <th width="15%">每週總節數</th>
+                        <th width="30%">節數分配設定 (必填)</th>
+                        <th width="15%">狀態檢查</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTable">
+                    <tr><td colspan="5" class="text-center py-5 text-muted">請選擇班級</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    let currentSemester = null;
+    let teacherMap = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 1. 抓學期
+        const { data: sem } = await window.db.from('semester_settings').select('*').eq('is_active_for_scheduling', true).single();
+        if (!sem) { Swal.fire('錯誤', '未設定排課學期', 'error'); return; }
+        currentSemester = sem;
+
+        // 2. 抓班級
+        const { data: classes } = await window.db.from('classes').select('*').order('grade_level').order('class_name');
+        const sel = document.getElementById('classSelect');
+        classes.forEach(c => {
+            sel.innerHTML += `<option value="${c.id}">${c.grade_level}年 ${c.class_name}</option>`;
+        });
+
+        // 3. 抓老師名字 map
+        const { data: emps } = await window.db.from('employees').select('employee_id, name');
+        if(emps) emps.forEach(e => teacherMap[e.employee_id] = e.name);
+    });
+
+    async function loadData() {
+        const classId = document.getElementById('classSelect').value;
+        const tbody = document.getElementById('dataTable');
+        tbody.innerHTML = '';
+
+        if (!classId) return;
+
+        // 讀取配課資料 (Join subjects)
+        const { data: assigns } = await window.db.from('teaching_assignments')
+            .select(`*, subjects(name)`)
+            .eq('academic_year', currentSemester.academic_year)
+            .eq('semester', currentSemester.semester)
+            .eq('class_id', classId)
+            .order('id');
+
+        if (!assigns || assigns.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">此班級尚未進行配課，請先至「教師配課作業」設定科目。</td></tr>';
+            return;
+        }
+
+        assigns.forEach(a => {
+            const tName = teacherMap[a.teacher_id] || '<span class="text-muted">未指定</span>';
+            const defaultDist = Array(a.hours_per_week).fill(1).join(','); // 預設 1,1,1...
+            const currentVal = a.period_distribution || defaultDist;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-bold">${a.subjects.name}</td>
+                <td>${tName}</td>
+                <td class="fw-bold fs-5 text-primary total-hours">${a.hours_per_week}</td>
+                <td>
+                    <input type="text" class="form-control text-center dist-input fw-bold" 
+                           value="${currentVal}" 
+                           data-id="${a.id}" 
+                           data-total="${a.hours_per_week}"
+                           oninput="validateRow(this)">
+                </td>
+                <td class="status-cell">
+                    </td>
+            `;
+            tbody.appendChild(tr);
+            // 初始檢查一次
+            validateRow(tr.querySelector('.dist-input'));
+        });
+    }
+
+    // 檢查輸入是否合法 (加總是否等於總節數)
+    window.validateRow = (input) => {
+        const row = input.closest('tr');
+        const statusCell = row.querySelector('.status-cell');
+        const total = parseInt(input.getAttribute('data-total'));
+        
+        const val = input.value.trim();
+        // 解析 "1,1,2" -> [1, 1, 2]
+        // 允許全形逗號
+        const parts = val.replace(/，/g, ',').split(',');
+        let sum = 0;
+        let isValidFormat = true;
+
+        parts.forEach(p => {
+            const n = parseInt(p);
+            if (isNaN(n) || n <= 0) isValidFormat = false;
+            else sum += n;
+        });
+
+        if (!isValidFormat) {
+            statusCell.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> 格式錯誤</span>';
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            return false;
+        }
+
+        if (sum !== total) {
+            statusCell.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> 合計為 ${sum} (應為 ${total})</span>`;
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            return false;
+        } else {
+            statusCell.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> OK</span>';
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            return true;
+        }
+    }
+
+    async function saveDistribution() {
+        const inputs = document.querySelectorAll('.dist-input');
+        let hasError = false;
+        const updates = [];
+
+        inputs.forEach(inp => {
+            if (!validateRow(inp)) hasError = true;
+            else {
+                updates.push({
+                    id: inp.getAttribute('data-id'),
+                    val: inp.value.replace(/，/g, ',') // 轉半形存
+                });
+            }
+        });
+
+        if (hasError) {
+            Swal.fire('無法儲存', '部分科目的節數分配有誤（合計不符），請修正後再試。', 'error');
+            return;
+        }
+
+        // 逐筆更新 (Supabase 目前沒有簡單的 bulk update different values，只好 loop)
+        // 為了效能，可以用 Promise.all
+        const promises = updates.map(u => 
+            window.db.from('teaching_assignments')
+                .update({ period_distribution: u.val })
+                .eq('id', u.id)
+        );
+
+        await Promise.all(promises);
+        Swal.fire({ icon: 'success', title: '儲存成功', timer: 1500, showConfirmButton: false });
+    }
+</script>
+</body>
+</html>
