@@ -11,12 +11,12 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         
-        /* Grid 月曆 */
+        /* --- Grid 月曆架構 --- */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
-            background-color: #dee2e6;
+            background-color: #dee2e6; /* 格線顏色 */
             border: 1px solid #dee2e6;
         }
         .calendar-header {
@@ -35,19 +35,32 @@
         }
         .calendar-day:hover { background-color: #f8f9fa; }
         
-        /* 今天高亮 */
-        .today-highlight {
-            background-color: #fff3cd !important; /* 淡黃色背景 */
-            border: 2px solid #ffc107;
+        /* --- 日期數字樣式 (Google Calendar 風格) --- */
+        .date-num {
+            position: absolute;
+            top: 8px; right: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
-
-        /* 左上角週次標籤 */
+        /* 今天：紅底白字圓圈 */
+        .date-num.today {
+            background-color: #ea4335;
+            color: white !important;
+        }
+        
+        /* --- 左上角週次標籤 --- */
         .week-label {
             font-size: 0.7rem;
             color: #fff;
-            padding: 2px 4px;
+            padding: 2px 5px;
             border-radius: 4px;
-            display: block; /* 換行顯示以免擠在一起 */
+            display: block;
             margin-bottom: 2px;
             width: fit-content;
         }
@@ -55,37 +68,36 @@
         .bg-wk-e { background-color: #198754; } /* 國小-綠 */
         .bg-wk-h { background-color: #0d6efd; } /* 國高-藍 */
 
-        .date-num {
-            position: absolute;
-            top: 5px; right: 8px;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
         .other-month { background-color: #f1f3f5; color: #adb5bd; }
         .text-weekend { color: #dc3545; }
 
-        /* 事件樣式 (顏色區分) */
+        /* --- 事件樣式 --- */
         .event-item {
             font-size: 0.8rem;
-            padding: 2px 5px;
+            padding: 2px 6px;
             margin-bottom: 2px;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             color: #000;
+            font-weight: 500;
         }
-        /* 行政 - 黃 */
-        .evt-admin { background-color: #fff3cd; border-left: 3px solid #ffc107; }
-        /* 幼兒 - 紫 */
-        .evt-kindergarten { background-color: #e0cffc; border-left: 3px solid #6f42c1; }
-        /* 國小 - 綠 */
-        .evt-elementary { background-color: #d1e7dd; border-left: 3px solid #198754; }
-        /* 國高中 - 藍 */
-        .evt-high_school { background-color: #cfe2ff; border-left: 3px solid #0d6efd; }
-        /* 共同假日 - 紅 */
-        .evt-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; text-align: center; }
+        /* 顏色定義 */
+        .evt-admin { background-color: #fff3cd; border-left: 3px solid #ffc107; } /* 行政-黃 */
+        .evt-kindergarten { background-color: #e0cffc; border-left: 3px solid #6f42c1; } /* 幼兒-紫 */
+        .evt-elementary { background-color: #d1e7dd; border-left: 3px solid #198754; } /* 國小-綠 */
+        .evt-high_school { background-color: #cfe2ff; border-left: 3px solid #0d6efd; } /* 國高-藍 */
+        .evt-holiday { background-color: #f8d7da; color: #842029; font-weight: bold; text-align: center; } /* 假日-紅 */
+
+        /* --- 圖例 Legend --- */
+        .legend-box { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 2px; }
+        .l-admin { background-color: #ffc107; }
+        .l-k { background-color: #6f42c1; }
+        .l-e { background-color: #198754; }
+        .l-h { background-color: #0d6efd; }
+        .l-hol { background-color: #dc3545; }
 
         @media print {
             body { padding: 0; background: white; }
@@ -100,12 +112,12 @@
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
             <div class="btn-group" role="group">
-                <input type="radio" class="btn-check" name="sysType" id="type_all" value="all" onchange="renderCalendar()">
-                <label class="btn btn-outline-dark" for="type_all">總表 (所有)</label>
+                <input type="radio" class="btn-check" name="sysType" id="type_all" value="all" checked onchange="renderCalendar()">
+                <label class="btn btn-outline-dark" for="type_all">總表</label>
 
-                <input type="radio" class="btn-check" name="sysType" id="type_a" value="admin" checked onchange="renderCalendar()">
+                <input type="radio" class="btn-check" name="sysType" id="type_a" value="admin" onchange="renderCalendar()">
                 <label class="btn btn-outline-dark" for="type_a">行政行事曆</label>
 
                 <input type="radio" class="btn-check" name="sysType" id="type_k" value="kindergarten" onchange="renderCalendar()">
@@ -115,7 +127,7 @@
                 <label class="btn btn-outline-dark" for="type_e">國小部</label>
 
                 <input type="radio" class="btn-check" name="sysType" id="type_h" value="high_school" onchange="renderCalendar()">
-                <label class="btn btn-outline-dark" for="type_h">國高中</label>
+                <label class="btn btn-outline-dark" for="type_h">國(高)中部</label>
             </div>
             
             <select id="yearSelect" class="form-select w-auto" onchange="renderCalendar()"></select>
@@ -126,12 +138,14 @@
                 <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
             </select>
             
-            <button class="btn btn-primary" onclick="goToToday()">回到今天</button>
+            <button class="btn btn-primary" onclick="goToToday()">
+                <i class="bi bi-calendar-event"></i> 今天
+            </button>
         </div>
         
         <div>
-            <button id="btnHoliday" class="btn btn-danger me-2 d-none" onclick="addHoliday()">
-                <i class="bi bi-calendar-x"></i> 設定共同假日
+            <button class="btn btn-secondary me-2" onclick="openSettings()">
+                <i class="bi bi-gear-fill"></i> 行事曆設定
             </button>
             <button class="btn btn-outline-primary me-2" onclick="addEventModal()">
                 <i class="bi bi-plus-lg"></i> 新增活動
@@ -142,7 +156,17 @@
         </div>
     </div>
 
-    <h3 class="text-center fw-bold mb-3" id="calendarTitle">行事曆</h3>
+    <div class="text-center mb-3">
+        <h3 class="fw-bold d-inline-block me-3" id="calendarTitle">行事曆</h3>
+        
+        <div id="legendArea" class="d-inline-block bg-light px-3 py-1 rounded border small">
+            <span class="me-2"><span class="legend-box l-admin"></span>行政</span>
+            <span class="me-2"><span class="legend-box l-k"></span>幼兒園</span>
+            <span class="me-2"><span class="legend-box l-e"></span>國小</span>
+            <span class="me-2"><span class="legend-box l-h"></span>國高中</span>
+            <span><span class="legend-box l-hol"></span>假日</span>
+        </div>
+    </div>
 
     <div class="calendar-grid mb-0 text-center">
         <div class="calendar-header">一</div>
@@ -159,11 +183,9 @@
 
 <script src="../js/config.js"></script>
 <script>
-    // 檢查權限
+    // 檢查權限 (是否為管理員)
     const user = JSON.parse(localStorage.getItem('currentUser'));
-    if(user && user.role === 'admin') {
-        document.getElementById('btnHoliday').classList.remove('d-none');
-    }
+    const isAdmin = user && user.role === 'admin';
 
     // 初始化日期
     const today = new Date();
@@ -182,30 +204,31 @@
 
     // 快取所有週次設定
     let allSemesterSettings = [];
-
     async function fetchSettings() {
         const { data } = await window.db.from('semester_settings').select('*');
         if(data) allSemesterSettings = data;
     }
-    fetchSettings(); // 頁面載入時先抓一次
+    fetchSettings(); 
 
+    // --- 渲染月曆核心 ---
     async function renderCalendar() {
         const sysType = document.querySelector('input[name="sysType"]:checked').value;
         const year = parseInt(document.getElementById('yearSelect').value);
         const month = parseInt(document.getElementById('monthSelect').value);
 
         // 1. 設定標題
-        let typeName = "";
-        switch(sysType) {
-            case 'all': typeName = "全校總表"; break;
-            case 'admin': typeName = "行政"; break;
-            case 'kindergarten': typeName = "幼兒園"; break;
-            case 'elementary': typeName = "國小部"; break;
-            case 'high_school': typeName = "國高中部"; break;
-        }
+        let typeName = "全校總表";
+        if(sysType === 'admin') typeName = "行政";
+        if(sysType === 'kindergarten') typeName = "幼兒園";
+        if(sysType === 'elementary') typeName = "國小部";
+        if(sysType === 'high_school') typeName = "國(高)中部";
+        
         document.getElementById('calendarTitle').textContent = `${year}年 ${month}月 ${typeName}行事曆`;
 
-        // 2. 抓活動 (一次抓整個月)
+        // 2. 控制圖例顯示 (只有總表才需要顯示多彩圖例)
+        document.getElementById('legendArea').style.display = (sysType === 'all') ? 'inline-block' : 'none';
+
+        // 3. 抓取活動
         const startStr = `${year}-${String(month).padStart(2,'0')}-01`;
         const endStr = `${year}-${String(month).padStart(2,'0')}-31`;
         
@@ -213,28 +236,21 @@
             .select('*')
             .gte('event_date', startStr).lte('event_date', endStr);
         
-        // 篩選邏輯
         if (sysType !== 'all') {
-            // 如果不是總表，要抓「自己」+「admin」
-            if (sysType === 'admin') {
-                query = query.eq('category', 'admin');
-            } else {
-                query = query.or(`category.eq.${sysType},category.eq.admin`);
-            }
+            if (sysType === 'admin') query = query.eq('category', 'admin');
+            else query = query.or(`category.eq.${sysType},category.eq.admin`);
         }
-        // 如果是 'all'，不用 filter，直接抓全部
         
         const { data: events } = await query;
 
-        // 3. 繪製
+        // 4. 繪製 Grid
         const calendarBody = document.getElementById('calendarBody');
         calendarBody.innerHTML = '';
 
         const firstDay = new Date(year, month - 1, 1);
         const lastDay = new Date(year, month, 0);
         
-        // 補空白 (週一為首日邏輯: Mon=1...Sun=0 -> index 0~6)
-        // JS getDay: Sun=0, Mon=1...
+        // 補空白 (Mon=1...Sun=0 -> index 0~6)
         let jsDay = firstDay.getDay(); 
         let paddingDays = (jsDay === 0) ? 6 : jsDay - 1;
 
@@ -242,25 +258,18 @@
             calendarBody.innerHTML += `<div class="calendar-day other-month"></div>`;
         }
 
-        // 今天的字串
-        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
-
-        // 追蹤星期幾 (0=Mon ... 6=Sun)
+        const todayStr = new Date().toLocaleDateString('en-CA'); 
         let currentDayIndex = paddingDays; 
 
         for(let d=1; d<=lastDay.getDate(); d++) {
             const dateObj = new Date(year, month - 1, d);
-            const dateStr = dateObj.toLocaleDateString('en-CA'); // 關鍵修正：確保日期字串正確
+            const dateStr = dateObj.toLocaleDateString('en-CA');
             
-            // A. 計算週次 (只有每週一顯示，且總表要顯示所有部別的週次)
+            // A. 計算週次 (僅週一顯示，且總表模式"不"顯示週次以免混亂)
             let weekHtml = "";
-            if (currentDayIndex === 0 && sysType !== 'admin') { 
-                // 從 cache 找符合日期的設定
+            if (currentDayIndex === 0 && sysType !== 'all' && sysType !== 'admin') { 
                 allSemesterSettings.forEach(sem => {
-                    // 根據目前選的 sysType 過濾要顯示誰的週次
-                    // 如果是總表，顯示全部；如果是個別，只顯示自己
-                    let shouldShow = (sysType === 'all') || (sysType === sem.system_type);
-                    
+                    let shouldShow = (sysType === sem.system_type);
                     if (shouldShow && sem.week_data) {
                         sem.week_data.forEach(w => {
                             if (dateStr >= w.start && dateStr <= w.end) {
@@ -268,7 +277,6 @@
                                 if(sem.system_type === 'kindergarten') badgeColor = 'bg-wk-k';
                                 if(sem.system_type === 'elementary') badgeColor = 'bg-wk-e';
                                 if(sem.system_type === 'high_school') badgeColor = 'bg-wk-h';
-                                
                                 weekHtml += `<span class="week-label ${badgeColor}">${w.name}</span>`;
                             }
                         });
@@ -283,21 +291,19 @@
                 dayEvents.forEach(e => {
                     let cls = '';
                     if (e.is_holiday) cls = 'evt-holiday';
-                    else {
-                        cls = `evt-${e.category}`; // e.g., evt-kindergarten
-                    }
+                    else cls = `evt-${e.category}`;
                     eventHtml += `<div class="event-item ${cls}">${e.title}</div>`;
                 });
             }
 
-            // C. 樣式判斷
-            let isToday = (dateStr === todayStr) ? 'today-highlight' : '';
+            // C. 樣式：今天紅圈、六日紅字
+            let isTodayClass = (dateStr === todayStr) ? 'today' : '';
             let numClass = (currentDayIndex >= 5) ? 'text-weekend' : 'text-dark';
 
             calendarBody.innerHTML += `
-                <div class="calendar-day ${isToday}" onclick="addEventModal('${dateStr}')">
+                <div class="calendar-day" onclick="addEventModal('${dateStr}')">
                     <div class="d-flex flex-column align-items-start">${weekHtml}</div>
-                    <span class="date-num ${numClass}">${d}</span>
+                    <span class="date-num ${isTodayClass} ${numClass}">${d}</span>
                     <div class="mt-4 w-100">${eventHtml}</div>
                 </div>
             `;
@@ -306,7 +312,83 @@
         }
     }
 
-    // 新增活動
+    // --- 設定選單 (包含共同假日) ---
+    async function openSettings() {
+        const { value: choice } = await Swal.fire({
+            title: '行事曆設定',
+            input: 'radio',
+            inputOptions: {
+                'holiday': '設定共同假日 (連續假期)',
+                // 未來可加 'export': '匯出 Excel' 等
+            },
+            inputValidator: (value) => {
+                if (!value) return '請選擇一個項目';
+                if (value === 'holiday' && !isAdmin) return '權限不足：僅管理員可設定共同假日';
+            },
+            showCancelButton: true,
+            confirmButtonText: '下一步'
+        });
+
+        if (choice === 'holiday') {
+            addHolidayRange();
+        }
+    }
+
+    // 設定連續假日 (Range)
+    async function addHolidayRange() {
+        const { value: formValues } = await Swal.fire({
+            title: '設定共同假日 (紅字)',
+            html: `
+                <label class="form-label text-start w-100">開始日期</label>
+                <input id="h-start" type="date" class="form-control mb-2">
+                <label class="form-label text-start w-100">結束日期</label>
+                <input id="h-end" type="date" class="form-control mb-2">
+                <label class="form-label text-start w-100">假期名稱</label>
+                <input id="h-title" type="text" class="form-control" placeholder="例：春節連假">
+            `,
+            focusConfirm: false,
+            preConfirm: () => {
+                const start = document.getElementById('h-start').value;
+                const end = document.getElementById('h-end').value;
+                const title = document.getElementById('h-title').value;
+                if (!start || !end || !title) {
+                    Swal.showValidationMessage('請完整填寫所有欄位');
+                }
+                if (start > end) {
+                    Swal.showValidationMessage('結束日期不能早於開始日期');
+                }
+                return { start, end, title };
+            }
+        });
+
+        if (formValues) {
+            Swal.showLoading();
+            // 迴圈寫入每一天
+            let current = new Date(formValues.start);
+            let end = new Date(formValues.end);
+            let inserts = [];
+            
+            while(current <= end) {
+                inserts.push({
+                    event_date: current.toLocaleDateString('en-CA'),
+                    title: formValues.title,
+                    category: 'admin',
+                    is_holiday: true
+                });
+                current.setDate(current.getDate() + 1);
+            }
+
+            const { error } = await window.db.from('calendar_events').insert(inserts);
+            
+            if(error) Swal.fire('錯誤', error.message, 'error');
+            else {
+                await Swal.fire('成功', `已新增 ${inserts.length} 天的假日`, 'success');
+                renderCalendar();
+            }
+        }
+    }
+
+    // 新增一般活動
     async function addEventModal(dateStr = '') {
         const { value: formValues } = await Swal.fire({
             title: '新增活動',
@@ -317,7 +399,7 @@
                     <option value="admin">行政 (黃)</option>
                     <option value="kindergarten">幼兒園 (紫)</option>
                     <option value="elementary">國小部 (綠)</option>
-                    <option value="high_school">國高中部 (藍)</option>
+                    <option value="high_school">國(高)中部 (藍)</option>
                 </select>
             `,
             focusConfirm: false,
@@ -336,36 +418,6 @@
                 title: formValues.title,
                 category: formValues.cat,
                 is_holiday: false
-            }]);
-            renderCalendar();
-        }
-    }
-
-    // 設定共同假日 (管理員專用)
-    async function addHoliday() {
-        const { value: formValues } = await Swal.fire({
-            title: '設定共同假日 (紅字)',
-            html: `
-                <label>日期</label>
-                <input id="h-date" type="date" class="form-control mb-2">
-                <label>假期名稱</label>
-                <input id="h-title" type="text" class="form-control mb-2" placeholder="例：中秋節">
-            `,
-            preConfirm: () => {
-                return {
-                    date: document.getElementById('h-date').value,
-                    title: document.getElementById('h-title').value
-                }
-            }
-        });
-
-        if (formValues) {
-            // 共同假日 category 設為 admin，但 is_holiday = true
-            await window.db.from('calendar_events').insert([{
-                event_date: formValues.date,
-                title: formValues.title,
-                category: 'admin',
-                is_holiday: true
             }]);
             renderCalendar();
         }
