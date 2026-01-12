@@ -25,6 +25,7 @@
         
         .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 10px; background: #eee; color: #666; margin-top: 10px; display: inline-block; }
         .status-dev { background: #ffeeba; color: #856404; }
+        .status-ok { background: #d1e7dd; color: #0f5132; }
     </style>
 </head>
 <body>
@@ -47,6 +48,7 @@
                 <div class="icon-box c-basic"><i class="bi bi-calendar-check"></i></div>
                 <h5 class="fw-bold">學期設定連動</h5>
                 <p class="text-muted small mb-0">設定本學期起訖週次</p>
+                <span class="status-badge status-ok">已完成</span>
             </a>
         </div>
         <div class="col-md-3">
@@ -54,6 +56,7 @@
                 <div class="icon-box c-basic"><i class="bi bi-book"></i></div>
                 <h5 class="fw-bold">課程資料維護</h5>
                 <p class="text-muted small mb-0">科目代碼、名稱與屬性</p>
+                <span class="status-badge status-ok">已完成</span>
             </a>
         </div>
         <div class="col-md-3">
@@ -61,6 +64,7 @@
                 <div class="icon-box c-basic"><i class="bi bi-clock-history"></i></div>
                 <h5 class="fw-bold">節數與作息</h5>
                 <p class="text-muted small mb-0">每日節次時間設定</p>
+                <span class="status-badge status-ok">已完成</span>
             </a>
         </div>
         <div class="col-md-3">
@@ -68,6 +72,7 @@
                 <div class="icon-box c-basic"><i class="bi bi-building"></i></div>
                 <h5 class="fw-bold">教室資料管理</h5>
                 <p class="text-muted small mb-0">專科教室與班級教室</p>
+                <span class="status-badge status-ok">已完成</span>
             </a>
         </div>
     </div>
@@ -75,13 +80,14 @@
     <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-success ps-2">配課與條件設定</h5>
     <div class="row g-4 mb-5">
         <div class="col-md-4">
-            <a href="#" class="func-card" onclick="alert('開發中')">
-                <div class="icon-box c-assign"><i class="bi bi-person-video3"></i></div>
-                <h5 class="fw-bold">教師配課作業</h5>
-                <p class="text-muted small mb-0">指定 班級-科目-教師</p>
-                <span class="status-badge status-dev">開發中</span>
+            <a href="class_manager.html" class="func-card">
+                <div class="icon-box c-assign"><i class="bi bi-people"></i></div>
+                <h5 class="fw-bold">班級資料維護</h5>
+                <p class="text-muted small mb-0">班級、導師、預設教室</p>
+                <span class="status-badge status-ok">New!</span>
             </a>
         </div>
+        
         <div class="col-md-4">
             <a href="#" class="func-card" onclick="alert('開發中')">
                 <div class="icon-box c-assign"><i class="bi bi-sliders"></i></div>
@@ -92,9 +98,9 @@
         </div>
         <div class="col-md-4">
             <a href="#" class="func-card" onclick="alert('開發中')">
-                <div class="icon-box c-assign"><i class="bi bi-people"></i></div>
-                <h5 class="fw-bold">班級資料維護</h5>
-                <p class="text-muted small mb-0">班級與導師設定</p>
+                <div class="icon-box c-assign"><i class="bi bi-person-video3"></i></div>
+                <h5 class="fw-bold">教師配課作業</h5>
+                <p class="text-muted small mb-0">指定 班級-科目-教師</p>
                 <span class="status-badge status-dev">開發中</span>
             </a>
         </div>
@@ -125,27 +131,31 @@
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
     
-    // 這裡我們直接使用 config.js 的 window.db，但為了確保載入順序，簡單做個顯示
     async function init() {
-        // 抓取目前最新的學期設定 (這裡假設抓取最新一筆 semester_settings)
-        // 實務上應該要有個 "current_semester" 的全域設定，我們先抓第一筆當範例
         const { data } = await window.db.from('semester_settings')
             .select('*')
-            .order('academic_year', { ascending: false })
-            .limit(1)
+            .eq('is_active_for_scheduling', true)
             .single();
             
         if(data) {
             let semName = data.semester;
             if(semName === '1') semName = '上學期';
-            if(semName === '2') semName = '下學期';
-            document.getElementById('currentSem').textContent = `${data.academic_year} 學年度 ${semName} (${data.system_type === 'kindergarten'?'幼兒':'十二年'})`;
+            else if(semName === '2') semName = '下學期';
+            else if(semName === 'W') semName = '寒輔';
+            else if(semName === 'S') semName = '暑輔';
+
+            let typeName = data.system_type;
+            if(typeName === 'kindergarten') typeName = '幼兒園';
+            if(typeName === 'elementary') typeName = '國小部';
+            if(typeName === 'high_school') typeName = '國高中部';
+
+            document.getElementById('currentSem').textContent = `${data.academic_year} 學年度 ${semName} (${typeName})`;
         } else {
-            document.getElementById('currentSem').textContent = "尚未設定學期";
+            document.getElementById('currentSem').textContent = "請先至「學期連動」設定排課學期";
+            document.getElementById('currentSem').classList.add('text-danger');
         }
     }
     
-    // 延遲一點點執行以確保 db 已載入
     setTimeout(init, 500);
 </script>
 
