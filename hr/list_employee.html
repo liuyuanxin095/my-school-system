@@ -14,8 +14,6 @@
             width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
             border: 1px solid #dee2e6; background-color: #fff;
         }
-        .status-badge { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; }
-        .teacher-code-badge { font-size: 0.75rem; background-color: #fff3cd; color: #856404; padding: 1px 5px; border-radius: 4px; border: 1px solid #ffeeba; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -33,12 +31,8 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body d-flex gap-3 align-items-center flex-wrap">
             <input type="text" id="searchInput" class="form-control w-auto" placeholder="搜尋編號、姓名..." style="min-width: 250px;">
-            <select id="deptFilter" class="form-select w-auto">
-                <option value="">所有部門</option>
-            </select>
             <select id="statusFilter" class="form-select w-auto">
                 <option value="active" selected>在職</option>
-                <option value="resigned">離職</option>
                 <option value="">所有狀態</option>
             </select>
             <button class="btn btn-secondary" onclick="loadEmployees()">查詢</button>
@@ -72,38 +66,27 @@
 
 <script src="../../js/config.js"></script>
 <script>
-    let allData = [];
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadDepartments();
-        loadEmployees();
-    });
-    
-    // 載入部門供篩選用
-    async function loadDepartments() {
-        const { data } = await window.db.from('departments').select('name').order('sort_order');
-        if(data) {
-            const sel = document.getElementById('deptFilter');
-            data.forEach(d => sel.innerHTML += `<option value="${d.name}">${d.name}</option>`);
-        }
-    }
+    document.addEventListener('DOMContentLoaded', loadEmployees);
 
     async function loadEmployees() {
         const keyword = document.getElementById('searchInput').value.toLowerCase();
-        const dept = document.getElementById('deptFilter').value;
         const status = document.getElementById('statusFilter').value;
 
+        // 直接讀取 employees 表
         let query = window.db.from('employees').select('*').order('employee_id');
-        const { data, error } = await query;
-        if (error) { Swal.fire('錯誤', error.message, 'error'); return; }
         
-        allData = data || [];
+        if (status) query = query.eq('status', status);
 
-        const filtered = allData.filter(emp => {
-            const matchKey = (emp.name + emp.employee_id).toLowerCase().includes(keyword);
-            const matchDept = dept ? emp.department === dept : true;
-            const matchStatus = status ? emp.status === status : true;
-            return matchKey && matchDept && matchStatus;
+        const { data, error } = await query;
+        
+        if (error) { 
+            console.error(error); // 在 Console 顯示詳細錯誤
+            Swal.fire('讀取錯誤', '無法載入員工資料，請檢查資料庫連線。', 'error'); 
+            return; 
+        }
+
+        const filtered = data.filter(emp => {
+            return (emp.name + emp.employee_id).toLowerCase().includes(keyword);
         });
 
         renderTable(filtered);
@@ -111,9 +94,8 @@
 
     function renderTable(data) {
         const tbody = document.getElementById('empTable');
-        const countSpan = document.getElementById('countDisplay');
+        document.getElementById('countDisplay').textContent = data.length;
         tbody.innerHTML = '';
-        countSpan.textContent = data.length;
 
         if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料</td></tr>';
@@ -121,34 +103,24 @@
         }
 
         data.forEach(e => {
-            const isResigned = e.status === 'resigned';
-            const statusBadge = isResigned 
-                ? '<span class="badge bg-secondary status-badge">離職</span>'
-                : '<span class="badge bg-success status-badge">在職</span>';
-            const rowClass = isResigned ? 'text-muted' : '';
-
             let roleBadge = 'bg-secondary';
             if(e.role === 'admin') roleBadge = 'bg-danger';
             if(e.role === 'teacher') roleBadge = 'bg-success';
 
-            let nameDisplay = e.name;
-            if (e.role === 'teacher' && e.teacher_code) {
-                nameDisplay += `<span class="teacher-code-badge">${e.teacher_code}</span>`;
-            }
-
+            // 照片處理 (如果沒照片給預設圖)
             let avatarSrc = e.photo_url || `https://ui-avatars.com/api/?name=${e.name}&background=random`;
 
             tbody.innerHTML += `
-                <tr class="${rowClass}">
+                <tr>
                     <td class="ps-4 font-monospace fw-bold">${e.employee_id}</td>
                     <td class="text-center"><img src="${avatarSrc}" class="avatar-small"></td>
-                    <td class="fs-5">${nameDisplay}</td>
+                    <td class="fs-5 fw-bold">${e.name}</td>
                     <td>
-                        <div class="fw-bold">${e.title || '-'}</div>
+                        <div>${e.title || '-'}</div>
                         <small class="text-muted">${e.department || '-'}</small>
                     </td>
                     <td><span class="badge ${roleBadge}">${e.role}</span></td>
-                    <td>${statusBadge}</td>
+                    <td>${e.status==='active'?'<span class="badge bg-success">在職</span>':'<span class="badge bg-secondary">離職</span>'}</td>
                     <td class="text-end">
                         <a href="edit_employee.html?id=${e.id}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil-square"></i> 編輯
