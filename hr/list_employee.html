@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教職員清單</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .avatar-circle {
+            width: 40px; height: 40px; background-color: #e9ecef; color: #495057;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.2rem;
+        }
+        .status-badge { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; }
+        .table-hover tbody tr:hover { background-color: #f1f3f5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-person-lines-fill"></i> 教職員資料管理</h3>
+        <button class="btn btn-primary" onclick="openModal()">
+            <i class="bi bi-person-plus-fill"></i> 新增教職員
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex gap-3 align-items-center flex-wrap">
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="form-control" placeholder="搜尋姓名或編號..." onkeyup="filterData()">
+            </div>
+            
+            <select id="deptFilter" class="form-select w-auto" onchange="filterData()">
+                <option value="">所有部門</option>
+                </select>
+
+            <select id="statusFilter" class="form-select w-auto" onchange="filterData()">
+                <option value="active" selected>在此狀態: 在職</option>
+                <option value="resigned">在此狀態: 離職/留停</option>
+                <option value="">所有狀態</option>
+            </select>
+            
+            <button class="btn btn-outline-secondary" onclick="resetFilter()">重置篩選</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50" class="text-center">#</th>
+                        <th>員工編號</th>
+                        <th>姓名</th>
+                        <th>部門 / 職稱</th>
+                        <th>聯絡資訊</th>
+                        <th>系統權限</th>
+                        <th>狀態</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="empTable">
+                    <tr><td colspan="8" class="text-center py-5 text-muted">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white text-muted small">
+            共 <span id="countDisplay">0</span> 筆資料
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="empModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTitle">新增教職員</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">員工編號 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_code" class="form-control" placeholder="例如: T114001">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_name" class="form-control" placeholder="真實姓名">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label">所屬部門/處室</label>
+                        <input type="text" id="m_dept" class="form-control" list="deptList" placeholder="例如: 教務處">
+                        <datalist id="deptList">
+                            <option value="校長室">
+                            <option value="教務處">
+                            <option value="學務處">
+                            <option value="總務處">
+                            <option value="輔導室">
+                            <option value="人事室">
+                            <option value="會計室">
+                            <option value="幼兒園">
+                        </datalist>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">職稱</label>
+                        <input type="text" id="m_title" class="form-control" placeholder="例如: 教師, 主任, 幹事">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="m_email" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">聯絡電話/分機</label>
+                        <input type="text" id="m_phone" class="form-control">
+                    </div>
+
+                    <div class="col-12"><hr></div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">系統角色權限</label>
+                        <select id="m_role" class="form-select">
+                            <option value="staff">一般教職員 (Staff)</option>
+                            <option value="teacher">授課教師 (Teacher)</option>
+                            <option value="admin">系統管理員 (Admin)</option>
+                        </select>
+                        <div class="form-text">授課教師才會出現在排課選單中。</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">在職狀態</label>
+                        <select id="m_status" class="form-select">
+                            <option value="active">在職</option>
+                            <option value="resigned">離職 / 留停</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存資料</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let empModal;
+    let allData = []; // 原始資料快取
+
+    document.addEventListener('DOMContentLoaded', () => {
+        empModal = new bootstrap.Modal(document.getElementById('empModal'));
+        loadEmployees();
+    });
+
+    // 1. 載入資料
+    async function loadEmployees() {
+        const { data, error } = await window.db.from('employees')
+            .select('*')
+            .order('employee_id', { ascending: true });
+
+        if (error) {
+            Swal.fire('錯誤', error.message, 'error');
+            return;
+        }
+
+        allData = data || [];
+        updateDeptFilter(allData); // 更新部門篩選選單
+        filterData(); // 執行篩選並渲染
+    }
+
+    // 2. 篩選與渲染
+    function filterData() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        const filtered = allData.filter(emp => {
+            const matchKey = (emp.name + emp.employee_id).toLowerCase().includes(keyword);
+            const matchDept = dept ? emp.department === dept : true;
+            const matchStatus = status ? emp.status === status : true;
+            return matchKey && matchDept && matchStatus;
+        });
+
+        renderTable(filtered);
+    }
+
+    // 3. 渲染表格
+    function renderTable(data) {
+        const tbody = document.getElementById('empTable');
+        const countSpan = document.getElementById('countDisplay');
+        tbody.innerHTML = '';
+        countSpan.textContent = data.length;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted">查無符合條件的資料</td></tr>';
+            return;
+        }
+
+        data.forEach((emp, index) => {
+            // 狀態樣式
+            const isResigned = emp.status === 'resigned';
+            const statusBadge = isResigned 
+                ? '<span class="badge bg-secondary status-badge">離職</span>'
+                : '<span class="badge bg-success status-badge">在職</span>';
+            const rowClass = isResigned ? 'text-muted' : '';
+
+            // 角色中文
+            let roleName = '職員';
+            if(emp.role === 'teacher') roleName = '教師';
+            if(emp.role === 'admin') roleName = '管理員';
+
+            tbody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="text-center">
+                        <div class="avatar-circle mx-auto">${emp.name[0]}</div>
+                    </td>
+                    <td class="font-monospace fw-bold">${emp.employee_id}</td>
+                    <td class="fw-bold fs-5">${emp.name}</td>
+                    <td>
+                        <div class="fw-bold">${emp.department || '-'}</div>
+                        <small>${emp.title || '-'}</small>
+                    </td>
+                    <td>
+                        <div class="small"><i class="bi bi-envelope"></i> ${emp.email || '-'}</div>
+                        <div class="small"><i class="bi bi-telephone"></i> ${emp.phone || '-'}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">${roleName}</span></td>
+                    <td>${statusBadge}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='editEmp(${JSON.stringify(emp)})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delEmp(${emp.id}, '${emp.name}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 4. 更新部門下拉選單 (自動抓取資料庫有的部門)
+    function updateDeptFilter(data) {
+        const deptSet = new Set();
+        data.forEach(e => { if(e.department) deptSet.add(e.department); });
+        
+        const sel = document.getElementById('deptFilter');
+        // 保留第一項 "所有部門"
+        sel.innerHTML = '<option value="">所有部門</option>';
+        deptSet.forEach(d => {
+            sel.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+    }
+
+    function resetFilter() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('deptFilter').value = '';
+        document.getElementById('statusFilter').value = 'active'; // 預設回在職
+        filterData();
+    }
+
+    // 5. 新增/編輯 Modal 操作
+    window.openModal = () => {
+        document.getElementById('modalTitle').textContent = "新增教職員";
+        document.getElementById('editId').value = "";
+        document.getElementById('m_code').value = "";
+        document.getElementById('m_code').disabled = false; // 新增時可填
+        document.getElementById('m_name').value = "";
+        document.getElementById('m_dept').value = "";
+        document.getElementById('m_title').value = "";
+        document.getElementById('m_email').value = "";
+        document.getElementById('m_phone').value = "";
+        document.getElementById('m_role').value = "staff";
+        document.getElementById('m_status').value = "active";
+        empModal.show();
+    }
+
+    window.editEmp = (emp) => {
+        document.getElementById('modalTitle').textContent = "編輯資料";
+        document.getElementById('editId').value = emp.id;
+        document.getElementById('m_code').value = emp.employee_id;
+        document.getElementById('m_code').disabled = true; // 編輯時鎖定編號(作為關聯鍵)
+        document.getElementById('m_name').value = emp.name;
+        document.getElementById('m_dept').value = emp.department || "";
+        document.getElementById('m_title').value = emp.title || "";
+        document.getElementById('m_email').value = emp.email || "";
+        document.getElementById('m_phone').value = emp.phone || "";
+        document.getElementById('m_role').value = emp.role || "staff";
+        document.getElementById('m_status').value = emp.status || "active";
+        empModal.show();
+    }
+
+    // 6. 儲存資料
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const code = document.getElementById('m_code').value.trim();
+        const name = document.getElementById('m_name').value.trim();
+        
+        if(!code || !name) {
+            Swal.fire('欄位未填', '員工編號與姓名為必填欄位', 'warning');
+            return;
+        }
+
+        const payload = {
+            employee_id: code,
+            name: name,
+            department: document.getElementById('m_dept').value,
+            title: document.getElementById('m_title').value,
+            email: document.getElementById('m_email').value,
+            phone: document.getElementById('m_phone').value,
+            role: document.getElementById('m_role').value,
+            status: document.getElementById('m_status').value
+        };
+
+        try {
+            let error;
+            if(id) {
+                // 更新
+                const { error: updErr } = await window.db.from('employees').update(payload).eq('id', id);
+                error = updErr;
+            } else {
+                // 新增
+                const { error: insErr } = await window.db.from('employees').insert([payload]);
+                error = insErr;
+            }
+
+            if(error) throw error;
+
+            empModal.hide();
+            Swal.fire({ icon: 'success', title: '儲存成功', timer: 1500, showConfirmButton: false });
+            loadEmployees(); // 重新載入列表
+
+        } catch (err) {
+            Swal.fire('儲存失敗', err.message, 'error');
+        }
+    }
+
+    // 7. 刪除資料
+    window.delEmp = async (id, name) => {
+        const result = await Swal.fire({
+            title: `刪除 ${name}？`,
+            text: "此操作可能影響排課與其他關聯資料，建議改為「離職」狀態即可。",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '仍要刪除',
+            cancelButtonText: '取消'
+        });
+
+        if (result.isConfirmed) {
+            const { error } = await window.db.from('employees').delete().eq('id', id);
+            if(error) Swal.fire('刪除失敗', '可能此員工已有關聯資料(如排課)，請先移除關聯。', 'error');
+            else {
+                Swal.fire('已刪除', '資料已移除', 'success');
+                loadEmployees();
+            }
+        }
+    }
+</script>
+</body>
+</html>
