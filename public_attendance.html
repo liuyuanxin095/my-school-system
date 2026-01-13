@@ -104,25 +104,30 @@
     <div class="mt-5 text-white-50 small">點擊任意處關閉</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/config.js"></script>
-<script>
-    let currentEmp = null; // 暫存當前驗證中的員工
-    let inputSource = '';  // ID_PWD or CARD
 
-    // 初始化
+<script>
+    let currentEmp = null;
+    let inputSource = '';
+
     document.addEventListener('DOMContentLoaded', () => {
+        // 檢查設定檔
+        if (typeof window.db === 'undefined') {
+            Swal.fire('錯誤', '找不到 js/config.js，請檢查檔案位置', 'error');
+            return;
+        }
+
         updateTime();
         setInterval(updateTime, 1000);
         
         const input = document.getElementById('inputScan');
         input.focus();
         
-        // 監聽 Enter
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') processInput();
         });
 
-        // 點擊空白處聚焦
         document.body.addEventListener('click', (e) => {
             if(!e.target.closest('.modal') && !e.target.closest('input')) input.focus();
         });
@@ -140,34 +145,28 @@
         const val = inputEl.value.trim();
         if (!val) return;
 
-        inputEl.disabled = true; // 鎖定
+        inputEl.disabled = true;
 
         try {
-            // === 步驟 1: 先找學生 (學號 or 卡號) ===
+            // 1. 找學生
             const { data: students } = await window.db.from('students')
                 .select('*')
                 .or(`student_id.eq.${val},card_number.eq.${val}`);
 
             if (students && students.length > 0) {
-                // 是學生 -> 走學生考勤邏輯 (自動進出)
                 await handleStudentAttendance(students[0], val);
                 resetInput();
                 return;
             }
 
-            // === 步驟 2: 找教職員 (員編 or 卡號) ===
+            // 2. 找教職員
             const { data: employees } = await window.db.from('employees')
                 .select('*')
-                .or(`employee_id.eq.${val},card_number.eq.${val}`) // 假設 card_number 欄位您已經加到 employees 表了 (若無請看備註)
-                .single(); // 使用 single 因為可能找不到
+                .or(`employee_id.eq.${val},card_number.eq.${val}`)
+                .single();
 
             if (employees) {
-                // 是教職員
                 currentEmp = employees;
-                
-                // 判斷是輸入編號 還是 刷卡
-                // 如果輸入值 == 員工編號 -> 視為手動輸入 -> 要密碼
-                // 如果輸入值 != 員工編號 (那必定是卡號) -> 視為刷卡 -> 免密碼
                 if (val === employees.employee_id) {
                     inputSource = 'ID_PWD';
                     showPwdModal();
@@ -176,15 +175,14 @@
                     showActionModal();
                 }
             } else {
-                Swal.fire('查無資料', '找不到此編號或卡片', 'error');
+                Swal.fire({ icon: 'error', title: '查無資料', text: '找不到此編號或卡片', timer: 1500, showConfirmButton: false });
                 resetInput();
             }
 
         } catch (err) {
             console.error(err);
-            // 為了避免單純找不到資料報錯，這裡做個簡單處理
-            if (err.code === 'PGRST116') { // JSON 返回 0 筆 (single() 報錯)
-                 Swal.fire('查無資料', '系統內無此紀錄', 'error');
+            if (err.code === 'PGRST116') { // 查無資料
+                 Swal.fire({ icon: 'error', title: '查無資料', timer: 1500, showConfirmButton: false });
             } else {
                  Swal.fire('系統錯誤', err.message, 'error');
             }
@@ -194,7 +192,6 @@
 
     // --- 學生邏輯 ---
     async function handleStudentAttendance(stu, source) {
-        // 查今日最後一筆
         const todayStart = new Date(); todayStart.setHours(0,0,0,0);
         const { data: logs } = await window.db.from('attendance_logs')
             .select('*')
@@ -206,7 +203,6 @@
         let type = 'IN';
         if (logs && logs.length > 0 && logs[0].check_type === 'IN') type = 'OUT';
 
-        // 寫入
         await window.db.from('attendance_logs').insert([{
             student_id: stu.id, check_type: type, input_source: source
         }]);
@@ -221,13 +217,12 @@
         document.getElementById('pwdName').textContent = currentEmp.name;
         document.getElementById('authPwd').value = '';
         
+        // 這裡需要 Bootstrap JS
         const modal = new bootstrap.Modal(document.getElementById('pwdModal'));
         modal.show();
         
-        // 聚焦密碼框
         setTimeout(() => document.getElementById('authPwd').focus(), 500);
         
-        // 密碼框按 Enter
         document.getElementById('authPwd').onkeypress = (e) => {
             if(e.key === 'Enter') verifyEmpPassword();
         };
@@ -235,7 +230,6 @@
 
     function verifyEmpPassword() {
         const pwd = document.getElementById('authPwd').value;
-        // 比對資料庫密碼
         if (pwd === currentEmp.clock_in_password) {
             bootstrap.Modal.getInstance(document.getElementById('pwdModal')).hide();
             showActionModal();
@@ -257,7 +251,6 @@
     async function submitEmpPunch(type) {
         bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
         
-        // 寫入 DB
         const { error } = await window.db.from('employee_attendance_logs').insert([{
             employee_id: currentEmp.id,
             check_type: type,
@@ -267,13 +260,12 @@
         if (error) {
             Swal.fire('錯誤', error.message, 'error');
         } else {
-            let statusText = '';
-            let color = '';
+            let statusText = '', color = '';
             switch(type) {
-                case 'WORK_IN': statusText = '🌞 上班打卡成功'; color = '#0d6efd'; break;
-                case 'WORK_OUT': statusText = '🌙 下班打卡成功'; color = '#6c757d'; break;
-                case 'OT_IN': statusText = '💪 加班開始'; color = '#dc3545'; break;
-                case 'OT_OUT': statusText = '🏠 加班結束'; color = '#198754'; break;
+                case 'WORK_IN': statusText = '🌞 上班'; color = '#0d6efd'; break;
+                case 'WORK_OUT': statusText = '🌙 下班'; color = '#6c757d'; break;
+                case 'OT_IN': statusText = '💪 加班上'; color = '#dc3545'; break;
+                case 'OT_OUT': statusText = '🏠 加班下'; color = '#198754'; break;
             }
             showResult(currentEmp.name, currentEmp.employee_id, currentEmp.photo_url, statusText, color);
         }
@@ -292,10 +284,7 @@
         sEl.style.backgroundColor = color;
         
         document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
-
         overlay.style.display = 'flex';
-        
-        // 3秒後自動關閉
         setTimeout(closeResult, 3000);
     }
 
