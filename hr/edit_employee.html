@@ -11,12 +11,10 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         .required-field { background-color: #fff9db !important; border-color: #ffeeba; }
-        
-        /* 照片上傳區樣式 */
         .photo-box {
             width: 150px; height: 150px; 
             background-color: #e9ecef; border: 2px dashed #ced4da;
-            border-radius: 50%; /* 圓形頭像 */
+            border-radius: 50%;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             margin: 0 auto 15px auto; cursor: pointer; position: relative;
         }
@@ -26,8 +24,6 @@
             color: white; font-size: 0.8rem; text-align: center; padding: 15px 5px 5px 5px; display: none; height: 50%; align-items: flex-end; justify-content: center;
         }
         .photo-box:hover .photo-overlay { display: flex; }
-        
-        /* 分頁籤樣式 */
         .nav-tabs .nav-link { color: #495057; }
         .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; color: #0d6efd; }
     </style>
@@ -59,8 +55,6 @@
                     <h5 class="fw-bold mt-2" id="display-name">---</h5>
                     <p class="text-muted mb-1" id="display-id">員工編號：---</p>
                     <span class="badge bg-secondary" id="display-status">New</span>
-                    <hr>
-                    <div id="display-role" class="badge bg-light text-dark border">---</div>
                 </div>
             </div>
         </div>
@@ -77,7 +71,6 @@
                 </div>
                 <div class="card-body">
                     <div class="tab-content">
-                        
                         <div class="tab-pane fade show active" id="tab-basic">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -94,21 +87,21 @@
                                 </div>
                                 
                                 <div class="col-md-6">
-                                    <label class="form-label">職稱 (連動權限)</label>
+                                    <label class="form-label">職稱 (連結資料庫)</label>
                                     <select id="title" class="form-select" onchange="autoSetRole()">
                                         <option value="">讀取中...</option>
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label">部門</label>
+                                    <label class="form-label">部門 (連結資料庫)</label>
                                     <select id="department" class="form-select">
                                         <option value="">讀取中...</option>
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label">系統權限</label>
+                                    <label class="form-label">系統權限 (自動帶入)</label>
                                     <select id="role" class="form-select bg-light">
                                         <option value="staff">職員 (Staff)</option>
                                         <option value="teacher">教師 (Teacher)</option>
@@ -185,15 +178,10 @@
                         </div>
 
                         <div class="tab-pane fade" id="tab-teacher">
-                            <div class="alert alert-warning small">
-                                <i class="bi bi-exclamation-triangle"></i> 
-                                只有當權限為 <strong>Teacher</strong> 或 <strong>Admin</strong> 時，才需設定此頁面。
-                            </div>
                             <div class="row g-3">
                                 <div class="col-md-12">
-                                    <label class="form-label fw-bold text-primary">教師代碼 (排課用) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold text-primary">教師代碼 (排課用)</label>
                                     <input type="text" id="teacher_code" class="form-control border-primary">
-                                    <div class="form-text">若為教師，此欄位必填。</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">基本鐘點 (每週)</label>
@@ -205,7 +193,6 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -213,131 +200,111 @@
     </div>
 </div>
 
-<script src="../js/config.js"></script>
+<script src="../../js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('id');
-    let roleMapping = {}; // 儲存職稱與權限的對照
+    let roleMapping = {};
 
     document.addEventListener('DOMContentLoaded', async () => {
-        // 並行載入選單資料
-        await Promise.all([loadMappings(), loadDepts()]);
+        // 並行載入選項
+        await Promise.all([loadTitles(), loadDepts()]);
         
         if (editId) {
             loadEmployeeData(editId);
         } else {
-            // 新增模式預設值
+            // 預設值
             document.getElementById('status').value = 'active';
             document.getElementById('role').value = 'staff';
         }
     });
 
-    // 1. 載入職稱 (title_role_mapping)
-    async function loadMappings() {
+    // 1. 載入職稱選項
+    async function loadTitles() {
         const { data } = await window.db.from('title_role_mapping').select('*').order('id');
         const sel = document.getElementById('title');
         sel.innerHTML = '<option value="">請選擇</option>';
-        if (data) {
-            data.forEach(m => {
-                roleMapping[m.title_name] = m.default_role;
-                sel.innerHTML += `<option value="${m.title_name}">${m.title_name}</option>`;
+        if(data) {
+            data.forEach(t => {
+                roleMapping[t.title_name] = t.default_role;
+                sel.innerHTML += `<option value="${t.title_name}">${t.title_name}</option>`;
             });
         }
     }
 
-    // 2. 載入部門 (departments)
+    // 2. 載入部門選項
     async function loadDepts() {
         const { data } = await window.db.from('departments').select('*').order('sort_order');
         const sel = document.getElementById('department');
         sel.innerHTML = '<option value="">請選擇</option>';
-        
-        if (data) {
-            // 建立 Map 方便找父層名稱
-            const deptMap = {};
-            data.forEach(d => deptMap[d.id] = d);
-
+        if(data) {
             data.forEach(d => {
-                let displayName = d.name;
-                // 如果有上層，顯示為 "教務處 > 註冊組"
-                if(d.parent_id && deptMap[d.parent_id]) {
-                    displayName = `${deptMap[d.parent_id].name} > ${d.name}`;
-                }
-                sel.innerHTML += `<option value="${d.name}">${displayName}</option>`;
+                sel.innerHTML += `<option value="${d.name}">${d.name}</option>`;
             });
         }
     }
 
-    // 3. 自動連動權限
+    // 3. 連動權限
     window.autoSetRole = () => {
-        const t = document.getElementById('title').value;
-        if (roleMapping[t]) {
-            document.getElementById('role').value = roleMapping[t];
+        const val = document.getElementById('title').value;
+        if(roleMapping[val]) {
+            document.getElementById('role').value = roleMapping[val];
         }
     }
 
-    // 4. 載入員工資料 (編輯模式)
+    // 4. 載入資料 (編輯)
     async function loadEmployeeData(id) {
         const { data, error } = await window.db.from('employees').select('*').eq('id', id).single();
         if (error || !data) { Swal.fire('錯誤', '無法讀取資料', 'error'); return; }
 
-        // 左側摘要更新
+        // 左側顯示
         document.getElementById('display-name').textContent = data.name;
-        document.getElementById('display-id').textContent = `員工編號：${data.employee_id}`;
-        document.getElementById('display-status').textContent = data.status === 'active' ? '在職' : '離職';
-        document.getElementById('display-status').className = data.status === 'active' ? 'badge bg-success' : 'badge bg-secondary';
-        document.getElementById('display-role').textContent = (data.role || '').toUpperCase();
+        document.getElementById('display-id').textContent = data.employee_id;
+        document.getElementById('display-status').textContent = data.status==='active'?'在職':'離職';
+        if(data.photo_url) document.getElementById('photoPreview').src = data.photo_url;
+        document.getElementById('photoUrl').value = data.photo_url || '';
 
-        if (data.photo_url) {
-            document.getElementById('photoPreview').src = data.photo_url;
-            document.getElementById('photoUrl').value = data.photo_url;
-        }
-
-        // 填入所有欄位值
+        // 填入資料
         const fields = [
             'employee_id', 'name', 'id_number', 'title', 'department', 'role', 'status', 'join_date',
-            'email', 'phone', 'address',
-            'labor_ins_date', 'labor_ins_salary', 'health_ins_date', 'health_ins_salary', 'note',
-            'base_salary', 'bank_code', 'bank_account',
+            'email', 'phone', 'address', 'labor_ins_date', 'labor_ins_salary', 
+            'health_ins_date', 'health_ins_salary', 'note', 'base_salary', 'bank_code', 'bank_account',
             'teacher_code', 'basic_teaching_hours', 'hourly_rate'
         ];
         
         fields.forEach(f => {
             if(document.getElementById(f)) document.getElementById(f).value = data[f] || '';
         });
-        
-        // 編輯模式時鎖定員工編號 (通常不允許修改 Primary Key 邏輯關聯)
+
+        // 鎖定編號
         document.getElementById('employee_id').disabled = true;
     }
 
     // 5. 上傳照片
     async function uploadPhoto() {
-        const fileInput = document.getElementById('photoInput');
-        const file = fileInput.files[0];
-        if (!file) return;
+        const file = document.getElementById('photoInput').files[0];
+        if(!file) return;
 
         // 預覽
         const reader = new FileReader();
         reader.onload = (e) => document.getElementById('photoPreview').src = e.target.result;
         reader.readAsDataURL(file);
 
-        // 上傳 Supabase
-        // 檔名規則：emp_時間戳.副檔名
+        // 上傳
         const fileName = `emp_${Date.now()}.${file.name.split('.').pop()}`;
-        
-        const { data, error } = await window.db.storage.from('avatars').upload(fileName, file);
-
-        if (error) {
-            Swal.fire('上傳失敗', error.message, 'error');
-        } else {
-            const { data: { publicUrl } } = window.db.storage.from('avatars').getPublicUrl(fileName);
-            document.getElementById('photoUrl').value = publicUrl;
+        const { error } = await window.db.storage.from('avatars').upload(fileName, file);
+        if(error) Swal.fire('上傳失敗', error.message, 'error');
+        else {
+            const { data } = window.db.storage.from('avatars').getPublicUrl(fileName);
+            document.getElementById('photoUrl').value = data.publicUrl;
         }
     }
 
     // 6. 儲存資料
     async function saveData() {
+        // 建構 Payload (對應 SQL 欄位)
         const payload = {
             employee_id: document.getElementById('employee_id').value,
             name: document.getElementById('name').value,
@@ -347,58 +314,44 @@
             role: document.getElementById('role').value,
             status: document.getElementById('status').value,
             join_date: document.getElementById('join_date').value || null,
-            
             email: document.getElementById('email').value,
             phone: document.getElementById('phone').value,
             address: document.getElementById('address').value,
             photo_url: document.getElementById('photoUrl').value,
-
+            
             labor_ins_date: document.getElementById('labor_ins_date').value || null,
             labor_ins_salary: document.getElementById('labor_ins_salary').value || null,
             health_ins_date: document.getElementById('health_ins_date').value || null,
             health_ins_salary: document.getElementById('health_ins_salary').value || null,
             note: document.getElementById('note').value,
-
+            
             base_salary: document.getElementById('base_salary').value || null,
             bank_code: document.getElementById('bank_code').value,
             bank_account: document.getElementById('bank_account').value,
-
-            teacher_code: document.getElementById('teacher_code').value || null,
+            
+            teacher_code: document.getElementById('teacher_code').value,
             basic_teaching_hours: document.getElementById('basic_teaching_hours').value || 0,
             hourly_rate: document.getElementById('hourly_rate').value || 0
         };
 
-        // 簡易驗證
-        if (!payload.employee_id || !payload.name) {
-            Swal.fire('欄位未填', '員工編號與姓名為必填欄位', 'warning');
+        if(!payload.employee_id || !payload.name) {
+            Swal.fire('欄位未填', '員工編號與姓名為必填', 'warning');
             return;
         }
 
-        if (payload.role === 'teacher' && !payload.teacher_code) {
-             Swal.fire('教師資料不全', '請切換至「教師設定」分頁填寫教師代碼', 'warning');
-             return;
-        }
-
         let error;
-        if (editId) {
-            const { error: updErr } = await window.db.from('employees').update(payload).eq('id', editId);
-            error = updErr;
+        if(editId) {
+            const { error: err } = await window.db.from('employees').update(payload).eq('id', editId);
+            error = err;
         } else {
-            const { error: insErr } = await window.db.from('employees').insert([payload]);
-            error = insErr;
+            const { error: err } = await window.db.from('employees').insert([payload]);
+            error = err;
         }
 
-        if (error) {
-            Swal.fire('儲存失敗', error.message, 'error');
-        } else {
-            Swal.fire({
-                title: '儲存成功',
-                icon: 'success',
-                showConfirmButton: false,
-                timer: 1500
-            }).then(() => {
-                window.location.href = 'list_employee.html';
-            });
+        if(error) Swal.fire('儲存失敗', error.message, 'error');
+        else {
+            Swal.fire({ title:'成功', icon:'success', timer:1500, showConfirmButton:false })
+                .then(() => window.location.href='list_employee.html');
         }
     }
 </script>
