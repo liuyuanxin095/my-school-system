@@ -10,10 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
-        .avatar-small {
-            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
-            border: 1px solid #dee2e6; background-color: #fff;
-        }
+        .avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #dee2e6; background-color: #fff; }
+        .teacher-code-badge { font-size: 0.75rem; background-color: #fff3cd; color: #856404; padding: 1px 5px; border-radius: 4px; border: 1px solid #ffeeba; margin-left: 5px; }
+        /* 匯入預覽表格 */
+        .preview-table td { padding: 5px; }
+        .preview-table input { width: 100%; border: 1px solid #dee2e6; padding: 3px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -22,6 +23,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark"><i class="bi bi-person-badge-fill"></i> 人事資料管理</h3>
         <div>
+            <button class="btn btn-success me-2" onclick="openImportModal()">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Excel 匯入
+            </button>
             <a href="department_settings.html" class="btn btn-outline-dark me-1"><i class="bi bi-diagram-3"></i> 部門設定</a>
             <a href="title_settings.html" class="btn btn-outline-dark me-1"><i class="bi bi-tags"></i> 職稱設定</a>
             <a href="edit_employee.html" class="btn btn-primary"><i class="bi bi-person-plus-fill"></i> 新增人員</a>
@@ -64,22 +68,61 @@
     </div>
 </div>
 
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet"></i> Excel 快速匯入</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，直接貼到底下的文字框中。欄位順序：<br>
+                    <strong>人事編號 | 姓名 | 職稱 | 部門 | Email | 電話</strong>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <textarea id="pasteArea" class="form-control" rows="5" placeholder="請在此貼上 Excel 資料..." oninput="parsePasteData()"></textarea>
+                    </div>
+                    <div class="col-md-12">
+                        <h6 class="fw-bold">預覽與編輯 (系統自動解析)</h6>
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-bordered preview-table mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>人事編號</th><th>姓名</th><th>職稱</th><th>部門</th><th>Email</th><th>電話</th><th>狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewBody">
+                                    <tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="importCount" class="me-auto text-muted">共 0 筆</span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="executeImport()">確認匯入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../js/config.js"></script>
 
 <script>
+    let importModal;
+
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. 自我檢查：確認 config.js 是否載入成功
+        importModal = new bootstrap.Modal(document.getElementById('importModal'));
+        
+        // 檢查設定檔
         if (typeof window.db === 'undefined') {
-            Swal.fire({
-                icon: 'error',
-                title: '系統設定檔載入失敗',
-                html: '找不到 <code>config.js</code>。<br>請確認檔案路徑是否正確：<br>目前頁面在 hr/ 資料夾，應讀取 ../js/config.js'
-            });
-            document.querySelector('#empTable td').textContent = "設定檔載入失敗";
+            Swal.fire({ icon: 'error', title: '設定檔載入失敗', text: '找不到 ../js/config.js' });
             return;
         }
-        
-        // 2. 開始載入資料
         loadEmployees();
     });
 
@@ -88,30 +131,21 @@
         const status = document.getElementById('statusFilter').value;
 
         try {
-            // 建構查詢
             let query = window.db.from('employees').select('*').order('employee_id');
-            
             if (status) query = query.eq('status', status);
 
             const { data, error } = await query;
-            
-            if (error) {
-                // 如果是 404，通常是表名稱不對
-                throw new Error(`資料庫錯誤: ${error.message} (代碼: ${error.code})`);
-            }
+            if (error) throw error;
 
             const filtered = (data || []).filter(emp => {
-                const name = emp.name || '';
-                const eid = emp.employee_id || '';
-                return (name + eid).toLowerCase().includes(keyword);
+                const searchStr = (emp.name||'') + (emp.employee_id||'');
+                return searchStr.toLowerCase().includes(keyword);
             });
 
             renderTable(filtered);
-
         } catch (err) {
             console.error(err);
-            Swal.fire('讀取失敗', err.message, 'error');
-            document.querySelector('#empTable td').innerHTML = `<span class="text-danger">讀取失敗：${err.message}</span>`;
+            document.querySelector('#empTable td').innerHTML = `<span class="text-danger">讀取失敗: ${err.message}</span>`;
         }
     }
 
@@ -121,7 +155,7 @@
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料 (請點擊右上角新增人員)</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料</td></tr>';
             return;
         }
 
@@ -130,14 +164,16 @@
             if(e.role === 'admin') roleBadge = 'bg-danger';
             if(e.role === 'teacher') roleBadge = 'bg-success';
 
-            // 照片處理
+            let nameDisplay = e.name;
+            if (e.role === 'teacher' && e.teacher_code) nameDisplay += `<span class="teacher-code-badge">${e.teacher_code}</span>`;
+
             let avatarSrc = e.photo_url || `https://ui-avatars.com/api/?name=${e.name}&background=random`;
 
             tbody.innerHTML += `
                 <tr>
                     <td class="ps-4 font-monospace fw-bold">${e.employee_id || '(未設定)'}</td>
                     <td class="text-center"><img src="${avatarSrc}" class="avatar-small"></td>
-                    <td class="fs-5 fw-bold">${e.name}</td>
+                    <td class="fs-5 fw-bold">${nameDisplay}</td>
                     <td>
                         <div>${e.title || '-'}</div>
                         <small class="text-muted">${e.department || '-'}</small>
@@ -152,6 +188,80 @@
                 </tr>
             `;
         });
+    }
+
+    // --- 匯入功能 ---
+    function openImportModal() {
+        document.getElementById('pasteArea').value = '';
+        document.getElementById('previewBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>';
+        document.getElementById('importCount').textContent = '共 0 筆';
+        importModal.show();
+    }
+
+    function parsePasteData() {
+        const text = document.getElementById('pasteArea').value;
+        const rows = text.trim().split('\n');
+        const tbody = document.getElementById('previewBody');
+        tbody.innerHTML = '';
+        
+        let count = 0;
+        rows.forEach((row, index) => {
+            const cols = row.split('\t'); // Excel 複製通常是 Tab 分隔
+            if(cols.length < 2) return; // 忽略無效行
+
+            count++;
+            // 欄位順序假設：編號 | 姓名 | 職稱 | 部門 | Email | 電話
+            const id = cols[0] || '';
+            const name = cols[1] || '';
+            const title = cols[2] || '';
+            const dept = cols[3] || '';
+            const email = cols[4] || '';
+            const phone = cols[5] || '';
+
+            tbody.innerHTML += `
+                <tr class="import-row">
+                    <td><input type="text" value="${id}" name="eid"></td>
+                    <td><input type="text" value="${name}" name="nm"></td>
+                    <td><input type="text" value="${title}" name="ti"></td>
+                    <td><input type="text" value="${dept}" name="dp"></td>
+                    <td><input type="text" value="${email}" name="em"></td>
+                    <td><input type="text" value="${phone}" name="ph"></td>
+                    <td class="text-center"><span class="badge bg-info">待匯入</span></td>
+                </tr>
+            `;
+        });
+        document.getElementById('importCount').textContent = `共 ${count} 筆`;
+    }
+
+    async function executeImport() {
+        const rows = document.querySelectorAll('.import-row');
+        if(rows.length === 0) { Swal.fire('無資料', '請先貼上 Excel 資料', 'warning'); return; }
+
+        const payload = [];
+        rows.forEach(tr => {
+            const inputs = tr.querySelectorAll('input');
+            payload.push({
+                employee_id: inputs[0].value.trim(),
+                name: inputs[1].value.trim(),
+                title: inputs[2].value.trim(),
+                department: inputs[3].value.trim(),
+                email: inputs[4].value.trim(),
+                phone: inputs[5].value.trim(),
+                status: 'active',
+                role: 'staff' // 預設權限，後續可編輯修改
+            });
+        });
+
+        // 批次寫入
+        const { error } = await window.db.from('employees').insert(payload);
+        
+        if(error) {
+            Swal.fire('匯入失敗', error.message, 'error');
+        } else {
+            importModal.hide();
+            Swal.fire('成功', `已匯入 ${payload.length} 筆資料`, 'success');
+            loadEmployees();
+        }
     }
 </script>
 </body>
