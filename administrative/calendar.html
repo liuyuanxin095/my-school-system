@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學校行政行事曆</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f0f2f5; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .calendar-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        /* 週次背景樣式 (Layer 1) */
+        .fc-bg-event { opacity: 0.2; pointer-events: none; } 
+        .week-elem { background-color: #198754 !important; } /* 國小週次綠色底 */
+        .week-high { background-color: #0d6efd !important; } /* 國中週次藍色底 */
+
+        /* 行政事件樣式 (Layer 2) */
+        .event-admin { background-color: #dc3545; border-color: #dc3545; } /* 行政-紅 */
+        .event-academic { background-color: #fd7e14; border-color: #fd7e14; } /* 教務-橘 */
+        .event-dept { background-color: #6610f2; border-color: #6610f2; } /* 科部-紫 */
+        
+        .fc-toolbar-title { font-weight: bold; color: #343a40; }
+        .filter-badge { cursor: pointer; user-select: none; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-calendar-check-fill text-danger"></i> 學校行政行事曆</h3>
+            <small class="text-muted">整合學期週次與行政活動</small>
+        </div>
+        <div>
+            <a href="../index.html" class="btn btn-outline-secondary me-2">回首頁</a>
+            <button class="btn btn-danger" onclick="openEventModal()"><i class="bi bi-plus-lg"></i> 新增活動</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-2 mb-3">
+            <div class="calendar-card h-100">
+                <h6 class="fw-bold text-muted mb-3">顯示設定</h6>
+                
+                <div class="mb-4">
+                    <label class="small fw-bold">學期基準</label>
+                    <select id="semesterSelect" class="form-select form-select-sm" onchange="refreshCalendar()">
+                        <option value="">載入中...</option>
+                    </select>
+                </div>
+
+                <h6 class="fw-bold text-muted mb-2">事件分類</h6>
+                <div class="d-grid gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="admin" checked onchange="refreshCalendar()">
+                        <label class="form-check-label"><span class="badge bg-danger">行政活動</span></label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="academic" checked onchange="refreshCalendar()">
+                        <label class="form-check-label"><span class="badge bg-warning text-dark">教務活動</span></label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="dept" checked onchange="refreshCalendar()">
+                        <label class="form-check-label"><span class="badge bg-purple" style="background:#6610f2">科部事項</span></label>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle"></i> <strong>底色說明：</strong><br>
+                    淡綠色區塊：國小部週次<br>
+                    淡藍色區塊：國高中週次
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-10">
+            <div class="calendar-card">
+                <div id="calendar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">行事曆活動維護</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="evtId">
+                <div class="mb-3">
+                    <label>活動標題 <span class="text-danger">*</span></label>
+                    <input type="text" id="m_title" class="form-control" placeholder="例: 作業抽查、校務會議">
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label>開始時間</label>
+                        <input type="datetime-local" id="m_start" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label>結束時間 (選填)</label>
+                        <input type="datetime-local" id="m_end" class="form-control">
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label>分類</label>
+                        <select id="m_cat" class="form-select">
+                            <option value="admin">行政活動</option>
+                            <option value="academic">教務活動</option>
+                            <option value="dept">科部事項 (作業抽查)</option>
+                            <option value="student">學務活動</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label>適用科部</label>
+                        <select id="m_dept" class="form-select">
+                            <option value="all">全校</option>
+                            <option value="elem">國小部</option>
+                            <option value="high">國高中部</option>
+                            <option value="kind">幼兒園</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>詳細內容</label>
+                    <textarea id="m_desc" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="btnDelete" onclick="deleteEvent()" style="display:none;">刪除</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="saveEvent()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+
+<script>
+    let calendar;
+    let eventModal;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+        await loadSemesters(); 
+        initCalendar();
+        refreshCalendar();
+    });
+
+    // 1. 載入學期 (為了顯示週次底圖)
+    async function loadSemesters() {
+        const { data } = await window.db.from('semesters').select('*').order('semester_code', { ascending: false });
+        const sel = document.getElementById('semesterSelect');
+        sel.innerHTML = '';
+        if(data && data.length > 0) {
+            data.forEach(s => {
+                const selected = s.status === 'current' ? 'selected' : '';
+                sel.innerHTML += `<option value="${s.id}" ${selected}>${s.name}</option>`;
+            });
+        }
+    }
+
+    // 2. 初始化日曆
+    function initCalendar() {
+        const calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'zh-tw',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listMonth'
+            },
+            navLinks: true,
+            editable: true, // 允許拖拉修改日期
+            selectable: true, // 允許點擊空白處新增
+            dayMaxEvents: true,
+            
+            // 點擊事件：編輯
+            eventClick: function(info) {
+                // 如果是週次背景事件(background)，不觸發編輯
+                if (info.event.display === 'background') return;
+                
+                openEventModal(info.event);
+            },
+
+            // 點擊日期：新增
+            select: function(info) {
+                openEventModal(null, info.startStr);
+            },
+
+            // 拖拉事件：更新日期
+            eventDrop: async function(info) {
+                if (!confirm('確定移動此活動日期？')) {
+                    info.revert();
+                    return;
+                }
+                const { error } = await window.db.from('school_events').update({
+                    start_time: info.event.start.toISOString(),
+                    end_time: info.event.end ? info.event.end.toISOString() : null
+                }).eq('id', info.event.id);
+                
+                if(error) {
+                    info.revert();
+                    Swal.fire('更新失敗', error.message, 'error');
+                }
+            }
+        });
+        calendar.render();
+    }
+
+    // 3. 讀取並渲染資料 (整合週次 + 行政事件)
+    async function refreshCalendar() {
+        calendar.removeAllEvents();
+        
+        // A. 讀取「行政事件」 (Layer 2)
+        const categories = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        if (categories.length > 0) {
+            const { data: events } = await window.db.from('school_events')
+                .select('*')
+                .in('category', categories); // 根據勾選篩選
+            
+            if (events) {
+                const calEvents = events.map(e => {
+                    let color = '#3788d8';
+                    if(e.category === 'admin') color = '#dc3545';
+                    if(e.category === 'academic') color = '#fd7e14';
+                    if(e.category === 'dept') color = '#6610f2';
+
+                    return {
+                        id: e.id,
+                        title: e.title,
+                        start: e.start_time,
+                        end: e.end_time,
+                        backgroundColor: color,
+                        borderColor: color,
+                        extendedProps: { ...e }
+                    };
+                });
+                calendar.addEventSource(calEvents);
+            }
+        }
+
+        // B. 讀取「學期週次」 (Layer 1 - 背景)
+        const semId = document.getElementById('semesterSelect').value;
+        if(semId) {
+            const { data: weeks } = await window.db.from('semester_weeks').select('*').eq('semester_id', semId);
+            if(weeks) {
+                const weekEvents = weeks.map(w => {
+                    const isElem = w.department_type === 'elem';
+                    // 只有當備註有寫東西時，才顯示 Title，不然只顯示背景色
+                    return {
+                        title: w.note ? `(週次) ${w.note}` : '', 
+                        start: w.start_date,
+                        end: w.end_date, // FullCalendar end 是 exclusive，實務上可能需要 +1 天，這裡暫時簡化
+                        display: 'background', // 設定為背景事件
+                        classNames: [isElem ? 'week-elem' : 'week-high']
+                    };
+                });
+                calendar.addEventSource(weekEvents);
+            }
+        }
+    }
+
+    // --- Modal 操作 ---
+    window.openEventModal = (eventObj = null, dateStr = null) => {
+        document.getElementById('btnDelete').style.display = eventObj ? 'block' : 'none';
+        
+        if (eventObj) {
+            // 編輯模式
+            const props = eventObj.extendedProps;
+            document.getElementById('evtId').value = eventObj.id;
+            document.getElementById('m_title').value = eventObj.title;
+            // 處理時間格式供 input[type=datetime-local] 使用
+            const toLocal = (d) => d ? new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+            
+            document.getElementById('m_start').value = toLocal(eventObj.start);
+            document.getElementById('m_end').value = toLocal(eventObj.end);
+            document.getElementById('m_cat').value = props.category || 'admin';
+            document.getElementById('m_dept').value = props.target_department || 'all';
+            document.getElementById('m_desc').value = props.description || '';
+        } else {
+            // 新增模式
+            document.getElementById('evtId').value = '';
+            document.getElementById('m_title').value = '';
+            // 如果有點擊日期，預設該日期 09:00
+            if(dateStr) {
+                document.getElementById('m_start').value = dateStr + 'T09:00';
+            } else {
+                document.getElementById('m_start').value = '';
+            }
+            document.getElementById('m_end').value = '';
+            document.getElementById('m_cat').value = 'admin';
+            document.getElementById('m_desc').value = '';
+        }
+        eventModal.show();
+    }
+
+    window.saveEvent = async () => {
+        const id = document.getElementById('evtId').value;
+        const payload = {
+            title: document.getElementById('m_title').value,
+            start_time: document.getElementById('m_start').value,
+            end_time: document.getElementById('m_end').value || null, // 空值轉 null
+            category: document.getElementById('m_cat').value,
+            target_department: document.getElementById('m_dept').value,
+            description: document.getElementById('m_desc').value,
+            // 這裡可以加入 created_by: currentUser.username
+        };
+
+        if(!payload.title || !payload.start_time) {
+            Swal.fire('欄位未填', '標題與開始時間為必填', 'warning');
+            return;
+        }
+
+        let error;
+        if(id) {
+            const res = await window.db.from('school_events').update(payload).eq('id', id);
+            error = res.error;
+        } else {
+            const res = await window.db.from('school_events').insert([payload]);
+            error = res.error;
+        }
+
+        if(error) {
+            Swal.fire('儲存失敗', error.message, 'error');
+        } else {
+            eventModal.hide();
+            refreshCalendar();
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', 
+                title: '儲存成功', showConfirmButton: false, timer: 1500
+            });
+        }
+    }
+
+    window.deleteEvent = async () => {
+        const id = document.getElementById('evtId').value;
+        if(!id) return;
+
+        if((await Swal.fire({title:'確定刪除此活動？',icon:'warning',showCancelButton:true})).isConfirmed) {
+            await window.db.from('school_events').delete().eq('id', id);
+            eventModal.hide();
+            refreshCalendar();
+        }
+    }
+</script>
+</body>
+</html>
