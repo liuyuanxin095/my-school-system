@@ -10,19 +10,20 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
-        /* 您的需求：必填欄位黃色底色 */
         .required-field { background-color: #fff9db !important; border-color: #ffeeba; }
         .photo-box {
-            width: 150px; height: 200px; background-color: #e9ecef; border: 2px dashed #ced4da;
+            width: 150px; height: 150px; /* 改為正方形或圓形適合大頭照 */
+            background-color: #e9ecef; border: 2px dashed #ced4da;
+            border-radius: 50%; /* 圓形 */
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             margin: 0 auto 15px auto; cursor: pointer; position: relative;
         }
         .photo-box img { width: 100%; height: 100%; object-fit: cover; }
         .photo-overlay {
             position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5);
-            color: white; font-size: 0.8rem; text-align: center; padding: 5px; display: none;
+            color: white; font-size: 0.8rem; text-align: center; padding: 15px 5px 5px 5px; display: none; height: 50%; align-items: flex-end; justify-content: center;
         }
-        .photo-box:hover .photo-overlay { display: block; }
+        .photo-box:hover .photo-overlay { display: flex; }
         .nav-tabs .nav-link { color: #495057; }
         .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; color: #0d6efd; }
     </style>
@@ -45,15 +46,15 @@
             <div class="card shadow-sm border-0 mb-3">
                 <div class="card-body text-center">
                     <div class="photo-box" onclick="document.getElementById('photoInput').click()">
-                        <img id="photoPreview" src="https://via.placeholder.com/150x200?text=No+Photo">
-                        <div class="photo-overlay">點擊更換照片</div>
+                        <img id="photoPreview" src="https://via.placeholder.com/150?text=Photo">
+                        <div class="photo-overlay">更換照片</div>
                     </div>
                     <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="uploadPhoto()">
                     <input type="hidden" id="photoUrl">
 
                     <h5 class="fw-bold mt-2" id="display-name">---</h5>
-                    <p class="text-muted mb-1" id="display-id">學號：---</p>
-                    <span class="badge bg-success" id="display-status">New</span>
+                    <p class="text-muted mb-1" id="display-id">學號：(系統產生)</p>
+                    <span class="badge bg-secondary" id="display-status">New</span>
                 </div>
             </div>
         </div>
@@ -63,96 +64,147 @@
                 <div class="card-header bg-white">
                     <ul class="nav nav-tabs card-header-tabs" id="studentTabs">
                         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-basic">個人基本資訊</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-academic">學籍管理資訊</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-family">親屬與聯絡</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-special">特殊欄位/其他</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-academic">學籍資訊</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-family">親屬資訊</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-card">學生卡片</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-special">特殊欄位</button></li>
                     </ul>
                 </div>
                 <div class="card-body">
                     <div class="tab-content">
                         
                         <div class="tab-pane fade show active" id="tab-basic">
+                            <div class="alert alert-light border small text-muted mb-3">
+                                <i class="bi bi-info-circle"></i> 黃色欄位為必填。學號若未填寫，儲存時將由系統自動產生。
+                            </div>
                             <div class="row g-3">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
+                                    <label class="form-label">學號 (系統產生)</label>
+                                    <input type="text" id="student_id" class="form-control" placeholder="留空則自動產生">
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">中文姓名 <span class="text-danger">*</span></label>
                                     <input type="text" id="name_zh" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">英文姓名 (與護照一致) <span class="text-danger">*</span></label>
-                                    <input type="text" id="name_en" class="form-control required-field">
+                                <div class="col-md-4">
+                                    <label class="form-label">英文姓名</label>
+                                    <input type="text" id="name_en" class="form-control" placeholder="選填">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">身分證字號 (核心唯一) <span class="text-danger">*</span></label>
-                                    <input type="text" id="id_number" class="form-control required-field">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">性別</label>
-                                    <select id="gender" class="form-select">
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">性別 <span class="text-danger">*</span></label>
+                                    <select id="gender" class="form-select required-field">
                                         <option value="男">男</option>
                                         <option value="女">女</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">生日</label>
-                                    <input type="date" id="birthday" class="form-control">
+                                <div class="col-md-4">
+                                    <label class="form-label">身分證字號 <span class="text-danger">*</span></label>
+                                    <input type="text" id="id_number" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">護照號碼</label>
-                                    <input type="text" id="passport_no" class="form-control">
+                                <div class="col-md-4">
+                                    <label class="form-label">生日 <span class="text-danger">*</span></label>
+                                    <input type="date" id="birthday" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">出生地</label>
-                                    <input type="text" id="birth_place" class="form-control">
+
+                                <div class="col-12"><hr class="my-2"></div>
+
+                                <div class="col-md-8">
+                                    <label class="form-label">戶籍地址 <span class="text-danger">*</span></label>
+                                    <input type="text" id="address_registered" class="form-control required-field">
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label">戶籍地址</label>
-                                    <input type="text" id="address_registered" class="form-control">
+                                <div class="col-md-4">
+                                    <label class="form-label">戶籍電話</label>
+                                    <input type="text" id="phone_home_reg" class="form-control">
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label">通訊地址</label>
-                                    <input type="text" id="address_mailing" class="form-control">
+
+                                <div class="col-12 d-flex align-items-center gap-2">
+                                    <label class="form-label mb-0 fw-bold">通訊資料</label>
+                                    <div class="form-check ms-2">
+                                        <input class="form-check-input" type="checkbox" id="sameAddress" onchange="copyAddress()">
+                                        <label class="form-check-label small" for="sameAddress">同戶籍資料</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">通訊地址 <span class="text-danger">*</span></label>
+                                    <input type="text" id="address_mailing" class="form-control required-field">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">通訊電話</label>
+                                    <input type="text" id="phone_contact" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">個人手機</label>
+                                    <input type="text" id="phone_mobile" class="form-control">
                                 </div>
                             </div>
                         </div>
 
                         <div class="tab-pane fade" id="tab-academic">
                             <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">學號 <span class="text-danger">*</span></label>
-                                    <input type="text" id="student_id" class="form-control required-field">
+                                <div class="col-md-4">
+                                    <label class="form-label">入學年度 (民國/西元)</label>
+                                    <input type="text" id="enrollment_year" class="form-control required-field" placeholder="例: 114">
+                                    <div class="form-text" id="yearHint"></div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">入學年度</label>
-                                    <input type="number" id="enrollment_year" class="form-control" value="114">
+                                <div class="col-md-4">
+                                    <label class="form-label">屆次 (西元)</label>
+                                    <input type="number" id="cohort" class="form-control" placeholder="例: 2026">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">班級</label>
-                                    <select id="class_id" class="form-select required-field">
-                                        <option value="">(請選擇班級)</option>
-                                        </select>
-                                </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label class="form-label">學籍狀態</label>
-                                    <select id="status" class="form-select required-field">
+                                    <select id="status" class="form-select">
                                         <option value="active">在學 (Active)</option>
                                         <option value="suspended">休學 (Suspended)</option>
                                         <option value="dropped">退學 (Dropped)</option>
                                         <option value="graduated">畢業 (Graduated)</option>
                                     </select>
                                 </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">班級</label>
+                                    <select id="class_id" class="form-select">
+                                        <option value="">(尚未分班)</option>
+                                        </select>
+                                </div>
+
+                                <div class="col-12"><hr class="my-2"></div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label">就讀學校 (校名)</label>
+                                    <input type="text" id="school_name" class="form-control" placeholder="例: 中原國小">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">就讀學校地址</label>
+                                    <input type="text" id="school_address" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">就讀學校電話</label>
+                                    <input type="text" id="school_phone" class="form-control">
+                                </div>
                             </div>
                         </div>
 
                         <div class="tab-pane fade" id="tab-family">
-                            <h6 class="text-primary fw-bold">緊急聯絡人 (1) - 必填</h6>
+                            <h6 class="text-primary fw-bold">主要聯絡人 (1) - 必填</h6>
                             <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">關係</label>
+                                    <select id="parent_rel_1" class="form-select required-field">
+                                        <option value="">請選擇</option>
+                                        <option value="父">父</option>
+                                        <option value="母">母</option>
+                                        <option value="祖父">祖父</option>
+                                        <option value="祖母">祖母</option>
+                                        <option value="外祖父">外祖父</option>
+                                        <option value="外祖母">外祖母</option>
+                                        <option value="監護人">監護人</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
                                 <div class="col-md-4">
                                     <label class="form-label">姓名</label>
                                     <input type="text" id="parent_name_1" class="form-control required-field">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">關係</label>
-                                    <input type="text" id="parent_rel_1" class="form-control" placeholder="父/母">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">電話</label>
@@ -160,19 +212,42 @@
                                 </div>
                             </div>
                             <hr>
-                            <h6 class="text-secondary fw-bold">緊急聯絡人 (2) - 選填</h6>
+                            <h6 class="text-secondary fw-bold">次要聯絡人 (2) - 選填</h6>
                             <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">關係</label>
+                                    <select id="parent_rel_2" class="form-select">
+                                        <option value="">請選擇</option>
+                                        <option value="父">父</option>
+                                        <option value="母">母</option>
+                                        <option value="祖父">祖父</option>
+                                        <option value="祖母">祖母</option>
+                                        <option value="外祖父">外祖父</option>
+                                        <option value="外祖母">外祖母</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
                                 <div class="col-md-4">
                                     <label class="form-label">姓名</label>
                                     <input type="text" id="parent_name_2" class="form-control">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">關係</label>
-                                    <input type="text" id="parent_rel_2" class="form-control">
-                                </div>
-                                <div class="col-md-4">
                                     <label class="form-label">電話</label>
                                     <input type="text" id="parent_phone_2" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-card">
+                            <div class="row g-3">
+                                <div class="col-md-12 text-center py-4">
+                                    <i class="bi bi-credit-card-2-front text-primary" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">學生證 / 考勤卡設定</h5>
+                                    <p class="text-muted">請在此輸入卡片內碼，或連結讀卡機後點擊輸入框刷卡。</p>
+                                </div>
+                                <div class="col-md-6 offset-md-3">
+                                    <label class="form-label fw-bold">卡片號碼 (RFID/NFC)</label>
+                                    <input type="text" id="card_number" class="form-control form-control-lg text-center font-monospace" placeholder="請刷卡或輸入卡號">
                                 </div>
                             </div>
                         </div>
@@ -190,16 +265,9 @@
                                         <label class="form-check-label" for="is_disability">具有身心障礙身分</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">學生證設定</label>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="card_registered" checked>
-                                        <label class="form-check-label" for="card_registered">學生證是否記名</label>
-                                    </div>
-                                </div>
                                 <div class="col-12">
                                     <label class="form-label">其他備註</label>
-                                    <textarea class="form-control" rows="3"></textarea>
+                                    <textarea class="form-control" rows="3" id="special_note"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -216,16 +284,39 @@
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const studentId = urlParams.get('id');
+    const idParam = urlParams.get('id');
 
     document.addEventListener('DOMContentLoaded', async () => {
-        await loadClasses(); // 先載入班級選單
-        if (studentId) {
-            loadStudentData(studentId);
+        await loadClasses(); 
+        if (idParam) {
+            loadStudentData(idParam);
+        } else {
+            // 新增模式預設值
+            document.getElementById('enrollment_year').value = (new Date().getFullYear() - 1911);
         }
+        
+        // 監聽入學年度輸入，提示西元
+        document.getElementById('enrollment_year').addEventListener('input', function() {
+            const val = parseInt(this.value);
+            if(val && val < 1000) { // 假設輸入民國
+                document.getElementById('yearHint').textContent = `西元 ${val + 1911} 年`;
+            } else {
+                document.getElementById('yearHint').textContent = '';
+            }
+        });
     });
 
-    // 載入班級清單
+    // 同戶籍地址功能
+    window.copyAddress = () => {
+        if(document.getElementById('sameAddress').checked) {
+            document.getElementById('address_mailing').value = document.getElementById('address_registered').value;
+            document.getElementById('phone_contact').value = document.getElementById('phone_home_reg').value;
+        } else {
+            document.getElementById('address_mailing').value = '';
+            document.getElementById('phone_contact').value = '';
+        }
+    }
+
     async function loadClasses() {
         const { data } = await window.db.from('classes').select('id, class_name').order('class_name');
         const sel = document.getElementById('class_id');
@@ -236,115 +327,117 @@
         }
     }
 
-    // 載入學生資料 (編輯模式)
     async function loadStudentData(id) {
         const { data, error } = await window.db.from('students').select('*').eq('id', id).single();
-        if (error || !data) {
-            Swal.fire('錯誤', '無法讀取資料', 'error');
-            return;
-        }
+        if (error || !data) { Swal.fire('錯誤', '無法讀取資料', 'error'); return; }
 
-        // 填入左側摘要
+        // 左側摘要
         document.getElementById('display-name').textContent = data.name_zh;
         document.getElementById('display-id').textContent = `學號：${data.student_id}`;
         document.getElementById('display-status').textContent = data.status === 'active' ? '在學' : '非在學';
-        document.getElementById('display-status').className = data.status === 'active' ? 'badge bg-success' : 'badge bg-secondary';
         
         if (data.photo_url) {
             document.getElementById('photoPreview').src = data.photo_url;
             document.getElementById('photoUrl').value = data.photo_url;
         }
 
-        // 填入表單欄位
-        const fields = [
-            'name_zh', 'name_en', 'id_number', 'gender', 'birthday', 'passport_no', 'birth_place',
-            'address_registered', 'address_mailing',
-            'student_id', 'enrollment_year', 'class_id', 'status',
-            'parent_name_1', 'parent_phone_1', 'parent_rel_1',
-            'parent_name_2', 'parent_phone_2', 'parent_rel_2'
+        // 填寫欄位
+        const textFields = [
+            'name_zh', 'name_en', 'gender', 'id_number', 'birthday', 
+            'address_registered', 'phone_home_reg', 'address_mailing', 'phone_contact', 'phone_mobile',
+            'student_id', 'enrollment_year', 'cohort', 'status', 'class_id', 
+            'school_name', 'school_address', 'school_phone',
+            'parent_rel_1', 'parent_name_1', 'parent_phone_1',
+            'parent_rel_2', 'parent_name_2', 'parent_phone_2',
+            'card_number'
         ];
         
-        fields.forEach(f => {
+        textFields.forEach(f => {
             if(document.getElementById(f)) document.getElementById(f).value = data[f] || '';
         });
 
-        // Checkbox
         document.getElementById('is_indigenous').checked = data.is_indigenous;
         document.getElementById('is_disability').checked = data.is_disability;
-        document.getElementById('card_registered').checked = data.card_registered;
     }
 
-    // 上傳照片
     async function uploadPhoto() {
         const fileInput = document.getElementById('photoInput');
         const file = fileInput.files[0];
         if (!file) return;
 
-        // 顯示預覽 (立刻)
         const reader = new FileReader();
         reader.onload = (e) => document.getElementById('photoPreview').src = e.target.result;
         reader.readAsDataURL(file);
 
-        // 上傳至 Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        // 用時間戳記 + 隨機數當檔名，避免重複
-        const fileName = `stu_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        Swal.fire({ title: '上傳中...', didOpen: () => Swal.showLoading() });
-
-        const { data, error } = await window.db.storage.from('avatars').upload(filePath, file);
+        const fileName = `stu_${Date.now()}.${file.name.split('.').pop()}`;
+        
+        // 為了避免重複上傳卡住 UI，這裡不顯示 Loading，背景上傳
+        const { data, error } = await window.db.storage.from('avatars').upload(fileName, file);
 
         if (error) {
             Swal.fire('上傳失敗', error.message, 'error');
         } else {
-            // 取得公開連結
-            const { data: { publicUrl } } = window.db.storage.from('avatars').getPublicUrl(filePath);
+            const { data: { publicUrl } } = window.db.storage.from('avatars').getPublicUrl(fileName);
             document.getElementById('photoUrl').value = publicUrl;
-            Swal.close();
         }
     }
 
-    // 儲存資料
     async function saveData() {
+        // 產生學號邏輯 (如果新增時未填)
+        let stuId = document.getElementById('student_id').value.trim();
+        if (!stuId) {
+            // 規則：S + 西元年 + 隨機4碼 (範例：S20261234)
+            // 這裡簡單實作，正式建議後端生成或更嚴謹的編碼
+            const year = new Date().getFullYear();
+            const random = Math.floor(Math.random() * 9000) + 1000;
+            stuId = `S${year}${random}`;
+        }
+
         const payload = {
             name_zh: document.getElementById('name_zh').value,
             name_en: document.getElementById('name_en').value,
-            id_number: document.getElementById('id_number').value,
             gender: document.getElementById('gender').value,
+            id_number: document.getElementById('id_number').value,
             birthday: document.getElementById('birthday').value || null,
-            passport_no: document.getElementById('passport_no').value,
-            birth_place: document.getElementById('birth_place').value,
+            
             address_registered: document.getElementById('address_registered').value,
+            phone_home_reg: document.getElementById('phone_home_reg').value,
             address_mailing: document.getElementById('address_mailing').value,
+            phone_contact: document.getElementById('phone_contact').value,
+            phone_mobile: document.getElementById('phone_mobile').value,
             photo_url: document.getElementById('photoUrl').value,
 
-            student_id: document.getElementById('student_id').value,
+            student_id: stuId,
             enrollment_year: document.getElementById('enrollment_year').value || null,
-            class_id: document.getElementById('class_id').value || null,
+            cohort: document.getElementById('cohort').value || null,
             status: document.getElementById('status').value,
+            class_id: document.getElementById('class_id').value || null,
+            
+            school_name: document.getElementById('school_name').value,
+            school_address: document.getElementById('school_address').value,
+            school_phone: document.getElementById('school_phone').value,
 
+            parent_rel_1: document.getElementById('parent_rel_1').value,
             parent_name_1: document.getElementById('parent_name_1').value,
             parent_phone_1: document.getElementById('parent_phone_1').value,
-            parent_rel_1: document.getElementById('parent_rel_1').value,
+            parent_rel_2: document.getElementById('parent_rel_2').value,
             parent_name_2: document.getElementById('parent_name_2').value,
             parent_phone_2: document.getElementById('parent_phone_2').value,
-            parent_rel_2: document.getElementById('parent_rel_2').value,
 
+            card_number: document.getElementById('card_number').value,
             is_indigenous: document.getElementById('is_indigenous').checked,
-            is_disability: document.getElementById('is_disability').checked,
-            card_registered: document.getElementById('card_registered').checked
+            is_disability: document.getElementById('is_disability').checked
         };
 
-        // 簡易驗證必填
-        if (!payload.name_zh || !payload.id_number || !payload.student_id) {
-            Swal.fire('欄位未填', '黃色底色欄位為必填項目', 'warning');
+        // 必填檢查
+        if (!payload.name_zh || !payload.id_number || !payload.birthday || !payload.address_registered || !payload.parent_name_1) {
+            Swal.fire('資料不完整', '請檢查所有黃色底色的必填欄位', 'warning');
             return;
         }
 
         let error;
-        if (studentId) {
-            const { error: updErr } = await window.db.from('students').update(payload).eq('id', studentId);
+        if (idParam) {
+            const { error: updErr } = await window.db.from('students').update(payload).eq('id', idParam);
             error = updErr;
         } else {
             const { error: insErr } = await window.db.from('students').insert([payload]);
@@ -356,9 +449,10 @@
         } else {
             Swal.fire({
                 title: '儲存成功',
+                text: `學號：${stuId}`,
                 icon: 'success',
-                showConfirmButton: false,
-                timer: 1500
+                timer: 2000,
+                showConfirmButton: false
             }).then(() => {
                 window.location.href = 'student_list.html';
             });
