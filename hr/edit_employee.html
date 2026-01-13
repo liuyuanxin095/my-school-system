@@ -11,10 +11,29 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         .required-field { background-color: #fff9db !important; border-color: #ffeeba; }
-        .photo-box { width: 150px; height: 150px; background-color: #e9ecef; border: 2px dashed #ced4da; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto 15px auto; cursor: pointer; position: relative; }
-        .photo-box img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 0.8rem; text-align: center; padding: 15px 5px 5px 5px; display: none; height: 50%; align-items: flex-end; justify-content: center; }
-        .photo-box:hover .photo-overlay { display: flex; }
+        
+        /* 照片與存摺上傳框 */
+        .photo-box {
+            width: 150px; height: 150px; 
+            background-color: #e9ecef; border: 2px dashed #ced4da;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            margin: 0 auto 15px auto; cursor: pointer; position: relative;
+        }
+        .passbook-box {
+            width: 100%; height: 150px;
+            background-color: #fff; border: 2px dashed #ced4da;
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            cursor: pointer; position: relative;
+        }
+        .photo-box img, .passbook-box img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5);
+            color: white; font-size: 0.8rem; text-align: center; padding: 5px; display: none;
+        }
+        .photo-box:hover .photo-overlay, .passbook-box:hover .photo-overlay { display: block; }
+        
         .nav-tabs .nav-link { color: #495057; }
         .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; color: #0d6efd; }
     </style>
@@ -40,11 +59,11 @@
                         <img id="photoPreview" src="https://via.placeholder.com/150?text=Photo">
                         <div class="photo-overlay">更換照片</div>
                     </div>
-                    <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="uploadPhoto()">
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="uploadFile('photoInput', 'photoPreview', 'photoUrl', 'emp_avatar')">
                     <input type="hidden" id="photoUrl">
 
                     <h5 class="fw-bold mt-2" id="display-name">---</h5>
-                    <p class="text-muted mb-1" id="display-id">員工編號：---</p>
+                    <p class="text-muted mb-1" id="display-id">---</p>
                     <span class="badge bg-secondary" id="display-status">New</span>
                 </div>
             </div>
@@ -55,99 +74,282 @@
                 <div class="card-header bg-white">
                     <ul class="nav nav-tabs card-header-tabs" id="empTabs">
                         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-basic">基本資料</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ins">勞健保/人資</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ins">保險設定</button></li>
                         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salary">薪資設定</button></li>
                         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-teacher">教師設定</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-attend">考勤設定</button></li>
                     </ul>
                 </div>
                 <div class="card-body">
                     <div class="tab-content">
+                        
                         <div class="tab-pane fade show active" id="tab-basic">
                             <div class="row g-3">
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <label class="form-label">員工編號 <span class="text-danger">*</span></label>
                                     <input type="text" id="employee_id" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <label class="form-label">姓名 <span class="text-danger">*</span></label>
                                     <input type="text" id="name" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">身分證字號</label>
-                                    <input type="text" id="id_number" class="form-control">
+                                <div class="col-md-3">
+                                    <label class="form-label">英文姓名</label>
+                                    <input type="text" id="name_en" class="form-control">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">職稱</label>
-                                    <select id="title" class="form-select" onchange="autoSetRole()">
-                                        <option value="">讀取中...</option>
+                                <div class="col-md-3">
+                                    <label class="form-label">性別</label>
+                                    <select id="gender" class="form-select">
+                                        <option value="男">男</option>
+                                        <option value="女">女</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">部門</label>
-                                    <select id="department" class="form-select">
-                                        <option value="">讀取中...</option>
-                                    </select>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">身分證字號 <span class="text-danger">*</span></label>
+                                    <input type="text" id="id_number" class="form-control required-field">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">系統權限</label>
-                                    <select id="role" class="form-select bg-light">
-                                        <option value="staff">職員 (Staff)</option>
-                                        <option value="teacher">教師 (Teacher)</option>
-                                        <option value="admin">管理員 (Admin)</option>
-                                    </select>
+                                <div class="col-md-4">
+                                    <label class="form-label">生日</label>
+                                    <input type="date" id="birthday" class="form-control">
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label class="form-label">到職日</label>
                                     <input type="date" id="join_date" class="form-control">
                                 </div>
-                                <div class="col-md-6">
+
+                                <div class="col-md-4">
+                                    <label class="form-label">職稱</label>
+                                    <select id="title" class="form-select"><option value="">讀取中...</option></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">部門</label>
+                                    <select id="department" class="form-select"><option value="">讀取中...</option></select>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">狀態</label>
                                     <select id="status" class="form-select">
                                         <option value="active">在職</option>
                                         <option value="resigned">離職</option>
                                     </select>
                                 </div>
-                                <div class="col-12"><hr></div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" id="email" class="form-control">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">聯絡電話</label>
-                                    <input type="text" id="phone" class="form-control">
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">通訊地址</label>
+
+                                <div class="col-12"><hr class="my-1"></div>
+
+                                <div class="col-md-8">
+                                    <label class="form-label">戶籍地址</label>
                                     <input type="text" id="address" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">戶籍電話</label>
+                                    <input type="text" id="phone_home" class="form-control">
+                                </div>
+
+                                <div class="col-12 d-flex align-items-center">
+                                    <label class="form-label mb-0 me-2 fw-bold">通訊資料</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="same_addr" onchange="copyAddress()">
+                                        <label class="form-check-label small" for="same_addr">同戶籍資料</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">通訊地址</label>
+                                    <input type="text" id="address_mailing" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">通訊電話</label>
+                                    <input type="text" id="phone_contact" class="form-control">
+                                </div>
+
+                                <div class="col-12"><hr class="my-1"></div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">最高學歷</label>
+                                    <select id="education_level" class="form-select">
+                                        <option value="">請選擇</option>
+                                        <option value="博士">博士</option>
+                                        <option value="碩士">碩士</option>
+                                        <option value="大專">大專</option>
+                                        <option value="高中">高中</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">學位/科系</label>
+                                    <input type="text" id="degree" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">個人 Email</label>
+                                    <input type="email" id="email_personal" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">校內 Email</label>
+                                    <input type="email" id="email_school" class="form-control">
                                 </div>
                             </div>
                         </div>
 
                         <div class="tab-pane fade" id="tab-ins">
                             <div class="row g-3">
-                                <div class="col-md-6"><label class="form-label">勞保投保日</label><input type="date" id="labor_ins_date" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label">勞保投保薪資</label><input type="number" id="labor_ins_salary" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label">健保投保日</label><input type="date" id="health_ins_date" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label">健保投保薪資</label><input type="number" id="health_ins_salary" class="form-control"></div>
-                                <div class="col-12"><label class="form-label">備註</label><textarea id="note" class="form-control" rows="3"></textarea></div>
+                                <div class="col-12 bg-light p-2 rounded">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="has_labor_ins" onchange="toggleIns('labor')">
+                                        <label class="form-check-label fw-bold" for="has_labor_ins">參加勞工保險</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">勞保投保日期</label>
+                                    <input type="date" id="labor_ins_date" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">勞保投保薪資</label>
+                                    <input type="number" id="labor_ins_salary" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">勞保自付費用</label>
+                                    <input type="number" id="labor_ins_fee" class="form-control" disabled>
+                                </div>
+
+                                <div class="col-12 bg-light p-2 rounded mt-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="has_health_ins" onchange="toggleIns('health')">
+                                        <label class="form-check-label fw-bold" for="has_health_ins">參加全民健保</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">健保投保日期</label>
+                                    <input type="date" id="health_ins_date" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">健保投保薪資</label>
+                                    <input type="number" id="health_ins_salary" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">健保自付費用</label>
+                                    <input type="number" id="health_ins_fee" class="form-control" disabled>
+                                </div>
+
+                                <div class="col-12 bg-light p-2 rounded mt-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="has_group_ins" onchange="toggleIns('group')">
+                                        <label class="form-check-label fw-bold" for="has_group_ins">參加團體保險</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">團保投保日期</label>
+                                    <input type="date" id="group_ins_date" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">團保費用</label>
+                                    <input type="number" id="group_ins_fee" class="form-control" disabled>
+                                </div>
+
+                                <div class="col-12 mt-3">
+                                    <label class="form-label">保險備註</label>
+                                    <textarea id="note" class="form-control" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
 
                         <div class="tab-pane fade" id="tab-salary">
                             <div class="row g-3">
-                                <div class="col-md-6"><label class="form-label">本俸</label><input type="number" id="base_salary" class="form-control"></div>
-                                <div class="col-md-6"><label class="form-label">銀行代碼</label><input type="text" id="bank_code" class="form-control"></div>
-                                <div class="col-12"><label class="form-label">銀行帳號</label><input type="text" id="bank_account" class="form-control"></div>
+                                <div class="col-md-4">
+                                    <label class="form-label">本俸 (Base)</label>
+                                    <input type="number" id="base_salary" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">導師費</label>
+                                    <input type="number" id="homeroom_allowance" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">主管津貼</label>
+                                    <input type="number" id="supervisor_allowance" class="form-control">
+                                </div>
+
+                                <div class="col-12"><hr></div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">薪資領取方式</label>
+                                    <select id="payment_method" class="form-select">
+                                        <option value="匯款">銀行匯款</option>
+                                        <option value="現金">現金</option>
+                                        <option value="支票">支票</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">金融機構</label>
+                                    <input type="text" id="bank_name" class="form-control" placeholder="銀行名稱/代碼">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">銀行帳號</label>
+                                    <input type="text" id="bank_account" class="form-control">
+                                </div>
+
+                                <div class="col-12 mt-3">
+                                    <label class="form-label">存摺影本上傳</label>
+                                    <div class="passbook-box" onclick="document.getElementById('pbInput').click()">
+                                        <img id="pbPreview" src="https://via.placeholder.com/600x150?text=Upload+Passbook+Image">
+                                        <div class="photo-overlay">點擊上傳存摺圖片</div>
+                                    </div>
+                                    <input type="file" id="pbInput" accept="image/*" style="display: none;" onchange="uploadFile('pbInput', 'pbPreview', 'passbookUrl', 'emp_passbook')">
+                                    <input type="hidden" id="passbookUrl">
+                                </div>
                             </div>
                         </div>
 
                         <div class="tab-pane fade" id="tab-teacher">
                             <div class="row g-3">
-                                <div class="col-md-12"><label class="form-label text-primary fw-bold">教師代碼</label><input type="text" id="teacher_code" class="form-control border-primary"></div>
-                                <div class="col-md-6"><label class="form-label">基本鐘點</label><input type="number" id="basic_teaching_hours" class="form-control" value="0"></div>
-                                <div class="col-md-6"><label class="form-label">超鐘點費</label><input type="number" id="hourly_rate" class="form-control" value="0"></div>
+                                <div class="col-12 bg-light p-3 rounded mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="is_scheduling" onchange="toggleTeacher()">
+                                        <label class="form-check-label fw-bold" for="is_scheduling">此員工參與排課 (具備教師身分)</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">教師代碼 <span class="text-danger">*</span></label>
+                                    <input type="text" id="teacher_code" class="form-control" placeholder="例: E101" maxlength="4" disabled>
+                                    <div class="form-text">格式：一位英文 + 三位數字</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">科部</label>
+                                    <input type="text" id="section_dept" class="form-control" disabled>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">任教科目</label>
+                                    <select id="teaching_subjects" class="form-select" disabled>
+                                        <option value="">(選項尚未設定)</option>
+                                        <option value="國語">國語</option>
+                                        <option value="數學">數學</option>
+                                        <option value="英文">英文</option>
+                                    </select>
+                                    <div class="form-text">目前為單選，後續可擴充為多選</div>
+                                </div>
+
+                                <div class="col-12 mt-3">
+                                    <div class="alert alert-info small">
+                                        <i class="bi bi-info-circle"></i> 時數與鐘點設定將與「課程維護系統」同步，請至該系統進行配課與時數管理。
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        <div class="tab-pane fade" id="tab-attend">
+                            <div class="row g-3 justify-content-center py-4">
+                                <div class="col-md-6 text-center">
+                                    <i class="bi bi-shield-lock text-warning" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">免登入打卡專用密碼</h5>
+                                    <p class="text-muted small">教師可使用「員工編號」+「考勤密碼」在公共電腦進行快速打卡。</p>
+                                    
+                                    <div class="input-group input-group-lg mt-3">
+                                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                                        <input type="text" id="clock_in_password" class="form-control text-center font-monospace" placeholder="6位數密碼" maxlength="6">
+                                    </div>
+                                    <div class="form-text">請輸入 6 位數字</div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -155,13 +357,12 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('id');
-    let roleMapping = {};
 
     document.addEventListener('DOMContentLoaded', async () => {
         if (typeof window.db === 'undefined') { Swal.fire('錯誤', '設定檔載入失敗', 'error'); return; }
@@ -172,20 +373,16 @@
             loadEmployeeData(editId);
         } else {
             document.getElementById('status').value = 'active';
-            document.getElementById('role').value = 'staff';
         }
     });
 
+    // 載入下拉選單
     async function loadTitles() {
         const { data } = await window.db.from('title_role_mapping').select('*');
         const sel = document.getElementById('title');
         sel.innerHTML = '<option value="">請選擇</option>';
-        if(data) data.forEach(t => {
-            roleMapping[t.title_name] = t.default_role;
-            sel.innerHTML += `<option value="${t.title_name}">${t.title_name}</option>`;
-        });
+        if(data) data.forEach(t => sel.innerHTML += `<option value="${t.title_name}">${t.title_name}</option>`);
     }
-
     async function loadDepts() {
         const { data } = await window.db.from('departments').select('*').order('sort_order');
         const sel = document.getElementById('department');
@@ -193,71 +390,127 @@
         if(data) data.forEach(d => sel.innerHTML += `<option value="${d.name}">${d.name}</option>`);
     }
 
-    window.autoSetRole = () => {
-        const val = document.getElementById('title').value;
-        if(roleMapping[val]) document.getElementById('role').value = roleMapping[val];
-    }
+    // UI 連動邏輯
+    window.copyAddress = () => {
+        if(document.getElementById('same_addr').checked) {
+            document.getElementById('address_mailing').value = document.getElementById('address').value;
+            document.getElementById('phone_contact').value = document.getElementById('phone_home').value;
+        }
+    };
 
+    window.toggleIns = (type) => {
+        const checked = document.getElementById(`has_${type}_ins`).checked;
+        document.getElementById(`${type}_ins_date`).disabled = !checked;
+        if(type !== 'group') document.getElementById(`${type}_ins_salary`).disabled = !checked;
+        document.getElementById(`${type}_ins_fee`).disabled = !checked;
+    };
+
+    window.toggleTeacher = () => {
+        const checked = document.getElementById('is_scheduling').checked;
+        document.getElementById('teacher_code').disabled = !checked;
+        document.getElementById('section_dept').disabled = !checked;
+        document.getElementById('teaching_subjects').disabled = !checked;
+    };
+
+    // 載入資料
     async function loadEmployeeData(id) {
         const { data, error } = await window.db.from('employees').select('*').eq('id', id).single();
-        if(error) { Swal.fire('錯誤', '資料讀取失敗', 'error'); return; }
+        if(error) { Swal.fire('錯誤', '讀取失敗', 'error'); return; }
 
         document.getElementById('display-name').textContent = data.name;
         document.getElementById('display-id').textContent = data.employee_id;
         document.getElementById('display-status').textContent = data.status;
+        
         if(data.photo_url) document.getElementById('photoPreview').src = data.photo_url;
+        if(data.passbook_url) document.getElementById('pbPreview').src = data.passbook_url;
         document.getElementById('photoUrl').value = data.photo_url || '';
+        document.getElementById('passbookUrl').value = data.passbook_url || '';
 
-        const fields = ['employee_id','name','id_number','title','department','role','status','join_date','email','phone','address','labor_ins_date','labor_ins_salary','health_ins_date','health_ins_salary','note','base_salary','bank_code','bank_account','teacher_code','basic_teaching_hours','hourly_rate'];
+        // 對應所有欄位
+        const fields = [
+            'employee_id','name','name_en','gender','id_number','birthday','join_date','title','department','status',
+            'address','phone_home','address_mailing','phone_contact',
+            'education_level','degree','email_personal','email_school',
+            'labor_ins_date','labor_ins_salary','labor_ins_fee',
+            'health_ins_date','health_ins_salary','health_ins_fee',
+            'group_ins_date','group_ins_fee',
+            'base_salary','homeroom_allowance','supervisor_allowance','payment_method','bank_name','bank_account',
+            'note','teacher_code','section_dept','teaching_subjects','clock_in_password'
+        ];
+        
         fields.forEach(f => {
             if(document.getElementById(f)) document.getElementById(f).value = data[f] || '';
         });
+
+        // Checkbox
+        document.getElementById('same_addr').checked = (data.address === data.address_mailing && data.address !== '');
+        document.getElementById('has_labor_ins').checked = data.has_labor_ins;
+        document.getElementById('has_health_ins').checked = data.has_health_ins;
+        document.getElementById('has_group_ins').checked = data.has_group_ins;
+        document.getElementById('is_scheduling').checked = data.is_scheduling;
+
+        // 觸發 UI 狀態更新
+        toggleIns('labor'); toggleIns('health'); toggleIns('group'); toggleTeacher();
         document.getElementById('employee_id').disabled = true;
     }
 
-    async function uploadPhoto() {
-        const file = document.getElementById('photoInput').files[0];
+    // 上傳檔案 (通用)
+    async function uploadFile(inputId, previewId, urlId, prefix) {
+        const file = document.getElementById(inputId).files[0];
         if(!file) return;
+        
         const reader = new FileReader();
-        reader.onload = (e) => document.getElementById('photoPreview').src = e.target.result;
+        reader.onload = (e) => document.getElementById(previewId).src = e.target.result;
         reader.readAsDataURL(file);
-        const fileName = `emp_${Date.now()}.${file.name.split('.').pop()}`;
+
+        const fileName = `${prefix}_${Date.now()}.${file.name.split('.').pop()}`;
         const { error } = await window.db.storage.from('avatars').upload(fileName, file);
         if(error) Swal.fire('上傳失敗', error.message, 'error');
         else {
             const { data } = window.db.storage.from('avatars').getPublicUrl(fileName);
-            document.getElementById('photoUrl').value = data.publicUrl;
+            document.getElementById(urlId).value = data.publicUrl;
         }
     }
 
+    // 儲存
     async function saveData() {
+        const getVal = (id) => document.getElementById(id).value;
+        const getCheck = (id) => document.getElementById(id).checked;
+
+        // 教師代碼驗證 (E101)
+        if(getCheck('is_scheduling')) {
+            const code = getVal('teacher_code');
+            if(!/^[A-Za-z]\d{3}$/.test(code)) {
+                Swal.fire('格式錯誤', '教師代碼必須為 1位英文 + 3位數字 (例: E101)', 'warning');
+                return;
+            }
+        }
+
         const payload = {
-            employee_id: document.getElementById('employee_id').value,
-            name: document.getElementById('name').value,
-            id_number: document.getElementById('id_number').value,
-            title: document.getElementById('title').value,
-            department: document.getElementById('department').value,
-            role: document.getElementById('role').value,
-            status: document.getElementById('status').value,
-            join_date: document.getElementById('join_date').value || null,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value,
-            photo_url: document.getElementById('photoUrl').value,
-            labor_ins_date: document.getElementById('labor_ins_date').value || null,
-            labor_ins_salary: document.getElementById('labor_ins_salary').value || null,
-            health_ins_date: document.getElementById('health_ins_date').value || null,
-            health_ins_salary: document.getElementById('health_ins_salary').value || null,
-            note: document.getElementById('note').value,
-            base_salary: document.getElementById('base_salary').value || null,
-            bank_code: document.getElementById('bank_code').value,
-            bank_account: document.getElementById('bank_account').value,
-            teacher_code: document.getElementById('teacher_code').value,
-            basic_teaching_hours: document.getElementById('basic_teaching_hours').value || 0,
-            hourly_rate: document.getElementById('hourly_rate').value || 0
+            employee_id: getVal('employee_id'), name: getVal('name'), name_en: getVal('name_en'),
+            gender: getVal('gender'), id_number: getVal('id_number'), birthday: getVal('birthday')||null,
+            join_date: getVal('join_date')||null, title: getVal('title'), department: getVal('department'), status: getVal('status'),
+            address: getVal('address'), phone_home: getVal('phone_home'),
+            address_mailing: getVal('address_mailing'), phone_contact: getVal('phone_contact'),
+            education_level: getVal('education_level'), degree: getVal('degree'),
+            email_personal: getVal('email_personal'), email_school: getVal('email_school'),
+            
+            has_labor_ins: getCheck('has_labor_ins'), labor_ins_date: getVal('labor_ins_date')||null, labor_ins_salary: getVal('labor_ins_salary')||0, labor_ins_fee: getVal('labor_ins_fee')||0,
+            has_health_ins: getCheck('has_health_ins'), health_ins_date: getVal('health_ins_date')||null, health_ins_salary: getVal('health_ins_salary')||0, health_ins_fee: getVal('health_ins_fee')||0,
+            has_group_ins: getCheck('has_group_ins'), group_ins_date: getVal('group_ins_date')||null, group_ins_fee: getVal('group_ins_fee')||0,
+            note: getVal('note'),
+
+            base_salary: getVal('base_salary')||0, homeroom_allowance: getVal('homeroom_allowance')||0, supervisor_allowance: getVal('supervisor_allowance')||0,
+            payment_method: getVal('payment_method'), bank_name: getVal('bank_name'), bank_account: getVal('bank_account'),
+            
+            is_scheduling: getCheck('is_scheduling'), teacher_code: getVal('teacher_code'),
+            section_dept: getVal('section_dept'), teaching_subjects: getVal('teaching_subjects'),
+            clock_in_password: getVal('clock_in_password'),
+            
+            photo_url: getVal('photoUrl'), passbook_url: getVal('passbookUrl')
         };
 
-        if(!payload.employee_id || !payload.name) { Swal.fire('必填未填', '員工編號與姓名', 'warning'); return; }
+        if(!payload.employee_id || !payload.name) { Swal.fire('欄位未填', '員工編號與姓名必填', 'warning'); return; }
 
         let error;
         if(editId) error = (await window.db.from('employees').update(payload).eq('id', editId)).error;
