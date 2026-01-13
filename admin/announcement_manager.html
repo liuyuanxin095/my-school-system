@@ -3,80 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統公告管理</title>
+    <title>全校公告管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .table td { vertical-align: middle; }
+    </style>
 </head>
-<body class="bg-light p-4">
+<body>
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>系統公告發布中心</h3>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-            發布新公告
-        </button>
+        <h3 class="fw-bold text-dark"><i class="bi bi-megaphone-fill"></i> 全校公告管理</h3>
+        <div>
+            <a href="../index.html" class="btn btn-outline-secondary me-2">回首頁</a>
+            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 發布新公告</button>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-dark text-white">
-            <span>歷史公告清單</span>
-        </div>
+    <div class="card shadow-sm border-0">
         <div class="card-body p-0">
-            <table class="table table-hover table-striped mb-0 text-center align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th width="15%">發布日期</th>
-                        <th width="10%">分類</th>
-                        <th width="10%">重要性</th>
-                        <th width="50%" class="text-start">標題</th>
-                        <th width="15%">操作</th>
-                    </tr>
-                </thead>
-                <tbody id="listBody">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="120">發布日期</th>
+                            <th width="100">分類</th>
+                            <th>標題</th>
+                            <th>附件</th>
+                            <th width="80" class="text-center">置頂</th>
+                            <th width="150" class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="newsTable">
+                        <tr><td colspan="6" class="text-center py-5">載入中...</td></tr>
                     </tbody>
-            </table>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="addModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="dataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">發布新公告</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title">公告編輯</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="addForm">
-                    <div class="mb-3">
-                        <label>公告分類</label>
-                        <select id="m_category" class="form-select">
-                            <option value="系統公告">系統公告 (System)</option>
-                            <option value="教務通知">教務通知 (Academic)</option>
-                            <option value="學務通知">學務通知 (Student)</option>
-                            <option value="人資快訊">人資快訊 (HR)</option>
+                <input type="hidden" id="editId">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label>分類</label>
+                        <select id="m_cat" class="form-select">
+                            <option value="一般">一般公告</option>
+                            <option value="系統">系統公告</option>
+                            <option value="教務">教務公告</option>
+                            <option value="學務">學務公告</option>
+                            <option value="緊急">緊急通知</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label>重要性</label>
-                        <select id="m_priority" class="form-select">
-                            <option value="normal">一般消息</option>
-                            <option value="urgent">緊急/重要</option>
-                        </select>
+                    <div class="col-md-9">
+                        <label>標題 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_title" class="form-control">
                     </div>
-                    <div class="mb-3">
-                        <label>標題</label>
-                        <input type="text" id="m_title" class="form-control" placeholder="請輸入標題" required>
+                    
+                    <div class="col-12">
+                        <label>內文</label>
+                        <textarea id="m_content" class="form-control" rows="5"></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label>詳細內容</label>
-                        <textarea id="m_content" class="form-control" rows="5" placeholder="請輸入公告內容..."></textarea>
+
+                    <div class="col-md-6">
+                        <label>附件上傳 (選填)</label>
+                        <input type="file" id="fileInput" class="form-control">
+                        <div id="fileDisplay" class="form-text text-primary d-none">
+                            <i class="bi bi-paperclip"></i> 目前已有附件：<span id="fileName"></span>
+                        </div>
+                        <input type="hidden" id="fileUrl">
+                        <input type="hidden" id="fileNameHidden">
                     </div>
-                </form>
+
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="m_pin">
+                            <label class="form-check-label fw-bold text-danger" for="m_pin">置頂顯示</label>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" id="saveBtn" class="btn btn-primary">確認發布</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">發布</button>
             </div>
         </div>
     </div>
@@ -86,71 +107,113 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // 1. 載入列表
-    async function loadData() {
-        const { data: list, error } = await db
-            .from('announcements')
-            .select('*')
-            .order('created_at', { ascending: false }); // 最新在上面
+    let dataModal;
+    document.addEventListener('DOMContentLoaded', () => {
+        dataModal = new bootstrap.Modal(document.getElementById('dataModal'));
+        loadNews();
+    });
 
-        const tbody = document.getElementById('listBody');
+    async function loadNews() {
+        // 改為讀取 announcements
+        const { data, error } = await window.db.from('announcements')
+            .select('*')
+            .order('is_pinned', { ascending: false })
+            .order('publish_date', { ascending: false });
+
+        const tbody = document.getElementById('newsTable');
         tbody.innerHTML = '';
 
-        if (error) { console.error(error); return; }
+        if(error || !data) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5">無資料</td></tr>'; return; }
 
-        list.forEach(item => {
-            const date = item.created_at.split('T')[0];
+        data.forEach(item => {
+            const pinIcon = item.is_pinned ? '<i class="bi bi-pin-angle-fill text-danger"></i>' : '-';
+            const fileIcon = item.attachment_url ? `<a href="${item.attachment_url}" target="_blank" class="text-decoration-none"><i class="bi bi-paperclip"></i> 下載</a>` : '<span class="text-muted">-</span>';
             
-            // 處理標籤顏色 (純文字用 badge 區分)
-            let badgeClass = 'bg-secondary';
-            if (item.category === '系統公告') badgeClass = 'bg-dark';
-            if (item.category === '教務通知') badgeClass = 'bg-primary';
-            if (item.category === '學務通知') badgeClass = 'bg-success';
-            if (item.priority === 'urgent') badgeClass = 'bg-danger'; // 緊急蓋過其他顏色
-
             tbody.innerHTML += `
                 <tr>
-                    <td class="text-muted">${date}</td>
-                    <td><span class="badge ${badgeClass}">${item.category}</span></td>
-                    <td>${item.priority === 'urgent' ? '<span class="text-danger fw-bold">緊急</span>' : '一般'}</td>
-                    <td class="text-start">${item.title}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})">刪除</button>
+                    <td>${item.publish_date}</td>
+                    <td><span class="badge bg-secondary">${item.category || '一般'}</span></td>
+                    <td class="fw-bold text-truncate" style="max-width: 300px;">${item.title}</td>
+                    <td>${fileIcon}</td>
+                    <td class="text-center">${pinIcon}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick='openModal(${JSON.stringify(item)})'>編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delNews('${item.id}')">刪除</button>
                     </td>
                 </tr>
             `;
         });
     }
 
-    // 2. 發布公告
-    document.getElementById('saveBtn').addEventListener('click', async () => {
-        const user = JSON.parse(localStorage.getItem('currentUser'));
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        document.getElementById('m_cat').value = d ? d.category : '一般';
+        document.getElementById('m_title').value = d ? d.title : '';
+        document.getElementById('m_content').value = d ? d.content : '';
+        document.getElementById('m_pin').checked = d ? d.is_pinned : false;
+        document.getElementById('fileInput').value = ''; 
         
-        const formData = {
-            category: document.getElementById('m_category').value,
-            priority: document.getElementById('m_priority').value,
+        if (d && d.attachment_url) {
+            document.getElementById('fileDisplay').classList.remove('d-none');
+            document.getElementById('fileName').textContent = d.attachment_name || '附件';
+            document.getElementById('fileUrl').value = d.attachment_url;
+            document.getElementById('fileNameHidden').value = d.attachment_name;
+        } else {
+            document.getElementById('fileDisplay').classList.add('d-none');
+            document.getElementById('fileUrl').value = '';
+            document.getElementById('fileNameHidden').value = '';
+        }
+
+        dataModal.show();
+    }
+
+    async function saveData() {
+        const id = document.getElementById('editId').value;
+        const fileInput = document.getElementById('fileInput');
+        let fileUrl = document.getElementById('fileUrl').value;
+        let fileName = document.getElementById('fileNameHidden').value;
+
+        // 上傳邏輯不變，檔案還是存到 storage 'files' bucket
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const filePath = `announcement_${Date.now()}.${fileExt}`;
+            
+            const { data, error } = await window.db.storage.from('files').upload(filePath, file);
+            if (error) { Swal.fire('上傳失敗', error.message, 'error'); return; }
+            
+            const { data: urlData } = window.db.storage.from('files').getPublicUrl(filePath);
+            fileUrl = urlData.publicUrl;
+            fileName = file.name;
+        }
+
+        const payload = {
+            category: document.getElementById('m_cat').value,
             title: document.getElementById('m_title').value,
             content: document.getElementById('m_content').value,
-            created_by: user ? user.username : 'admin'
+            is_pinned: document.getElementById('m_pin').checked,
+            attachment_url: fileUrl,
+            attachment_name: fileName,
+            publish_date: new Date().toISOString().split('T')[0]
         };
 
-        const { error } = await db.from('announcements').insert([formData]);
-        
-        if (error) alert('發布失敗: ' + error.message);
-        else {
-            alert('公告已發布！');
-            location.reload();
+        if(!payload.title) return Swal.fire('標題未填', '', 'warning');
+
+        let error;
+        // 寫入 announcements 表
+        if (id) error = (await window.db.from('announcements').update(payload).eq('id', id)).error;
+        else error = (await window.db.from('announcements').insert([payload])).error;
+
+        if (error) Swal.fire('錯誤', error.message, 'error');
+        else { dataModal.hide(); loadNews(); Swal.fire('成功', '公告已發布', 'success'); }
+    }
+
+    window.delNews = async (id) => {
+        if(confirm('確定刪除？')) {
+            await window.db.from('announcements').delete().eq('id', id);
+            loadNews();
         }
-    });
-
-    // 3. 刪除
-    window.deleteItem = async (id) => {
-        if(!confirm('確定要刪除此公告嗎？')) return;
-        const { error } = await db.from('announcements').delete().eq('id', id);
-        if(!error) loadData();
-    };
-
-    loadData();
+    }
 </script>
 </body>
 </html>
