@@ -12,7 +12,6 @@
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         .avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #dee2e6; background-color: #fff; }
         .teacher-code-badge { font-size: 0.75rem; background-color: #fff3cd; color: #856404; padding: 1px 5px; border-radius: 4px; border: 1px solid #ffeeba; margin-left: 5px; }
-        /* 匯入預覽表格 */
         .preview-table td { padding: 5px; }
         .preview-table input { width: 100%; border: 1px solid #dee2e6; padding: 3px; font-size: 0.9rem; }
     </style>
@@ -58,7 +57,7 @@
                     </tr>
                 </thead>
                 <tbody id="empTable">
-                    <tr><td colspan="7" class="text-center py-5 text-muted">載入中...</td></tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted">系統準備中...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -77,8 +76,8 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-info small">
-                    <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，直接貼到底下的文字框中。欄位順序：<br>
-                    <strong>人事編號 | 姓名 | 職稱 | 部門 | Email | 電話</strong>
+                    <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，直接貼到底下的文字框中。<br>
+                    欄位順序：<strong>人事編號 | 姓名 | 職稱 | 部門 | Email | 電話</strong>
                 </div>
                 <div class="row">
                     <div class="col-md-12 mb-3">
@@ -89,9 +88,7 @@
                         <div class="table-responsive" style="max-height: 300px;">
                             <table class="table table-bordered preview-table mb-0">
                                 <thead class="table-light">
-                                    <tr>
-                                        <th>人事編號</th><th>姓名</th><th>職稱</th><th>部門</th><th>Email</th><th>電話</th><th>狀態</th>
-                                    </tr>
+                                    <tr><th>人事編號</th><th>姓名</th><th>職稱</th><th>部門</th><th>Email</th><th>電話</th><th>狀態</th></tr>
                                 </thead>
                                 <tbody id="previewBody">
                                     <tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>
@@ -110,19 +107,28 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../js/config.js"></script>
 
 <script>
     let importModal;
 
     document.addEventListener('DOMContentLoaded', () => {
+        // 1. 初始化 Modal
         importModal = new bootstrap.Modal(document.getElementById('importModal'));
         
-        // 檢查設定檔
+        // 2. 檢查資料庫連線
         if (typeof window.db === 'undefined') {
-            Swal.fire({ icon: 'error', title: '設定檔載入失敗', text: '找不到 ../js/config.js' });
+            Swal.fire({ 
+                icon: 'error', 
+                title: '連線失敗', 
+                html: '找不到 <code>config.js</code>。<br>請確認檔案是否在 <code>js/config.js</code> 且路徑引用正確。' 
+            });
+            document.querySelector('#empTable td').innerHTML = "<span class='text-danger'>設定檔載入失敗</span>";
             return;
         }
+
+        // 3. 載入資料
         loadEmployees();
     });
 
@@ -135,6 +141,7 @@
             if (status) query = query.eq('status', status);
 
             const { data, error } = await query;
+            
             if (error) throw error;
 
             const filtered = (data || []).filter(emp => {
@@ -155,7 +162,7 @@
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料 (請點擊右上角新增人員)</td></tr>';
             return;
         }
 
@@ -190,7 +197,6 @@
         });
     }
 
-    // --- 匯入功能 ---
     function openImportModal() {
         document.getElementById('pasteArea').value = '';
         document.getElementById('previewBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>';
@@ -205,27 +211,21 @@
         tbody.innerHTML = '';
         
         let count = 0;
-        rows.forEach((row, index) => {
-            const cols = row.split('\t'); // Excel 複製通常是 Tab 分隔
-            if(cols.length < 2) return; // 忽略無效行
+        rows.forEach((row) => {
+            const cols = row.split('\t');
+            if(cols.length < 2) return;
 
             count++;
-            // 欄位順序假設：編號 | 姓名 | 職稱 | 部門 | Email | 電話
-            const id = cols[0] || '';
-            const name = cols[1] || '';
-            const title = cols[2] || '';
-            const dept = cols[3] || '';
-            const email = cols[4] || '';
-            const phone = cols[5] || '';
+            const [id, name, title, dept, email, phone] = cols;
 
             tbody.innerHTML += `
                 <tr class="import-row">
-                    <td><input type="text" value="${id}" name="eid"></td>
-                    <td><input type="text" value="${name}" name="nm"></td>
-                    <td><input type="text" value="${title}" name="ti"></td>
-                    <td><input type="text" value="${dept}" name="dp"></td>
-                    <td><input type="text" value="${email}" name="em"></td>
-                    <td><input type="text" value="${phone}" name="ph"></td>
+                    <td><input type="text" value="${id||''}"></td>
+                    <td><input type="text" value="${name||''}"></td>
+                    <td><input type="text" value="${title||''}"></td>
+                    <td><input type="text" value="${dept||''}"></td>
+                    <td><input type="text" value="${email||''}"></td>
+                    <td><input type="text" value="${phone||''}"></td>
                     <td class="text-center"><span class="badge bg-info">待匯入</span></td>
                 </tr>
             `;
@@ -248,11 +248,10 @@
                 email: inputs[4].value.trim(),
                 phone: inputs[5].value.trim(),
                 status: 'active',
-                role: 'staff' // 預設權限，後續可編輯修改
+                role: 'staff'
             });
         });
 
-        // 批次寫入
         const { error } = await window.db.from('employees').insert(payload);
         
         if(error) {
