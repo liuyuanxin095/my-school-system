@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學期週次管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark"><i class="bi bi-calendar-range-fill"></i> 學期週次管理</h3>
+            <h5 class="text-muted" id="pageSubtitle">載入中...</h5>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary" onclick="history.back()">
+                <i class="bi bi-arrow-left"></i> 返回
+            </button>
+            <button class="btn btn-success" onclick="saveWeeks()">
+                <i class="bi bi-save"></i> 儲存設定
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body bg-light">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-magic"></i> 快速產生器</h6>
+            <div class="row align-items-end g-3">
+                <div class="col-md-4">
+                    <label class="form-label">開學日 (第一週週一)</label>
+                    <input type="date" id="startDate" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">週數</label>
+                    <input type="number" id="weekCount" class="form-control" value="21">
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-primary w-100" onclick="generateWeeks()">
+                        執行產生
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-text text-danger mt-0 small">
+                        <i class="bi bi-exclamation-triangle"></i> 此動作將覆蓋下方列表
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle mb-0 text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="80">週次</th>
+                            <th>開始日期</th>
+                            <th>結束日期</th>
+                            <th>行事曆備註 (例: 第1次段考)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weekListBody">
+                        <tr><td colspan="4" class="py-5 text-muted">請使用上方產生器或等待資料載入...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const semId = urlParams.get('semId');
+    const type = urlParams.get('type'); // 'elem' or 'high'
+    const title = urlParams.get('title'); // 顯示用的標題
+    
+    let currentWeeksData = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!semId || !type) {
+            Swal.fire('錯誤', '參數不足，無法載入頁面', 'error').then(() => history.back());
+            return;
+        }
+        
+        // 設定標題
+        document.getElementById('pageSubtitle').textContent = decodeURIComponent(title || '');
+
+        if(window.db) loadWeeks();
+        else setTimeout(loadWeeks, 500);
+    });
+
+    async function loadWeeks() {
+        const { data, error } = await window.db.from('semester_weeks')
+            .select('*')
+            .eq('semester_id', semId)
+            .eq('department_type', type)
+            .order('week_number');
+
+        if (error) { Swal.fire('讀取錯誤', error.message, 'error'); return; }
+
+        if (data && data.length > 0) {
+            currentWeeksData = data;
+            renderTable();
+        } else {
+            document.getElementById('weekListBody').innerHTML = `<tr><td colspan="4" class="py-5 text-muted">目前尚無資料，請設定上方「開學日」並產生。</td></tr>`;
+        }
+    }
+
+    function generateWeeks() {
+        const startStr = document.getElementById('startDate').value;
+        const count = parseInt(document.getElementById('weekCount').value);
+        
+        if(!startStr) { Swal.fire('請選擇開學日', '', 'warning'); return; }
+
+        let startDate = new Date(startStr);
+        // 校正為週一
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day == 0 ? -6 : 1); 
+        startDate.setDate(diff);
+
+        currentWeeksData = [];
+        
+        for(let i=1; i<=count; i++) {
+            let end = new Date(startDate);
+            end.setDate(startDate.getDate() + 6); // +6天 = 週日
+
+            currentWeeksData.push({
+                week_number: i,
+                start_date: startDate.toISOString().split('T')[0],
+                end_date: end.toISOString().split('T')[0],
+                note: ''
+            });
+
+            // 下一週
+            startDate.setDate(startDate.getDate() + 7);
+        }
+        renderTable();
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '週次預覽已產生', showConfirmButton: false, timer: 1500 });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('weekListBody');
+        tbody.innerHTML = '';
+        currentWeeksData.forEach((w, idx) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold bg-light">第 ${w.week_number} 週</td>
+                    <td><input type="date" class="form-control text-center border-0 bg-transparent" value="${w.start_date}" onchange="updateWk(${idx}, 'start_date', this.value)"></td>
+                    <td><input type="date" class="form-control text-center border-0 bg-transparent" value="${w.end_date}" onchange="updateWk(${idx}, 'end_date', this.value)"></td>
+                    <td><input type="text" class="form-control border-0" value="${w.note||''}" placeholder="點擊輸入備註..." onchange="updateWk(${idx}, 'note', this.value)"></td>
+                </tr>
+            `;
+        });
+    }
+
+    window.updateWk = (idx, field, val) => {
+        currentWeeksData[idx][field] = val;
+    }
+
+    window.saveWeeks = async () => {
+        if(currentWeeksData.length === 0) { Swal.fire('無資料', '請先產生週次', 'warning'); return; }
+
+        // 1. 清除舊資料
+        await window.db.from('semester_weeks').delete().eq('semester_id', semId).eq('department_type', type);
+
+        // 2. 寫入新資料
+        const payload = currentWeeksData.map(w => ({
+            semester_id: semId,
+            department_type: type,
+            week_number: w.week_number,
+            start_date: w.start_date,
+            end_date: w.end_date,
+            note: w.note
+        }));
+
+        const { error } = await window.db.from('semester_weeks').insert(payload);
+
+        if(error) Swal.fire('儲存失敗', error.message, 'error');
+        else {
+            Swal.fire({
+                title: '儲存成功',
+                text: '週次設定已更新，即將返回上一頁',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => history.back());
+        }
+    }
+</script>
+</body>
+</html>
