@@ -24,9 +24,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark"><i class="bi bi-person-badge-fill"></i> 人事資料管理</h3>
         <div>
-            <a href="edit_employee.html" class="btn btn-primary">
-                <i class="bi bi-person-plus-fill"></i> 新增人員
-            </a>
+            <a href="department_settings.html" class="btn btn-outline-dark me-1"><i class="bi bi-diagram-3"></i> 部門設定</a>
+            <a href="title_settings.html" class="btn btn-outline-dark me-1"><i class="bi bi-tags"></i> 職稱設定</a>
+            <a href="edit_employee.html" class="btn btn-primary"><i class="bi bi-person-plus-fill"></i> 新增人員</a>
         </div>
     </div>
 
@@ -50,8 +50,8 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="60" class="text-center">照片</th>
-                        <th>員工編號</th>
+                        <th width="150" class="ps-4">人事編號</th>
+                        <th width="80" class="text-center">照片</th>
                         <th>姓名</th>
                         <th>職稱 / 部門</th>
                         <th>權限</th>
@@ -70,32 +70,35 @@
     </div>
 </div>
 
-<script src="../js/config.js"></script>
+<script src="../../js/config.js"></script>
 <script>
     let allData = [];
 
     document.addEventListener('DOMContentLoaded', () => {
+        loadDepartments();
         loadEmployees();
     });
+    
+    // 載入部門供篩選用
+    async function loadDepartments() {
+        const { data } = await window.db.from('departments').select('name').order('sort_order');
+        if(data) {
+            const sel = document.getElementById('deptFilter');
+            data.forEach(d => sel.innerHTML += `<option value="${d.name}">${d.name}</option>`);
+        }
+    }
 
     async function loadEmployees() {
         const keyword = document.getElementById('searchInput').value.toLowerCase();
         const dept = document.getElementById('deptFilter').value;
         const status = document.getElementById('statusFilter').value;
 
-        // 1. 建構查詢
         let query = window.db.from('employees').select('*').order('employee_id');
-
-        // 2. 獲取資料
         const { data, error } = await query;
         if (error) { Swal.fire('錯誤', error.message, 'error'); return; }
         
         allData = data || [];
-        
-        // 更新部門選單 (僅第一次或需要時更新，這裡簡化每次更新)
-        updateDeptFilter(allData);
 
-        // 3. 前端篩選 (Supabase OR 查詢比較複雜，這裡用前端篩選比較靈活)
         const filtered = allData.filter(emp => {
             const matchKey = (emp.name + emp.employee_id).toLowerCase().includes(keyword);
             const matchDept = dept ? emp.department === dept : true;
@@ -128,21 +131,17 @@
             if(e.role === 'admin') roleBadge = 'bg-danger';
             if(e.role === 'teacher') roleBadge = 'bg-success';
 
-            // 顯示教師代碼
             let nameDisplay = e.name;
             if (e.role === 'teacher' && e.teacher_code) {
                 nameDisplay += `<span class="teacher-code-badge">${e.teacher_code}</span>`;
             }
 
-            // 照片處理
             let avatarSrc = e.photo_url || `https://ui-avatars.com/api/?name=${e.name}&background=random`;
 
             tbody.innerHTML += `
                 <tr class="${rowClass}">
-                    <td class="text-center">
-                        <img src="${avatarSrc}" class="avatar-small">
-                    </td>
-                    <td class="font-monospace fw-bold">${e.employee_id}</td>
+                    <td class="ps-4 font-monospace fw-bold">${e.employee_id}</td>
+                    <td class="text-center"><img src="${avatarSrc}" class="avatar-small"></td>
                     <td class="fs-5">${nameDisplay}</td>
                     <td>
                         <div class="fw-bold">${e.title || '-'}</div>
@@ -159,18 +158,5 @@
             `;
         });
     }
-
-    function updateDeptFilter(data) {
-        const currentVal = document.getElementById('deptFilter').value;
-        const deptSet = new Set();
-        data.forEach(e => { if(e.department) deptSet.add(e.department); });
-        
-        const sel = document.getElementById('deptFilter');
-        sel.innerHTML = '<option value="">所有部門</option>';
-        deptSet.forEach(d => {
-            sel.innerHTML += `<option value="${d}" ${currentVal===d?'selected':''}>${d}</option>`;
-        });
-    }
 </script>
 </body>
-</html>
