@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級資料維護</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .filter-bar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        .status-active { background-color: #d1e7dd; color: #0f5132; }
+        .status-graduated { background-color: #cfe2ff; color: #084298; }
+        .status-archived { background-color: #e2e3e5; color: #41464b; }
+        
+        .teacher-select option { padding: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-list-check"></i> 班級資料維護</h3>
+        <div>
+            <a href="dashboard.html" class="btn btn-outline-secondary me-2">回儀表板</a>
+            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增班級</button>
+        </div>
+    </div>
+
+    <div class="filter-bar d-flex gap-3 align-items-center flex-wrap">
+        <select id="f_branch" class="form-select w-auto" onchange="loadClasses()">
+            <option value="">所有分校</option>
+            <option value="校本部">校本部</option>
+            <option value="過嶺分校">過嶺分校</option>
+        </select>
+        <select id="f_dept" class="form-select w-auto" onchange="loadClasses()">
+            <option value="">所有科部</option>
+            <option value="國小部">國小部</option>
+            <option value="國中部">國中部</option>
+            <option value="高中部">高中部</option>
+            <option value="幼兒園">幼兒園</option>
+        </select>
+        <select id="f_status" class="form-select w-auto" onchange="loadClasses()">
+            <option value="active" selected>運作中</option>
+            <option value="graduated">已畢業</option>
+            <option value="archived">已封存</option>
+            <option value="">所有狀態</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadClasses()">查詢</button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>分校 / 科部</th>
+                            <th>班級代碼</th>
+                            <th>班級名稱</th>
+                            <th>班級導師</th>
+                            <th>助理導師</th>
+                            <th class="text-center">排課需求</th>
+                            <th class="text-center">狀態</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTable"><tr><td colspan="8" class="text-center py-5">載入中...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">班級設定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label>分校 <span class="text-danger">*</span></label>
+                        <select id="m_branch" class="form-select">
+                            <option value="校本部">校本部</option>
+                            <option value="過嶺分校">過嶺分校</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>科部 <span class="text-danger">*</span></label>
+                        <select id="m_dept" class="form-select">
+                            <option value="國小部">國小部</option>
+                            <option value="國中部">國中部</option>
+                            <option value="高中部">高中部</option>
+                            <option value="幼兒園">幼兒園</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>班級代碼 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_code" class="form-control" placeholder="例: 101, 701">
+                    </div>
+                    <div class="col-md-6">
+                        <label>班級名稱 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_name" class="form-control" placeholder="例: 一年一班">
+                    </div>
+
+                    <div class="col-12"><hr></div>
+
+                    <div class="col-md-6">
+                        <label>班級導師 (同步人事)</label>
+                        <select id="m_homeroom" class="form-select teacher-select">
+                            <option value="">載入中...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>助理導師 (同步人事)</label>
+                        <select id="m_assistant" class="form-select teacher-select">
+                            <option value="">載入中...</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        <div class="form-check form-switch p-3 bg-light rounded border">
+                            <input class="form-check-input" type="checkbox" id="m_sched" checked>
+                            <label class="form-check-label fw-bold" for="m_sched">
+                                需要排課
+                                <span class="text-muted small fw-normal ms-2">(開啟後，此班級才會出現在課程維護系統中)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let dataModal;
+    let employees = []; // 暫存老師資料
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        dataModal = new bootstrap.Modal(document.getElementById('dataModal'));
+        await loadTeachers(); // 先載入老師
+        loadClasses();
+    });
+
+    // 1. 載入老師選單 (從人事系統)
+    async function loadTeachers() {
+        const { data } = await window.db.from('employees').select('id, name, employee_id').eq('status', 'active');
+        employees = data || [];
+        
+        const opts = '<option value="">(未設定)</option>' + 
+            employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        
+        document.getElementById('m_homeroom').innerHTML = opts;
+        document.getElementById('m_assistant').innerHTML = opts;
+    }
+
+    // 2. 載入班級列表
+    async function loadClasses() {
+        const branch = document.getElementById('f_branch').value;
+        const dept = document.getElementById('f_dept').value;
+        const status = document.getElementById('f_status').value;
+
+        let query = window.db.from('school_classes').select('*').order('class_code');
+        
+        if(branch) query = query.eq('branch', branch);
+        if(dept) query = query.eq('department', dept);
+        if(status) query = query.eq('status', status);
+
+        const { data, error } = await query;
+        const tbody = document.getElementById('listTable');
+        tbody.innerHTML = '';
+
+        if(error || !data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">無資料</td></tr>`;
+            return;
+        }
+
+        // 建立 ID -> Name 的對照表
+        const empMap = {};
+        employees.forEach(e => empMap[e.id] = e.name);
+
+        data.forEach(c => {
+            let badgeClass = 'status-active';
+            let statusText = '運作中';
+            if(c.status === 'graduated') { badgeClass = 'status-graduated'; statusText = '已畢業'; }
+            if(c.status === 'archived') { badgeClass = 'status-archived'; statusText = '已封存'; }
+
+            const schedIcon = c.needs_scheduling 
+                ? '<i class="bi bi-check-circle-fill text-success"></i>' 
+                : '<i class="bi bi-dash-circle text-muted"></i>';
+
+            // 操作按鈕 (根據狀態顯示不同)
+            let actions = `
+                <button class="btn btn-sm btn-outline-primary me-1" onclick='openModal(${JSON.stringify(c)})'><i class="bi bi-pencil"></i></button>
+            `;
+            
+            if(c.status === 'active') {
+                actions += `
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">狀態</button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="setStatus('${c.id}', 'graduated')"><i class="bi bi-mortarboard-fill"></i> 畢業</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setStatus('${c.id}', 'archived')"><i class="bi bi-archive-fill"></i> 封存</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="delClass('${c.id}')"><i class="bi bi-trash"></i></button>
+                `;
+            } else {
+                // 如果已封存或畢業，允許還原
+                actions += `<button class="btn btn-sm btn-outline-success" onclick="setStatus('${c.id}', 'active')">還原</button>`;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div class="fw-bold">${c.branch}</div>
+                        <small class="text-muted">${c.department}</small>
+                    </td>
+                    <td class="font-monospace">${c.class_code}</td>
+                    <td class="fs-5">${c.class_name}</td>
+                    <td>${empMap[c.homeroom_teacher_id] || '-'}</td>
+                    <td>${empMap[c.assistant_teacher_id] || '-'}</td>
+                    <td class="text-center">${schedIcon}</td>
+                    <td class="text-center"><span class="badge ${badgeClass} text-dark">${statusText}</span></td>
+                    <td class="text-end">${actions}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // 3. 開啟 Modal
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        document.getElementById('m_branch').value = d ? d.branch : '校本部';
+        document.getElementById('m_dept').value = d ? d.department : '國小部';
+        document.getElementById('m_code').value = d ? d.class_code : '';
+        document.getElementById('m_name').value = d ? d.class_name : '';
+        document.getElementById('m_homeroom').value = d ? (d.homeroom_teacher_id || '') : '';
+        document.getElementById('m_assistant').value = d ? (d.assistant_teacher_id || '') : '';
+        document.getElementById('m_sched').checked = d ? d.needs_scheduling : true;
+        
+        dataModal.show();
+    }
+
+    // 4. 儲存
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            branch: document.getElementById('m_branch').value,
+            department: document.getElementById('m_dept').value,
+            class_code: document.getElementById('m_code').value,
+            class_name: document.getElementById('m_name').value,
+            homeroom_teacher_id: document.getElementById('m_homeroom').value || null,
+            assistant_teacher_id: document.getElementById('m_assistant').value || null,
+            needs_scheduling: document.getElementById('m_sched').checked,
+            status: id ? undefined : 'active' // 新增時預設 active, 編輯時不改狀態
+        };
+
+        if(!payload.class_code || !payload.class_name) return Swal.fire('欄位未填', '代碼與名稱必填', 'warning');
+
+        let error;
+        if(id) error = (await window.db.from('school_classes').update(payload).eq('id', id)).error;
+        else error = (await window.db.from('school_classes').insert([payload])).error;
+
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else { dataModal.hide(); loadClasses(); Swal.fire('成功', '資料已更新', 'success'); }
+    }
+
+    // 5. 變更狀態 (畢業/封存/還原)
+    window.setStatus = async (id, status) => {
+        let title = '確定變更狀態？';
+        if(status === 'graduated') title = '確定將此班級設為畢業？';
+        if(status === 'archived') title = '確定封存此班級？';
+
+        if(confirm(title)) {
+            await window.db.from('school_classes').update({ status: status }).eq('id', id);
+            loadClasses();
+        }
+    }
+
+    // 6. 刪除
+    window.delClass = async (id) => {
+        if(confirm('確定刪除此班級？(無法復原)')) {
+            await window.db.from('school_classes').delete().eq('id', id);
+            loadClasses();
+        }
+    }
+</script>
+</body>
+</html>
