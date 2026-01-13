@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分校資料管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .card { border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-buildings-fill"></i> 分校資料管理</h3>
+        <div>
+            <a href="../index.html" class="btn btn-outline-secondary me-2">回首頁</a>
+            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增分校</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="80" class="text-center">代碼</th>
+                            <th>分校名稱</th>
+                            <th>立案字號</th>
+                            <th>負責人</th>
+                            <th>班主任</th>
+                            <th>電話</th>
+                            <th>地址</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="branchTable"><tr><td colspan="8" class="text-center py-5">載入中...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">分校設定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label>分校代碼 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_code" class="form-control text-uppercase" placeholder="A~Z" maxlength="1" oninput="this.value = this.value.replace(/[^A-Za-z]/g, '').toUpperCase()">
+                        <div class="form-text">僅限輸入 A-Z 一個英文字母</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label>分校名稱 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_name" class="form-control" placeholder="例: 校本部">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>立案字號</label>
+                        <input type="text" id="m_reg" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>負責人姓名</label>
+                        <input type="text" id="m_principal" class="form-control">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>班主任 (同步人事)</label>
+                        <select id="m_director" class="form-select">
+                            <option value="">載入中...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>聯絡電話</label>
+                        <input type="text" id="m_phone" class="form-control">
+                    </div>
+
+                    <div class="col-12">
+                        <label>地址</label>
+                        <input type="text" id="m_addr" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let dataModal;
+    let employees = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        dataModal = new bootstrap.Modal(document.getElementById('dataModal'));
+        await loadEmployees();
+        loadBranches();
+    });
+
+    // 1. 載入員工供選擇
+    async function loadEmployees() {
+        const { data } = await window.db.from('employees').select('id, name, employee_id').eq('status', 'active');
+        const sel = document.getElementById('m_director');
+        sel.innerHTML = '<option value="">(未設定)</option>';
+        
+        if(data) {
+            data.forEach(e => {
+                employees[e.id] = e.name; // 建立對照表
+                sel.innerHTML += `<option value="${e.id}">${e.name} (${e.employee_id})</option>`;
+            });
+        }
+    }
+
+    // 2. 載入分校列表
+    async function loadBranches() {
+        const { data, error } = await window.db.from('school_branches').select('*').order('branch_code');
+        const tbody = document.getElementById('branchTable');
+        tbody.innerHTML = '';
+
+        if(error || !data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">尚無資料</td></tr>`;
+            return;
+        }
+
+        data.forEach(b => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-center font-monospace fw-bold fs-5 bg-light text-primary">${b.branch_code}</td>
+                    <td class="fw-bold">${b.branch_name}</td>
+                    <td>${b.registration_no || '-'}</td>
+                    <td>${b.principal_name || '-'}</td>
+                    <td>${employees[b.director_id] || '-'}</td>
+                    <td>${b.phone || '-'}</td>
+                    <td class="small text-truncate" style="max-width: 150px;">${b.address || '-'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='openModal(${JSON.stringify(b)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delBranch('${b.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 3. Modal 操作
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        document.getElementById('m_code').value = d ? d.branch_code : '';
+        document.getElementById('m_name').value = d ? d.branch_name : '';
+        document.getElementById('m_reg').value = d ? d.registration_no || '' : '';
+        document.getElementById('m_principal').value = d ? d.principal_name || '' : '';
+        document.getElementById('m_director').value = d ? d.director_id || '' : '';
+        document.getElementById('m_phone').value = d ? d.phone || '' : '';
+        document.getElementById('m_addr').value = d ? d.address || '' : '';
+        
+        // 編輯時鎖定代碼 (避免亂改導致關聯錯誤)，新增時可輸入
+        document.getElementById('m_code').disabled = !!d;
+        
+        dataModal.show();
+    }
+
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            branch_code: document.getElementById('m_code').value.toUpperCase(),
+            branch_name: document.getElementById('m_name').value,
+            registration_no: document.getElementById('m_reg').value,
+            principal_name: document.getElementById('m_principal').value,
+            director_id: document.getElementById('m_director').value || null,
+            phone: document.getElementById('m_phone').value,
+            address: document.getElementById('m_addr').value
+        };
+
+        if(!payload.branch_code || !payload.branch_name) return Swal.fire('必填未填', '代碼與名稱必填', 'warning');
+
+        let error;
+        if(id) error = (await window.db.from('school_branches').update(payload).eq('id', id)).error;
+        else error = (await window.db.from('school_branches').insert([payload])).error;
+
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else { dataModal.hide(); loadBranches(); Swal.fire('成功', '資料已儲存', 'success'); }
+    }
+
+    window.delBranch = async (id) => {
+        if(confirm('確定刪除此分校？')) {
+            await window.db.from('school_branches').delete().eq('id', id);
+            loadBranches();
+        }
+    }
+</script>
+</body>
+</html>
