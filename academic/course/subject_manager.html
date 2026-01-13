@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程科目管理</title>
+    <title>科目資料維護</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,50 +11,187 @@
     <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
 </head>
 <body>
-<div class="container">
+<div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold text-primary"><i class="bi bi-book"></i> 課程科目管理</h3>
+        <h3 class="fw-bold text-dark"><i class="bi bi-journal-bookmark-fill"></i> 科目資料維護</h3>
         <div>
-            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2"><i class="bi bi-arrow-return-left"></i> 回儀表板</a>
-            <button class="btn btn-success me-2" onclick="openImport()"><i class="bi bi-file-earmark-spreadsheet"></i> Excel 匯入</button>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">回儀表板</a>
             <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增科目</button>
         </div>
     </div>
-    <div class="card shadow-sm border-0"><div class="card-body p-0"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>代碼</th><th>名稱</th><th>領域</th><th>預設節數</th><th>操作</th></tr></thead><tbody id="listBody"></tbody></table></div></div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-nowrap">
+                    <thead class="table-light">
+                        <tr>
+                            <th>代碼</th>
+                            <th>科目名稱</th>
+                            <th>英文名稱</th>
+                            <th>班群</th>
+                            <th>領域別</th>
+                            <th>屬性</th>
+                            <th width="200">變更紀錄</th>
+                            <th class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subTable"><tr><td colspan="8" class="text-center py-5">載入中...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+<div class="modal fade" id="subModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">科目編輯</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label>科目代碼 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_code" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>科目名稱 <span class="text-danger">*</span></label>
+                        <input type="text" id="m_name" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>英文名稱</label>
+                        <input type="text" id="m_eng" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>班群</label>
+                        <input type="text" id="m_group" class="form-control" placeholder="例: 自然組, 社會組">
+                    </div>
+                    <div class="col-md-6">
+                        <label>領域別</label>
+                        <select id="m_domain" class="form-select">
+                            <option value="">請選擇</option>
+                            <option value="語文">語文</option>
+                            <option value="數學">數學</option>
+                            <option value="社會">社會</option>
+                            <option value="自然科學">自然科學</option>
+                            <option value="藝術">藝術</option>
+                            <option value="綜合活動">綜合活動</option>
+                            <option value="科技">科技</option>
+                            <option value="健康與體育">健康與體育</option>
+                            <option value="全民國防教育">全民國防教育</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>屬性</label>
+                        <select id="m_attr" class="form-select">
+                            <option value="">請選擇</option>
+                            <option value="部訂必修">部訂必修</option>
+                            <option value="加深加廣">加深加廣</option>
+                            <option value="探究實作">探究實作</option>
+                            <option value="校訂必修">校訂必修</option>
+                            <option value="多元選修">多元選修</option>
+                            <option value="補強性選修">補強性選修</option>
+                            <option value="彈性學習">彈性學習</option>
+                            <option value="團體活動">團體活動</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label>變更紀錄 (系統自動加載)</label>
+                        <textarea id="m_log" class="form-control bg-light" rows="3" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="../../js/config.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', loadData);
-    async function loadData() {
-        const { data } = await window.db.from('subjects').select('*').order('code');
-        const tbody = document.getElementById('listBody'); tbody.innerHTML = '';
+    let subModal;
+    document.addEventListener('DOMContentLoaded', () => {
+        subModal = new bootstrap.Modal(document.getElementById('subModal'));
+        if(window.db) loadSubjects(); else setTimeout(loadSubjects, 500);
+    });
+
+    async function loadSubjects() {
+        const { data, error } = await window.db.from('subjects').select('*').order('subject_code');
+        const tbody = document.getElementById('subTable');
+        tbody.innerHTML = '';
+        if (error || !data) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">無資料</td></tr>`; return; }
+
         data.forEach(s => {
-            tbody.innerHTML += `<tr><td class="font-monospace">${s.code||''}</td><td class="fw-bold">${s.name}</td><td>${s.category||''}</td><td>${s.default_hours}</td><td><button class="btn btn-sm btn-outline-primary me-1" onclick='edit(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="del(${s.id})"><i class="bi bi-trash"></i></button></td></tr>`;
+            tbody.innerHTML += `
+                <tr>
+                    <td class="font-monospace fw-bold">${s.subject_code}</td>
+                    <td>${s.name}</td>
+                    <td>${s.english_name || '-'}</td>
+                    <td>${s.class_group || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${s.domain || '-'}</span></td>
+                    <td><span class="badge bg-info text-dark">${s.attribute || '-'}</span></td>
+                    <td class="small text-muted text-truncate" style="max-width: 200px;">${s.change_log || '-'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick='openModal(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delSub('${s.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
         });
     }
-    async function openModal(d=null) {
-        const { value: f } = await Swal.fire({
-            title: d ? '編輯科目' : '新增科目',
-            html: `<input id="sw-c" class="form-control mb-2" placeholder="代碼(4碼)" maxlength="4" value="${d?d.code:''}"><input id="sw-n" class="form-control mb-2" placeholder="名稱" value="${d?d.name:''}"><input id="sw-cat" class="form-control mb-2" placeholder="領域" value="${d?d.category:''}"><input id="sw-h" type="number" class="form-control" placeholder="節數" value="${d?d.default_hours:4}">`,
-            preConfirm: () => ({ code: document.getElementById('sw-c').value, name: document.getElementById('sw-n').value, category: document.getElementById('sw-cat').value, default_hours: document.getElementById('sw-h').value })
-        });
-        if(f) {
-            if(d) await window.db.from('subjects').update(f).eq('id', d.id);
-            else await window.db.from('subjects').insert([f]);
-            loadData();
+
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        document.getElementById('m_code').value = d ? d.subject_code : '';
+        document.getElementById('m_name').value = d ? d.name : '';
+        document.getElementById('m_eng').value = d ? d.english_name || '' : '';
+        document.getElementById('m_group').value = d ? d.class_group || '' : '';
+        document.getElementById('m_domain').value = d ? d.domain || '' : '';
+        document.getElementById('m_attr').value = d ? d.attribute || '' : '';
+        document.getElementById('m_log').value = d ? d.change_log || '' : '新建資料';
+        subModal.show();
+    }
+
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const now = new Date().toLocaleString('zh-TW', {hour12:false});
+        const currentUser = "管理員"; // 暫定
+        
+        let newLog = document.getElementById('m_log').value;
+        if(id) newLog = `[${now}] ${currentUser} 修改\n` + newLog; // 自動加載 Log
+        else newLog = `[${now}] ${currentUser} 建立`;
+
+        const payload = {
+            subject_code: document.getElementById('m_code').value,
+            name: document.getElementById('m_name').value,
+            english_name: document.getElementById('m_eng').value,
+            class_group: document.getElementById('m_group').value,
+            domain: document.getElementById('m_domain').value,
+            attribute: document.getElementById('m_attr').value,
+            change_log: newLog
+        };
+
+        if(!payload.subject_code || !payload.name) return Swal.fire('必填未填', '', 'warning');
+
+        let error;
+        if(id) error = (await window.db.from('subjects').update(payload).eq('id', id)).error;
+        else error = (await window.db.from('subjects').insert([payload])).error;
+
+        if(error) Swal.fire('失敗', error.message, 'error');
+        else { subModal.hide(); loadSubjects(); Swal.fire('成功', '資料已更新', 'success'); }
+    }
+
+    window.delSub = async (id) => {
+        if((await Swal.fire({title:'刪除科目？',icon:'warning',showCancelButton:true})).isConfirmed) {
+            await window.db.from('subjects').delete().eq('id', id); loadSubjects();
         }
     }
-    async function del(id) {
-        if(confirm('刪除將影響配課資料，確定？')) { await window.db.from('subjects').delete().eq('id', id); loadData(); }
-    }
-    async function openImport() {
-        const { value: text } = await Swal.fire({ title: '貼上 Excel 資料', input: 'textarea', inputPlaceholder: '代碼 | 名稱 | 領域 | 節數', showCancelButton: true });
-        if(text) {
-            const rows = text.trim().split('\n').map(r => { const c = r.split('\t'); return c.length>=2 ? { code: c[0].substring(0,4), name: c[1], category: c[2]||'', default_hours: c[3]||4 } : null }).filter(x=>x);
-            if(rows.length) { await window.db.from('subjects').insert(rows); loadData(); Swal.fire('成功', `匯入 ${rows.length} 笔`, 'success'); }
-        }
-    }
-    function edit(s) { openModal(s); }
 </script>
 </body>
 </html>
