@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全校考勤系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Microsoft JhengHei', sans-serif; height: 100vh; overflow: hidden; }
+        .clock-container { font-size: 4rem; font-weight: bold; color: #343a40; font-family: monospace; }
+        .date-container { font-size: 1.5rem; color: #6c757d; margin-bottom: 2rem; }
+        .input-area { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        /* 結果卡片動畫 */
+        .result-card { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1050; display: none; align-items: center; justify-content: center; flex-direction: column; color: white; }
+        .avatar-circle { width: 180px; height: 180px; border-radius: 50%; border: 5px solid white; object-fit: cover; margin-bottom: 20px; }
+        .status-text { font-size: 3rem; font-weight: bold; margin: 20px 0; padding: 10px 30px; border-radius: 50px; }
+        
+        /* 教職員按鈕區 */
+        .emp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 600px; }
+        .btn-punch { height: 120px; font-size: 1.5rem; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* 回首頁按鈕 */
+        .home-btn { position: absolute; top: 20px; right: 20px; }
+    </style>
+</head>
+<body>
+
+<a href="login.html" class="btn btn-outline-secondary home-btn"><i class="bi bi-box-arrow-right"></i> 回登入頁</a>
+
+<div class="container h-100 d-flex flex-column justify-content-center align-items-center text-center">
+    
+    <div id="clock" class="clock-container">00:00:00</div>
+    <div id="date" class="date-container">YYYY-MM-DD Week</div>
+
+    <div class="input-area w-100">
+        <h4 class="mb-4 fw-bold text-primary"><i class="bi bi-person-badge"></i> 刷卡 / 輸入編號</h4>
+        <div class="input-group input-group-lg mb-3">
+            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+            <input type="text" id="inputScan" class="form-control text-center fs-4" placeholder="請掃描或輸入..." autofocus autocomplete="off">
+        </div>
+        <div class="text-muted small">學生：輸入學號或刷卡<br>教職員：輸入編號(需密碼)或刷卡</div>
+    </div>
+</div>
+
+<div class="modal fade" id="pwdModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-lock-fill"></i> 身分驗證</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="resetInput()"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <img id="pwdAvatar" src="" class="rounded-circle mb-3" style="width: 100px; height: 100px; object-fit: cover;">
+                <h4 id="pwdName" class="mb-3">---</h4>
+                <p class="text-muted">請輸入您的考勤密碼</p>
+                <input type="password" id="authPwd" class="form-control form-control-lg text-center font-monospace mb-3" maxlength="6" placeholder="******">
+                <button class="btn btn-warning w-100 btn-lg" onclick="verifyEmpPassword()">驗證</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="actionModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">請選擇打卡項目</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="resetInput()"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <img id="actionAvatar" src="" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                    <h3 id="actionName" class="d-inline-block ms-3 align-middle">---</h3>
+                </div>
+                <div class="emp-actions mx-auto">
+                    <button class="btn btn-primary btn-punch" onclick="submitEmpPunch('WORK_IN')">
+                        <i class="bi bi-sun-fill fs-1 mb-2"></i> 上班
+                    </button>
+                    <button class="btn btn-secondary btn-punch" onclick="submitEmpPunch('WORK_OUT')">
+                        <i class="bi bi-moon-stars-fill fs-1 mb-2"></i> 下班
+                    </button>
+                    <button class="btn btn-danger btn-punch" onclick="submitEmpPunch('OT_IN')">
+                        <i class="bi bi-lightning-charge-fill fs-1 mb-2"></i> 加班上班
+                    </button>
+                    <button class="btn btn-success btn-punch" onclick="submitEmpPunch('OT_OUT')">
+                        <i class="bi bi-house-door-fill fs-1 mb-2"></i> 加班下班
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="resultOverlay" class="result-card" onclick="closeResult()">
+    <img id="resPhoto" src="" class="avatar-circle">
+    <div id="resName" class="display-4 fw-bold">---</div>
+    <div id="resId" class="h3 text-white-50 font-monospace">---</div>
+    <div id="resStatus" class="status-text">---</div>
+    <div id="resTime" class="h4 mt-3">---</div>
+    <div class="mt-5 text-white-50 small">點擊任意處關閉</div>
+</div>
+
+<script src="js/config.js"></script>
+<script>
+    let currentEmp = null; // 暫存當前驗證中的員工
+    let inputSource = '';  // ID_PWD or CARD
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        const input = document.getElementById('inputScan');
+        input.focus();
+        
+        // 監聽 Enter
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+
+        // 點擊空白處聚焦
+        document.body.addEventListener('click', (e) => {
+            if(!e.target.closest('.modal') && !e.target.closest('input')) input.focus();
+        });
+    });
+
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('date').textContent = now.toLocaleDateString('zh-TW', options);
+    }
+
+    async function processInput() {
+        const inputEl = document.getElementById('inputScan');
+        const val = inputEl.value.trim();
+        if (!val) return;
+
+        inputEl.disabled = true; // 鎖定
+
+        try {
+            // === 步驟 1: 先找學生 (學號 or 卡號) ===
+            const { data: students } = await window.db.from('students')
+                .select('*')
+                .or(`student_id.eq.${val},card_number.eq.${val}`);
+
+            if (students && students.length > 0) {
+                // 是學生 -> 走學生考勤邏輯 (自動進出)
+                await handleStudentAttendance(students[0], val);
+                resetInput();
+                return;
+            }
+
+            // === 步驟 2: 找教職員 (員編 or 卡號) ===
+            const { data: employees } = await window.db.from('employees')
+                .select('*')
+                .or(`employee_id.eq.${val},card_number.eq.${val}`) // 假設 card_number 欄位您已經加到 employees 表了 (若無請看備註)
+                .single(); // 使用 single 因為可能找不到
+
+            if (employees) {
+                // 是教職員
+                currentEmp = employees;
+                
+                // 判斷是輸入編號 還是 刷卡
+                // 如果輸入值 == 員工編號 -> 視為手動輸入 -> 要密碼
+                // 如果輸入值 != 員工編號 (那必定是卡號) -> 視為刷卡 -> 免密碼
+                if (val === employees.employee_id) {
+                    inputSource = 'ID_PWD';
+                    showPwdModal();
+                } else {
+                    inputSource = 'CARD';
+                    showActionModal();
+                }
+            } else {
+                Swal.fire('查無資料', '找不到此編號或卡片', 'error');
+                resetInput();
+            }
+
+        } catch (err) {
+            console.error(err);
+            // 為了避免單純找不到資料報錯，這裡做個簡單處理
+            if (err.code === 'PGRST116') { // JSON 返回 0 筆 (single() 報錯)
+                 Swal.fire('查無資料', '系統內無此紀錄', 'error');
+            } else {
+                 Swal.fire('系統錯誤', err.message, 'error');
+            }
+            resetInput();
+        }
+    }
+
+    // --- 學生邏輯 ---
+    async function handleStudentAttendance(stu, source) {
+        // 查今日最後一筆
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const { data: logs } = await window.db.from('attendance_logs')
+            .select('*')
+            .eq('student_id', stu.id)
+            .gte('check_time', todayStart.toISOString())
+            .order('check_time', { ascending: false })
+            .limit(1);
+
+        let type = 'IN';
+        if (logs && logs.length > 0 && logs[0].check_type === 'IN') type = 'OUT';
+
+        // 寫入
+        await window.db.from('attendance_logs').insert([{
+            student_id: stu.id, check_type: type, input_source: source
+        }]);
+
+        showResult(stu.name_zh, stu.student_id, stu.photo_url, type === 'IN' ? '✅ 到校' : '👋 離校', type === 'IN' ? '#198754' : '#ffc107');
+    }
+
+    // --- 教職員邏輯 ---
+    function showPwdModal() {
+        const photo = currentEmp.photo_url || `https://ui-avatars.com/api/?name=${currentEmp.name}`;
+        document.getElementById('pwdAvatar').src = photo;
+        document.getElementById('pwdName').textContent = currentEmp.name;
+        document.getElementById('authPwd').value = '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('pwdModal'));
+        modal.show();
+        
+        // 聚焦密碼框
+        setTimeout(() => document.getElementById('authPwd').focus(), 500);
+        
+        // 密碼框按 Enter
+        document.getElementById('authPwd').onkeypress = (e) => {
+            if(e.key === 'Enter') verifyEmpPassword();
+        };
+    }
+
+    function verifyEmpPassword() {
+        const pwd = document.getElementById('authPwd').value;
+        // 比對資料庫密碼
+        if (pwd === currentEmp.clock_in_password) {
+            bootstrap.Modal.getInstance(document.getElementById('pwdModal')).hide();
+            showActionModal();
+        } else {
+            Swal.fire('錯誤', '密碼不正確', 'error');
+            document.getElementById('authPwd').value = '';
+        }
+    }
+
+    function showActionModal() {
+        const photo = currentEmp.photo_url || `https://ui-avatars.com/api/?name=${currentEmp.name}`;
+        document.getElementById('actionAvatar').src = photo;
+        document.getElementById('actionName').textContent = currentEmp.name;
+        
+        const modal = new bootstrap.Modal(document.getElementById('actionModal'));
+        modal.show();
+    }
+
+    async function submitEmpPunch(type) {
+        bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
+        
+        // 寫入 DB
+        const { error } = await window.db.from('employee_attendance_logs').insert([{
+            employee_id: currentEmp.id,
+            check_type: type,
+            input_source: inputSource
+        }]);
+
+        if (error) {
+            Swal.fire('錯誤', error.message, 'error');
+        } else {
+            let statusText = '';
+            let color = '';
+            switch(type) {
+                case 'WORK_IN': statusText = '🌞 上班打卡成功'; color = '#0d6efd'; break;
+                case 'WORK_OUT': statusText = '🌙 下班打卡成功'; color = '#6c757d'; break;
+                case 'OT_IN': statusText = '💪 加班開始'; color = '#dc3545'; break;
+                case 'OT_OUT': statusText = '🏠 加班結束'; color = '#198754'; break;
+            }
+            showResult(currentEmp.name, currentEmp.employee_id, currentEmp.photo_url, statusText, color);
+        }
+        resetInput();
+    }
+
+    // --- 通用 UI ---
+    function showResult(name, id, photo, status, color) {
+        const overlay = document.getElementById('resultOverlay');
+        document.getElementById('resName').textContent = name;
+        document.getElementById('resId').textContent = id;
+        document.getElementById('resPhoto').src = photo || `https://ui-avatars.com/api/?name=${name}`;
+        
+        const sEl = document.getElementById('resStatus');
+        sEl.textContent = status;
+        sEl.style.backgroundColor = color;
+        
+        document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
+
+        overlay.style.display = 'flex';
+        
+        // 3秒後自動關閉
+        setTimeout(closeResult, 3000);
+    }
+
+    function closeResult() {
+        document.getElementById('resultOverlay').style.display = 'none';
+        resetInput();
+    }
+
+    function resetInput() {
+        const el = document.getElementById('inputScan');
+        el.value = '';
+        el.disabled = false;
+        el.focus();
+        currentEmp = null;
+    }
+</script>
+</body>
+</html>
