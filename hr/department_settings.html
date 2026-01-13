@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部門組織設定</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-diagram-3-fill"></i> 部門組織設定</h3>
+        <button class="btn btn-primary" onclick="openModal()">
+            <i class="bi bi-plus-lg"></i> 新增部門
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold">部門列表</div>
+                <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>部門名稱</th>
+                                <th>上層單位</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deptTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold">組織圖預覽</div>
+                <div class="card-body text-center bg-white" style="overflow: auto;">
+                    <div id="orgChart" class="mermaid">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deptModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">部門維護</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label>部門名稱</label>
+                    <input type="text" id="m_name" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label>上層單位</label>
+                    <select id="m_parent" class="form-select">
+                        <option value="">(無 - 最上層單位)</option>
+                        </select>
+                </div>
+                <div class="mb-3">
+                    <label>排序 (數字越小越前)</label>
+                    <input type="number" id="m_sort" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let deptModal;
+    let allDepts = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        deptModal = new bootstrap.Modal(document.getElementById('deptModal'));
+        mermaid.initialize({ startOnLoad: false });
+        loadDepts();
+    });
+
+    async function loadDepts() {
+        const { data, error } = await window.db.from('departments').select('*').order('sort_order');
+        if (error) { Swal.fire('錯誤', error.message, 'error'); return; }
+        
+        allDepts = data;
+        renderTable();
+        renderOrgChart();
+    }
+
+    // 1. 渲染表格
+    function renderTable() {
+        const tbody = document.getElementById('deptTable');
+        tbody.innerHTML = '';
+        
+        // 建立 ID 對照 Map 以顯示上層名稱
+        const deptMap = {};
+        allDepts.forEach(d => deptMap[d.id] = d.name);
+
+        allDepts.forEach(d => {
+            const parentName = d.parent_id ? deptMap[d.parent_id] : '<span class="text-muted">(頂層)</span>';
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold">${d.name}</td>
+                    <td>${parentName}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='openModal(${JSON.stringify(d)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delDept(${d.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 2. 渲染組織圖 (Mermaid)
+    async function renderOrgChart() {
+        if (allDepts.length === 0) return;
+
+        let graph = "graph TD\n";
+        // 定義節點
+        allDepts.forEach(d => {
+            // 避免特殊字元破壞語法
+            const safeName = d.name.replace(/["'()]/g, "");
+            graph += `D${d.id}["${safeName}"]\n`;
+        });
+        
+        // 定義連線
+        allDepts.forEach(d => {
+            if (d.parent_id) {
+                graph += `D${d.parent_id} --> D${d.id}\n`;
+            }
+        });
+
+        const container = document.getElementById('orgChart');
+        container.removeAttribute('data-processed'); // 重置 Mermaid 狀態
+        container.innerHTML = graph;
+        
+        try {
+            await mermaid.run({ nodes: [container] });
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = "組織圖產生失敗";
+        }
+    }
+
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        document.getElementById('m_name').value = d ? d.name : '';
+        document.getElementById('m_sort').value = d ? d.sort_order : 0;
+        
+        // 更新上層選單 (排除自己，避免循環)
+        const sel = document.getElementById('m_parent');
+        sel.innerHTML = '<option value="">(無 - 最上層單位)</option>';
+        allDepts.forEach(dept => {
+            if (!d || dept.id !== d.id) { // 不能選自己當老爸
+                sel.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+            }
+        });
+        if (d) sel.value = d.parent_id || '';
+
+        deptModal.show();
+    }
+
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            name: document.getElementById('m_name').value,
+            parent_id: document.getElementById('m_parent').value || null,
+            sort_order: document.getElementById('m_sort').value
+        };
+
+        if(!payload.name) { Swal.fire('提示', '請輸入部門名稱', 'warning'); return; }
+
+        let error;
+        if(id) {
+            const { error: err } = await window.db.from('departments').update(payload).eq('id', id);
+            error = err;
+        } else {
+            const { error: err } = await window.db.from('departments').insert([payload]);
+            error = err;
+        }
+
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else {
+            deptModal.hide();
+            loadDepts();
+        }
+    }
+
+    window.delDept = async (id) => {
+        // 檢查是否有子部門
+        const hasChild = allDepts.some(d => d.parent_id == id);
+        if(hasChild) {
+            Swal.fire('無法刪除', '此部門還有下級單位，請先刪除或移動下級單位。', 'warning');
+            return;
+        }
+
+        if(await Swal.fire({ title: '確定刪除？', icon: 'warning', showCancelButton: true }).then(r => r.isConfirmed)) {
+            await window.db.from('departments').delete().eq('id', id);
+            loadDepts();
+        }
+    }
+</script>
+</body>
+</html>
