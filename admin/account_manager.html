@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .role-badge { width: 100px; }
         .btn-sync-emp { background-color: #0d6efd; color: white; border: none; }
         .btn-sync-emp:hover { background-color: #0b5ed7; }
         .btn-sync-stu { background-color: #198754; color: white; border: none; }
@@ -124,18 +125,22 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        if (typeof window.db === 'undefined') {
+            Swal.fire('錯誤', '找不到設定檔 ../js/config.js', 'error');
+            return;
+        }
         loadAccounts();
     });
 
     // 1. 載入帳號
     async function loadAccounts() {
         const { data, error } = await window.db.from('system_users').select('*').order('username');
-        if (error) { Swal.fire('錯誤', error.message, 'error'); return; }
+        if (error) { Swal.fire('讀取錯誤', error.message, 'error'); return; }
         allAccounts = data || [];
         filterAccounts();
     }
 
-    // 2. 渲染與篩選
+    // 2. 渲染列表
     function filterAccounts() {
         const key = document.getElementById('searchInput').value.toLowerCase();
         const role = document.getElementById('roleFilter').value;
@@ -167,8 +172,6 @@
                 : '<span class="badge bg-success">正常</span>';
             
             let rowStyle = isSuspended ? 'opacity: 0.6;' : '';
-
-            // 密碼狀態
             let pwdAuth = acc.can_change_password ? '<i class="bi bi-check text-success"></i>' : '<i class="bi bi-lock-fill text-muted"></i>';
 
             tbody.innerHTML += `
@@ -197,64 +200,85 @@
         });
     }
 
-    // 3. 同步教職員
+    // 3. 同步教職員 (容錯版)
     async function syncEmployees() {
-        if(!(await confirmSync('教職員', '預設密碼 = 身分證字號 + @'))) return;
+        if(!(await confirmSync('教職員', '預設密碼 = 身分證字號 + @ (若無身分證則為 0000)'))) return;
         
         try {
-            const { data: emps } = await window.db.from('employees').select('id, employee_id, name, role, id_number');
-            if (!emps || emps.length === 0) throw new Error("人事資料無資料");
+            // 注意：這裡使用正確的欄位名稱 id_number
+            const { data: emps, error } = await window.db.from('employees').select('*');
+            
+            if (error) throw new Error("讀取人事資料失敗: " + error.message);
+            if (!emps || emps.length === 0) throw new Error("人事資料庫無資料");
 
-            // 檢查 ID Number 是否存在
-            const invalid = emps.filter(e => !e.id_number);
-            if(invalid.length > 0) {
-                 Swal.fire('部分資料不全', `有 ${invalid.length} 位教職員無身分證字號，無法建立預設密碼。`, 'warning');
+            let count = 0;
+            const upsertData = emps.map(e => {
+                if (!e.employee_id) return null; // 略過沒編號的
+
+                // 密碼邏輯：有身分證用身分證+@，沒有則用 0000
+                let pwd = '0000';
+                if (e.id_number) pwd = e.id_number + '@';
+
+                count++;
+                return {
+                    username: e.employee_id,
+                    password: pwd, 
+                    role: e.role || 'staff',
+                    name: e.name,
+                    ref_id: e.id,
+                    is_student: false,
+                    can_change_password: true,
+                    status: e.status || 'active',
+                    id_number: e.id_number // 存入以供還原密碼使用
+                };
+            }).filter(x => x);
+
+            if (upsertData.length === 0) {
+                Swal.fire('無資料', '所有員工皆無「人事編號」，無法建立帳號。', 'warning');
+                return;
             }
 
-            const upsertData = emps.filter(e => e.id_number).map(e => ({
-                username: e.employee_id,
-                password: e.id_number + '@', // 規則：ID + @
-                role: e.role || 'staff',
-                name: e.name,
-                ref_id: e.id,
-                is_student: false,
-                can_change_password: true,
-                status: 'active',
-                id_number: e.id_number // 存起來備用
-            }));
-
-            const { error } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
-            if (error) throw error;
+            const { error: upsertErr } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
+            if (upsertErr) throw upsertErr;
             
-            Swal.fire('同步完成', `已更新 ${upsertData.length} 筆教職員帳號`, 'success');
+            Swal.fire('同步完成', `已處理 ${count} 筆教職員帳號`, 'success');
             loadAccounts();
         } catch (e) { Swal.fire('錯誤', e.message, 'error'); }
     }
 
-    // 4. 同步學生
+    // 4. 同步學生 (容錯版)
     async function syncStudents() {
-        if(!(await confirmSync('學生', '預設密碼 = 身分證字號'))) return;
+        if(!(await confirmSync('學生', '預設密碼 = 身分證字號 (若無則為 0000)'))) return;
 
         try {
-            const { data: stus } = await window.db.from('students').select('id, student_id, name_zh, id_number');
-            if (!stus || stus.length === 0) throw new Error("學籍資料無資料");
+            const { data: stus, error } = await window.db.from('students').select('*');
+            if (error) throw new Error("讀取學籍資料失敗: " + error.message);
 
-            const upsertData = stus.filter(s => s.student_id && s.id_number).map(s => ({
-                username: s.student_id,
-                password: s.id_number, // 規則：ID
-                role: 'student',
-                name: s.name_zh,
-                ref_id: s.id,
-                is_student: true,
-                can_change_password: false, // 學生不可改
-                status: 'active',
-                id_number: s.id_number
-            }));
+            let count = 0;
+            const upsertData = stus.map(s => {
+                if (!s.student_id) return null;
 
-            const { error } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
-            if (error) throw error;
+                let pwd = '0000';
+                if (s.id_number) pwd = s.id_number;
 
-            Swal.fire('同步完成', `已更新 ${upsertData.length} 筆學生帳號`, 'success');
+                count++;
+                return {
+                    username: s.student_id,
+                    password: pwd,
+                    role: 'student',
+                    name: s.name_zh,
+                    ref_id: s.id,
+                    is_student: true,
+                    can_change_password: false,
+                    status: s.status === 'active' ? 'active' : 'suspended',
+                    id_number: s.id_number
+                };
+            }).filter(x => x);
+
+            const { error: upsertErr } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
+            if (upsertErr) throw upsertErr;
+
+            Swal.fire('同步完成', `已處理 ${count} 筆學生帳號`, 'success');
             loadAccounts();
         } catch (e) { Swal.fire('錯誤', e.message, 'error'); }
     }
@@ -270,7 +294,7 @@
         return res.isConfirmed;
     }
 
-    // 5. 編輯帳號
+    // 5. 編輯
     window.openEdit = (acc) => {
         document.getElementById('e_username_key').value = acc.username;
         document.getElementById('e_username').value = acc.username;
@@ -287,35 +311,23 @@
             role: document.getElementById('e_role').value,
             status: document.getElementById('e_status').value
         };
-
         const { error } = await window.db.from('system_users').update(updates).eq('username', username);
         if(error) Swal.fire('失敗', error.message, 'error');
-        else {
-            editModal.hide();
-            Swal.fire('成功', '帳號資料已更新', 'success');
-            loadAccounts();
-        }
+        else { editModal.hide(); Swal.fire('成功', '已更新', 'success'); loadAccounts(); }
     }
 
-    // 6. 還原預設密碼
+    // 6. 還原密碼
     window.resetPassword = async (username, role, idNumber) => {
-        if (!idNumber || idNumber === 'null') {
-            Swal.fire('無法還原', '此帳號系統內無身分證字號紀錄，請手動編輯資料庫或重新同步。', 'error');
-            return;
-        }
-
-        // 判斷規則
-        let newPwd = idNumber;
-        let ruleText = "身分證字號";
-        
-        if (role !== 'student') {
-            newPwd = idNumber + '@';
-            ruleText = "身分證字號 + @";
+        let newPwd = '0000';
+        // 防呆：如果 system_users 裡的 id_number 是 null，試著給 0000，或提示
+        if (idNumber && idNumber !== 'null' && idNumber !== 'undefined') {
+            newPwd = idNumber;
+            if (role !== 'student') newPwd += '@';
         }
 
         const confirm = await Swal.fire({
             title: '還原預設密碼？',
-            html: `將還原為：<b>${ruleText}</b>`,
+            html: `將還原為：<b>${newPwd}</b><br><small>(若無身分證字號則為 0000)</small>`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ffc107',
@@ -323,26 +335,17 @@
         });
 
         if (confirm.isConfirmed) {
-            const { error } = await window.db.from('system_users')
-                .update({ password: newPwd })
-                .eq('username', username);
-            
+            const { error } = await window.db.from('system_users').update({ password: newPwd }).eq('username', username);
             if(error) Swal.fire('失敗', error.message, 'error');
             else Swal.fire('成功', '密碼已還原', 'success');
         }
     }
 
-    // 7. 停用/啟用 (快速切換)
+    // 7. 停用啟用
     window.toggleStatus = async (username, targetStatus) => {
-        let action = targetStatus === 'active' ? '啟用' : '停用';
         const { error } = await window.db.from('system_users').update({ status: targetStatus }).eq('username', username);
-        
         if(error) Swal.fire('操作失敗', error.message, 'error');
-        else {
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-            Toast.fire({ icon: 'success', title: `帳號已${action}` });
-            loadAccounts();
-        }
+        else { loadAccounts(); }
     }
 </script>
 </body>
