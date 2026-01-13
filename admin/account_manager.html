@@ -11,6 +11,11 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         .role-badge { width: 100px; }
+        /* 區分按鈕樣式 */
+        .btn-sync-emp { background-color: #0d6efd; color: white; border: none; }
+        .btn-sync-emp:hover { background-color: #0b5ed7; }
+        .btn-sync-stu { background-color: #198754; color: white; border: none; }
+        .btn-sync-stu:hover { background-color: #157347; }
     </style>
 </head>
 <body>
@@ -19,11 +24,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark"><i class="bi bi-shield-lock-fill"></i> 帳號管理</h3>
         <div>
-            <button class="btn btn-outline-primary me-2" onclick="syncEmployees()">
-                <i class="bi bi-arrow-repeat"></i> 同步教職員帳號
+            <button class="btn btn-sync-emp me-2 shadow-sm" onclick="syncEmployees()">
+                <i class="bi bi-briefcase-fill"></i> 同步教職員帳號
             </button>
-            <button class="btn btn-success" onclick="syncStudents()">
-                <i class="bi bi-people-fill"></i> 同步學生帳號
+            <button class="btn btn-sync-stu shadow-sm" onclick="syncStudents()">
+                <i class="bi bi-mortarboard-fill"></i> 同步學生帳號
             </button>
         </div>
     </div>
@@ -39,12 +44,15 @@
                     <option value="staff">職員</option>
                     <option value="admin">管理員</option>
                 </select>
+                <button class="btn btn-outline-secondary ms-auto" onclick="loadAccounts()">
+                    <i class="bi bi-arrow-clockwise"></i> 重新整理
+                </button>
             </div>
 
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>帳號</th>
+                        <th>帳號 (Username)</th>
                         <th>姓名</th>
                         <th>身分 (Role)</th>
                         <th>密碼權限</th>
@@ -65,10 +73,16 @@
 
     document.addEventListener('DOMContentLoaded', loadAccounts);
 
-    // 1. 載入帳號列表
+    // 1. 載入帳號列表 (從 system_users)
     async function loadAccounts() {
-        const { data, error } = await window.db.from('app_accounts').select('*').order('username');
-        if (error) { console.error(error); return; }
+        const { data, error } = await window.db.from('system_users').select('*').order('username');
+        
+        if (error) { 
+            console.error(error); 
+            Swal.fire('讀取錯誤', '無法讀取帳號資料 (system_users)', 'error');
+            return; 
+        }
+        
         allAccounts = data || [];
         filterAccounts();
     }
@@ -81,7 +95,9 @@
         tbody.innerHTML = '';
 
         const filtered = allAccounts.filter(acc => {
-            const matchKey = (acc.username + acc.name).toLowerCase().includes(key);
+            const name = acc.name || '';
+            const username = acc.username || '';
+            const matchKey = (username + name).toLowerCase().includes(key);
             const matchRole = role ? acc.role === role : true;
             return matchKey && matchRole;
         });
@@ -98,20 +114,20 @@
             if (acc.role === 'student') roleColor = 'bg-info text-dark';
 
             let pwdStatus = acc.can_change_password 
-                ? '<span class="text-success"><i class="bi bi-check-circle"></i> 可修改</span>' 
-                : '<span class="text-muted"><i class="bi bi-lock-fill"></i> 不可修改 (永不過期)</span>';
+                ? '<span class="text-success small"><i class="bi bi-check-circle"></i> 可修改</span>' 
+                : '<span class="text-muted small"><i class="bi bi-lock-fill"></i> 鎖定 (學生預設)</span>';
 
             // 學生不能有權限設定按鈕，其他人有
             let actionBtn = '';
             if (!acc.is_student) {
                 actionBtn = `<button class="btn btn-sm btn-outline-dark" onclick="editPermission('${acc.username}', '${acc.role}')"><i class="bi bi-gear"></i> 權限設定</button>`;
             } else {
-                actionBtn = `<span class="text-muted small">學生帳號自動管理</span>`;
+                actionBtn = `<span class="text-muted small">由學籍資料管理</span>`;
             }
 
             tbody.innerHTML += `
                 <tr>
-                    <td class="font-monospace fw-bold">${acc.username}</td>
+                    <td class="font-monospace fw-bold text-primary">${acc.username}</td>
                     <td>${acc.name || '-'}</td>
                     <td><span class="badge ${roleColor} role-badge">${acc.role}</span></td>
                     <td>${pwdStatus}</td>
@@ -121,75 +137,107 @@
         });
     }
 
-    // 3. 同步學生帳號
-    async function syncStudents() {
-        // 先詢問
+    // 3. 同步教職員帳號 (從 employees -> system_users)
+    async function syncEmployees() {
         const confirm = await Swal.fire({
-            title: '確定同步學生帳號？',
-            text: "這將為所有「學籍資料」中的學生建立登入帳號。\n預設帳號：學號\n預設密碼：身分證字號",
-            icon: 'warning',
+            title: '同步教職員資料？',
+            text: "系統將讀取「人事資料管理」清單，自動建立或更新帳號權限。\n預設密碼：0000",
+            icon: 'question',
             showCancelButton: true,
+            confirmButtonColor: '#0d6efd', // 藍色
             confirmButtonText: '開始同步'
         });
 
         if (!confirm.isConfirmed) return;
+        Swal.fire({ title: '處理中...', didOpen: () => Swal.showLoading() });
 
-        Swal.fire({ title: '同步中...', didOpen: () => Swal.showLoading() });
+        try {
+            // A. 讀取員工表
+            const { data: emps } = await window.db.from('employees').select('id, employee_id, name, role');
+            if (!emps || emps.length === 0) throw new Error("人事資料庫無資料");
 
-        // A. 抓取所有學生資料
-        const { data: students } = await window.db.from('students').select('id, student_id, id_number, name_zh');
-        
-        if (!students || students.length === 0) {
-            Swal.fire('無資料', '目前沒有學生學籍資料可同步', 'info');
-            return;
-        }
+            // B. 準備資料
+            // 邏輯：如果帳號已存在，我們只更新 name, role, ref_id (不覆蓋密碼)
+            // 但 Supabase upsert 預設是全覆蓋。為了保留舊密碼，我們需要一點技巧。
+            // 簡化做法：我們先全部讀出來，比對一下。或者直接 Upsert 但忽略 password (需要寫 SQL function，比較麻煩)
+            // 這裡採用 JS 邏輯：先查 system_users，如果存在就用舊密碼，不存在就用 '0000'
+            
+            // 先抓現有帳號 Map
+            const existingMap = {};
+            allAccounts.forEach(a => existingMap[a.username] = a.password);
 
-        // B. 準備寫入 payload
-        const accounts = students.map(s => {
-            if (!s.student_id || !s.id_number) return null; // 略過資料不全的
-            return {
-                username: s.student_id,
-                password: s.id_number, // 實務上建議加密，此處依需求存明碼或簡單處理
-                role: 'student',
-                name: s.name_zh,
-                ref_id: s.id,
-                is_student: true,
-                can_change_password: false // 學生不可改密碼
-            };
-        }).filter(x => x); // 過濾掉 null
+            const upsertData = emps.map(e => {
+                const oldPwd = existingMap[e.employee_id];
+                return {
+                    username: e.employee_id,
+                    password: oldPwd || '0000', // 有舊密碼用舊的，沒有用 0000
+                    role: e.role || 'staff',
+                    name: e.name,
+                    ref_id: e.id,
+                    is_student: false,
+                    can_change_password: true
+                };
+            });
 
-        // C. 寫入 (Upsert: 如果帳號存在就更新，不存在就新增)
-        const { error } = await window.db.from('app_accounts').upsert(accounts, { onConflict: 'username' });
+            // C. 寫入
+            const { error } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
+            if (error) throw error;
 
-        if (error) {
-            Swal.fire('同步失敗', error.message, 'error');
-        } else {
-            Swal.fire('同步完成', `已處理 ${accounts.length} 筆學生帳號`, 'success');
+            Swal.fire('同步完成', `已更新 ${upsertData.length} 筆教職員帳號`, 'success');
             loadAccounts();
+
+        } catch (err) {
+            Swal.fire('同步失敗', err.message, 'error');
         }
     }
 
-    // 4. 同步教職員帳號 (輔助功能)
-    async function syncEmployees() {
-        const { data: emps } = await window.db.from('employees').select('id, employee_id, name, role');
-        if (!emps) return;
+    // 4. 同步學生帳號 (從 students -> system_users)
+    async function syncStudents() {
+        const confirm = await Swal.fire({
+            title: '同步學生帳號？',
+            text: "帳號 = 學號\n密碼 = 身分證字號\n此操作會鎖定學生修改密碼權限。",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#198754', // 綠色
+            confirmButtonText: '確認同步'
+        });
 
-        const accounts = emps.map(e => ({
-            username: e.employee_id,
-            password: '000', // 教職員預設密碼，可自行更改規則
-            role: e.role || 'staff',
-            name: e.name,
-            ref_id: e.id,
-            is_student: false,
-            can_change_password: true
-        }));
+        if (!confirm.isConfirmed) return;
+        Swal.fire({ title: '處理中...', didOpen: () => Swal.showLoading() });
 
-        await window.db.from('app_accounts').upsert(accounts, { onConflict: 'username' });
-        Swal.fire('成功', '教職員帳號已同步 (預設密碼: 000)', 'success');
-        loadAccounts();
+        try {
+            // A. 讀取學生表
+            const { data: stus } = await window.db.from('students').select('id, student_id, id_number, name_zh');
+            
+            if (!stus || stus.length === 0) throw new Error("學籍資料庫無資料");
+
+            // B. 準備資料
+            const upsertData = stus.map(s => {
+                if (!s.student_id || !s.id_number) return null;
+                return {
+                    username: s.student_id,
+                    password: s.id_number, // 學生密碼強制設為身分證字號 (重置)
+                    role: 'student',
+                    name: s.name_zh,
+                    ref_id: s.id,
+                    is_student: true,
+                    can_change_password: false // 鎖定
+                };
+            }).filter(x => x);
+
+            // C. 寫入
+            const { error } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
+            if (error) throw error;
+
+            Swal.fire('同步完成', `已更新 ${upsertData.length} 筆學生帳號`, 'success');
+            loadAccounts();
+
+        } catch (err) {
+            Swal.fire('同步失敗', err.message, 'error');
+        }
     }
 
-    // 5. 獨立設定帳號權限 (針對非學生)
+    // 5. 獨立設定帳號權限
     async function editPermission(username, currentRole) {
         const { value: newRole } = await Swal.fire({
             title: `設定帳號 ${username} 的權限`,
@@ -204,7 +252,7 @@
         });
 
         if (newRole) {
-            await window.db.from('app_accounts').update({ role: newRole }).eq('username', username);
+            await window.db.from('system_users').update({ role: newRole }).eq('username', username);
             Swal.fire('已更新', '權限已變更', 'success');
             loadAccounts();
         }
