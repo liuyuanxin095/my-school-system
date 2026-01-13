@@ -2,178 +2,213 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>帳號權限管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帳號管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .role-badge { width: 100px; }
+    </style>
 </head>
-<body class="bg-light p-4">
+<body>
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-shield-lock-fill"></i> 帳號權限管理</h3>
-        <div class="btn-group">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-                <i class="bi bi-person-plus-fill"></i> 手動新增
+        <h3 class="fw-bold text-dark"><i class="bi bi-shield-lock-fill"></i> 帳號管理</h3>
+        <div>
+            <button class="btn btn-outline-primary me-2" onclick="syncEmployees()">
+                <i class="bi bi-arrow-repeat"></i> 同步教職員帳號
             </button>
-            <button id="syncBtn" class="btn btn-warning text-dark">
-                <i class="bi bi-arrow-repeat"></i> 同步教職員
+            <button class="btn btn-success" onclick="syncStudents()">
+                <i class="bi bi-people-fill"></i> 同步學生帳號
             </button>
         </div>
     </div>
 
     <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0 text-center align-middle">
+        <div class="card-body">
+            <div class="d-flex mb-3 gap-2">
+                <input type="text" id="searchInput" class="form-control w-auto" placeholder="搜尋帳號或姓名..." onkeyup="filterAccounts()">
+                <select id="roleFilter" class="form-select w-auto" onchange="filterAccounts()">
+                    <option value="">所有身分</option>
+                    <option value="student">學生</option>
+                    <option value="teacher">教師</option>
+                    <option value="staff">職員</option>
+                    <option value="admin">管理員</option>
+                </select>
+            </div>
+
+            <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>狀態</th>
                         <th>帳號</th>
                         <th>姓名</th>
-                        <th>角色</th>
-                        <th>密碼</th>
-                        <th>到期日</th>
-                        <th>操作</th>
+                        <th>身分 (Role)</th>
+                        <th>密碼權限</th>
+                        <th class="text-end">操作</th>
                     </tr>
                 </thead>
-                <tbody id="userTableBody"></tbody>
+                <tbody id="accTable">
+                    <tr><td colspan="5" class="text-center py-5">載入中...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="addModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">新增帳號</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addForm">
-                    <div class="mb-3">
-                        <label>帳號 (ID)</label>
-                        <input type="text" id="m_username" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>姓名</label>
-                        <input type="text" id="m_name" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label>角色</label>
-                        <select id="m_role" class="form-select">
-                            <option value="staff">教職員</option>
-                            <option value="student">學生</option>
-                            <option value="admin">管理員</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="saveUserBtn" class="btn btn-primary">儲存</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="../js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    async function loadUsers() {
-        const { data: users, error } = await window.db.from('system_users').select('*').order('username');
-        const tbody = document.getElementById('userTableBody');
-        tbody.innerHTML = '';
-        
-        if(error) return;
+    let allAccounts = [];
 
-        users.forEach(user => {
-            const isExpired = user.expiry_date && user.expiry_date < new Date().toISOString().split('T')[0];
-            const statusBadge = (!user.is_active || isExpired) 
-                ? '<span class="badge bg-danger">停用</span>' 
-                : '<span class="badge bg-success">正常</span>';
-            
+    document.addEventListener('DOMContentLoaded', loadAccounts);
+
+    // 1. 載入帳號列表
+    async function loadAccounts() {
+        const { data, error } = await window.db.from('app_accounts').select('*').order('username');
+        if (error) { console.error(error); return; }
+        allAccounts = data || [];
+        filterAccounts();
+    }
+
+    // 2. 渲染與篩選
+    function filterAccounts() {
+        const key = document.getElementById('searchInput').value.toLowerCase();
+        const role = document.getElementById('roleFilter').value;
+        const tbody = document.getElementById('accTable');
+        tbody.innerHTML = '';
+
+        const filtered = allAccounts.filter(acc => {
+            const matchKey = (acc.username + acc.name).toLowerCase().includes(key);
+            const matchRole = role ? acc.role === role : true;
+            return matchKey && matchRole;
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">無符合資料</td></tr>';
+            return;
+        }
+
+        filtered.forEach(acc => {
+            let roleColor = 'bg-secondary';
+            if (acc.role === 'admin') roleColor = 'bg-danger';
+            if (acc.role === 'teacher') roleColor = 'bg-success';
+            if (acc.role === 'student') roleColor = 'bg-info text-dark';
+
+            let pwdStatus = acc.can_change_password 
+                ? '<span class="text-success"><i class="bi bi-check-circle"></i> 可修改</span>' 
+                : '<span class="text-muted"><i class="bi bi-lock-fill"></i> 不可修改 (永不過期)</span>';
+
+            // 學生不能有權限設定按鈕，其他人有
+            let actionBtn = '';
+            if (!acc.is_student) {
+                actionBtn = `<button class="btn btn-sm btn-outline-dark" onclick="editPermission('${acc.username}', '${acc.role}')"><i class="bi bi-gear"></i> 權限設定</button>`;
+            } else {
+                actionBtn = `<span class="text-muted small">學生帳號自動管理</span>`;
+            }
+
             tbody.innerHTML += `
                 <tr>
-                    <td>${statusBadge}</td>
-                    <td class="fw-bold">${user.username}</td>
-                    <td>${user.name}</td>
-                    <td>${user.role}</td>
-                    <td class="text-muted">******</td>
-                    <td>${user.expiry_date || '<span class="text-muted">-</span>'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-warning" onclick="resetPassword('${user.username}')" title="還原密碼">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.username}')" title="刪除">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
+                    <td class="font-monospace fw-bold">${acc.username}</td>
+                    <td>${acc.name || '-'}</td>
+                    <td><span class="badge ${roleColor} role-badge">${acc.role}</span></td>
+                    <td>${pwdStatus}</td>
+                    <td class="text-end">${actionBtn}</td>
                 </tr>
             `;
         });
     }
 
-    // 儲存
-    document.getElementById('saveUserBtn').addEventListener('click', async () => {
-        const data = {
-            username: document.getElementById('m_username').value,
-            name: document.getElementById('m_name').value,
-            password: '123456', // 預設密碼
-            role: document.getElementById('m_role').value,
-            is_active: true
-        };
-        const { error } = await window.db.from('system_users').upsert([data]);
-        if(!error) {
-            alert('成功');
-            location.reload();
-        }
-    });
+    // 3. 同步學生帳號
+    async function syncStudents() {
+        // 先詢問
+        const confirm = await Swal.fire({
+            title: '確定同步學生帳號？',
+            text: "這將為所有「學籍資料」中的學生建立登入帳號。\n預設帳號：學號\n預設密碼：身分證字號",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '開始同步'
+        });
 
-    // 刪除
-    window.deleteUser = async (id) => {
-        if(confirm('確定刪除?')) {
-            await window.db.from('system_users').delete().eq('username', id);
-            loadUsers();
-        }
-    };
+        if (!confirm.isConfirmed) return;
 
-    // 還原密碼
-    window.resetPassword = async (id) => {
-        if(confirm('確定還原成預設密碼 (身分證)?')) {
-            // 先去抓員工資料
-            const { data: emp } = await window.db.from('employees').select('national_id').eq('employee_id', id).single();
-            if(emp) {
-                await window.db.from('system_users').update({ password: emp.national_id }).eq('username', id);
-                alert('已還原');
-            } else {
-                alert('找不到該員工資料，無法還原');
-            }
-        }
-    };
+        Swal.fire({ title: '同步中...', didOpen: () => Swal.showLoading() });
 
-    // 同步
-    document.getElementById('syncBtn').addEventListener('click', async () => {
-        if(!confirm('確定同步?')) return;
-        const { data: emps } = await window.db.from('employees').select('*').eq('status', 'active');
-        for(let emp of emps) {
-            const { data: exist } = await window.db.from('system_users').select('username').eq('username', emp.employee_id).single();
-            if(!exist) {
-                await window.db.from('system_users').insert([{
-                    username: emp.employee_id,
-                    name: emp.name,
-                    password: emp.national_id,
-                    role: 'staff',
-                    is_active: true
-                }]);
-            }
+        // A. 抓取所有學生資料
+        const { data: students } = await window.db.from('students').select('id, student_id, id_number, name_zh');
+        
+        if (!students || students.length === 0) {
+            Swal.fire('無資料', '目前沒有學生學籍資料可同步', 'info');
+            return;
         }
-        alert('同步完成');
-        loadUsers();
-    });
 
-    loadUsers();
+        // B. 準備寫入 payload
+        const accounts = students.map(s => {
+            if (!s.student_id || !s.id_number) return null; // 略過資料不全的
+            return {
+                username: s.student_id,
+                password: s.id_number, // 實務上建議加密，此處依需求存明碼或簡單處理
+                role: 'student',
+                name: s.name_zh,
+                ref_id: s.id,
+                is_student: true,
+                can_change_password: false // 學生不可改密碼
+            };
+        }).filter(x => x); // 過濾掉 null
+
+        // C. 寫入 (Upsert: 如果帳號存在就更新，不存在就新增)
+        const { error } = await window.db.from('app_accounts').upsert(accounts, { onConflict: 'username' });
+
+        if (error) {
+            Swal.fire('同步失敗', error.message, 'error');
+        } else {
+            Swal.fire('同步完成', `已處理 ${accounts.length} 筆學生帳號`, 'success');
+            loadAccounts();
+        }
+    }
+
+    // 4. 同步教職員帳號 (輔助功能)
+    async function syncEmployees() {
+        const { data: emps } = await window.db.from('employees').select('id, employee_id, name, role');
+        if (!emps) return;
+
+        const accounts = emps.map(e => ({
+            username: e.employee_id,
+            password: '000', // 教職員預設密碼，可自行更改規則
+            role: e.role || 'staff',
+            name: e.name,
+            ref_id: e.id,
+            is_student: false,
+            can_change_password: true
+        }));
+
+        await window.db.from('app_accounts').upsert(accounts, { onConflict: 'username' });
+        Swal.fire('成功', '教職員帳號已同步 (預設密碼: 000)', 'success');
+        loadAccounts();
+    }
+
+    // 5. 獨立設定帳號權限 (針對非學生)
+    async function editPermission(username, currentRole) {
+        const { value: newRole } = await Swal.fire({
+            title: `設定帳號 ${username} 的權限`,
+            input: 'select',
+            inputOptions: {
+                'admin': '系統管理員',
+                'teacher': '教師',
+                'staff': '職員'
+            },
+            inputValue: currentRole,
+            showCancelButton: true
+        });
+
+        if (newRole) {
+            await window.db.from('app_accounts').update({ role: newRole }).eq('username', username);
+            Swal.fire('已更新', '權限已變更', 'success');
+            loadAccounts();
+        }
+    }
 </script>
 </body>
 </html>
