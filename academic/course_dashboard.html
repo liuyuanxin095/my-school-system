@@ -9,7 +9,6 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         .system-header { background-color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        
         .func-card {
             border: none; border-radius: 12px; transition: 0.3s;
             text-align: center; padding: 25px 15px; height: 100%; cursor: pointer;
@@ -18,13 +17,10 @@
         }
         .func-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .icon-box { font-size: 2.5rem; margin-bottom: 15px; display: inline-block; padding: 10px; border-radius: 50%; width: 80px; height: 80px; line-height: 60px; }
-        
         .c-basic { background-color: #e3f2fd; color: #0d47a1; }
         .c-assign { background-color: #e8f5e9; color: #1b5e20; }
         .c-sched { background-color: #fff3cd; color: #856404; }
-        
         .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 10px; background: #eee; color: #666; margin-top: 10px; display: inline-block; }
-        .status-dev { background: #ffeeba; color: #856404; }
         .status-ok { background: #d1e7dd; color: #0f5132; }
     </style>
 </head>
@@ -34,39 +30,39 @@
     <div class="system-header d-flex justify-content-between align-items-center">
         <div>
             <h3 class="fw-bold text-primary mb-1"><i class="bi bi-journal-album"></i> 課程維護系統</h3>
-            <span class="text-muted small">目前的作業學期：</span>
+            <span class="text-muted small">目前作業學期：</span>
             <span id="currentSem" class="fw-bold text-dark fs-5">讀取中...</span>
         </div>
-        </div>
+    </div>
 
     <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-primary ps-2">基本設定</h5>
     <div class="row g-4 mb-5">
         <div class="col-md-3">
-            <a href="course_settings.html?tab=semester" class="func-card">
+            <a href="semester_setup.html" class="func-card">
                 <div class="icon-box c-basic"><i class="bi bi-calendar-check"></i></div>
-                <h5 class="fw-bold">學期設定連動</h5>
-                <span class="status-badge status-ok">已完成</span>
+                <h5 class="fw-bold">學期設定</h5>
+                <span class="status-badge status-ok">獨立頁面</span>
             </a>
         </div>
         <div class="col-md-3">
             <a href="class_manager.html" class="func-card">
                 <div class="icon-box c-basic"><i class="bi bi-people"></i></div>
                 <h5 class="fw-bold">班級資料維護</h5>
-                <span class="status-badge status-ok">New!</span>
+                <span class="status-badge status-ok">已完成</span>
             </a>
         </div>
         <div class="col-md-3">
-            <a href="course_settings.html?tab=subject" class="func-card">
+            <a href="subject_manager.html" class="func-card">
                 <div class="icon-box c-basic"><i class="bi bi-book"></i></div>
                 <h5 class="fw-bold">課程科目管理</h5>
-                <span class="status-badge status-ok">已完成</span>
+                <span class="status-badge status-ok">獨立頁面</span>
             </a>
         </div>
         <div class="col-md-3">
-            <a href="course_settings.html?tab=classroom" class="func-card">
+            <a href="classroom_manager.html" class="func-card">
                 <div class="icon-box c-basic"><i class="bi bi-building"></i></div>
                 <h5 class="fw-bold">教室與作息</h5>
-                <span class="status-badge status-ok">已完成</span>
+                <span class="status-badge status-ok">獨立頁面</span>
             </a>
         </div>
     </div>
@@ -74,19 +70,19 @@
     <h5 class="fw-bold text-secondary mb-3 border-start border-4 border-success ps-2">配課與條件設定</h5>
     <div class="row g-4 mb-5">
         <div class="col-md-3">
-            <a href="course_assign.html" class="func-card">
-                <div class="icon-box c-assign"><i class="bi bi-person-video3"></i></div>
-                <h5 class="fw-bold">教師配課作業</h5>
-                <p class="text-muted small mb-0">指定誰教什麼課</p>
-                <span class="status-badge status-ok">已更新</span>
-            </a>
-        </div>
-        <div class="col-md-3">
             <a href="class_course_opening.html" class="func-card">
                 <div class="icon-box c-assign"><i class="bi bi-layers-half"></i></div>
                 <h5 class="fw-bold">班級開課作業</h5>
-                <p class="text-muted small mb-0">設定節數分配 (1,1,2)</p>
-                <span class="status-badge status-ok">New!</span>
+                <p class="text-muted small mb-0">Step 1: 設定節數(1,1,2)</p>
+                <span class="status-badge status-ok">優先執行</span>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="course_assign.html" class="func-card">
+                <div class="icon-box c-assign"><i class="bi bi-person-video3"></i></div>
+                <h5 class="fw-bold">教師配課作業</h5>
+                <p class="text-muted small mb-0">Step 2: 指定授課教師</p>
+                <span class="status-badge status-ok">已更新</span>
             </a>
         </div>
         <div class="col-md-3">
@@ -94,11 +90,11 @@
                 <div class="icon-box c-assign"><i class="bi bi-sliders"></i></div>
                 <h5 class="fw-bold">排課條件設定</h5>
                 <p class="text-muted small mb-0">不排課時段設定</p>
-                <span class="status-badge status-dev">開發中</span>
+                <span class="status-badge text-muted">開發中</span>
             </a>
         </div>
         <div class="col-md-3">
-            <div class="func-card bg-light border opacity-50" style="cursor: default;">
+             <div class="func-card bg-light border opacity-50" style="cursor: default;">
                 <div class="icon-box bg-secondary bg-opacity-25 text-muted"><i class="bi bi-three-dots"></i></div>
                 <h5 class="fw-bold text-muted">更多功能</h5>
             </div>
@@ -110,22 +106,24 @@
         <div class="col-md-3">
             <a href="auto_schedule.html" class="func-card">
                 <div class="icon-box c-sched"><i class="bi bi-cpu"></i></div>
-                <h5 class="fw-bold">自動排課執行</h5>
-                <span class="status-badge status-ok">New!</span>
+                <h5 class="fw-bold">自動排課</h5>
+                <p class="text-muted small mb-0">開始運算</p>
+                <span class="status-badge status-ok">已更新</span>
             </a>
         </div>
         <div class="col-md-3">
-            <a href="#" class="func-card" onclick="alert('開發中')">
+            <a href="schedule_view.html" class="func-card">
                 <div class="icon-box c-sched"><i class="bi bi-table"></i></div>
                 <h5 class="fw-bold">課表檢視與調整</h5>
-                <span class="status-badge status-dev">開發中</span>
+                <p class="text-muted small mb-0">檢視與微調結果</p>
+                <span class="status-badge status-ok">New!</span>
             </a>
         </div>
         <div class="col-md-3">
             <a href="#" class="func-card" onclick="alert('開發中')">
                 <div class="icon-box c-sched"><i class="bi bi-printer"></i></div>
                 <h5 class="fw-bold">課表列印</h5>
-                <span class="status-badge status-dev">開發中</span>
+                <span class="status-badge text-muted">開發中</span>
             </a>
         </div>
     </div>
@@ -136,26 +134,20 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
     
     async function init() {
-        const { data } = await window.db.from('semester_settings')
-            .select('*')
-            .eq('is_active_for_scheduling', true)
-            .single();
-            
+        // 使用 maybeSingle 避免報錯
+        let { data } = await window.db.from('semester_settings').select('*').eq('is_active_for_scheduling', true).maybeSingle();
+        
+        // Fallback: 如果找不到 active，抓最新的一筆顯示，避免一直 Loading
+        if(!data) {
+            const { data: latest } = await window.db.from('semester_settings').select('*').order('academic_year', {ascending:false}).limit(1).maybeSingle();
+            data = latest;
+        }
+
         if(data) {
-            let semName = data.semester;
-            if(semName === '1') semName = '上學期';
-            else if(semName === '2') semName = '下學期';
-            else if(semName === 'W') semName = '寒輔';
-            else if(semName === 'S') semName = '暑輔';
-
-            let typeName = data.system_type;
-            if(typeName === 'kindergarten') typeName = '幼兒園';
-            if(typeName === 'elementary') typeName = '國小部';
-            if(typeName === 'high_school') typeName = '國高中部';
-
-            document.getElementById('currentSem').textContent = `${data.academic_year} 學年度 ${semName} (${typeName})`;
+            let semName = data.semester === '1' ? '上學期' : (data.semester === '2' ? '下學期' : data.semester);
+            document.getElementById('currentSem').textContent = `${data.academic_year} 學年度 ${semName}`;
         } else {
-            document.getElementById('currentSem').textContent = "請先至「基本設定」設定排課學期";
+            document.getElementById('currentSem').textContent = "未設定 (請至學期設定)";
             document.getElementById('currentSem').classList.add('text-danger');
         }
     }
