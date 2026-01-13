@@ -48,6 +48,13 @@
     </div>
 
     <div class="filter-bar d-flex gap-3 align-items-center flex-wrap">
+        <div class="input-group w-auto">
+            <span class="input-group-text bg-light fw-bold">學期</span>
+            <select id="f_semester" class="form-select" onchange="loadClasses()">
+                <option value="">載入中...</option>
+            </select>
+        </div>
+
         <select id="f_branch" class="form-select w-auto" onchange="loadClasses()">
             <option value="">載入中...</option>
         </select>
@@ -73,6 +80,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th>學期</th>
                             <th>分校 / 科部</th>
                             <th>班級代碼</th>
                             <th>班級名稱</th>
@@ -83,7 +91,7 @@
                             <th class="text-end">操作</th>
                         </tr>
                     </thead>
-                    <tbody id="listTable"><tr><td colspan="8" class="text-center py-5">載入中...</td></tr></tbody>
+                    <tbody id="listTable"><tr><td colspan="9" class="text-center py-5">載入中...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -101,6 +109,12 @@
                 <input type="hidden" id="editId">
                 
                 <div class="row g-3">
+                    <div class="col-md-12">
+                        <label>學期代碼 <span class="text-danger">*</span></label>
+                        <select id="m_semester" class="form-select bg-light">
+                            </select>
+                    </div>
+
                     <div class="col-md-6">
                         <label>分校 <span class="text-danger">*</span></label>
                         <select id="m_branch" class="form-select">
@@ -172,11 +186,11 @@
             <div class="modal-body">
                 <div class="alert alert-info small">
                     <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，直接貼到底下的文字框中。<br>
-                    欄位順序：<strong>分校代碼 (例: A) | 科部 | 班級代碼 | 班級名稱 | 班導師(人事編號) | 助導(人事編號)</strong>
+                    欄位順序：<strong>學期代碼 | 分校代碼(A) | 科部 | 班級代碼 | 班級名稱 | 班導師(人事編號) | 助導(人事編號)</strong>
                 </div>
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        <textarea id="pasteArea" class="form-control" rows="5" placeholder="請在此貼上 Excel 資料..." oninput="parsePasteData()"></textarea>
+                        <textarea id="pasteArea" class="form-control" rows="5" placeholder="例: 114-1  A  國小部  101  一年一班  T123  T456..." oninput="parsePasteData()"></textarea>
                     </div>
                     <div class="col-md-12">
                         <h6 class="fw-bold">預覽與編輯 (系統自動解析)</h6>
@@ -184,17 +198,18 @@
                             <table class="table table-bordered preview-table mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>分校代碼</th>
+                                        <th>學期</th>
+                                        <th>分校</th>
                                         <th>科部</th>
                                         <th>班級代碼</th>
                                         <th>班級名稱</th>
-                                        <th>班導師 (編號)</th>
-                                        <th>助導 (編號)</th>
+                                        <th>班導師</th>
+                                        <th>助導</th>
                                         <th width="80">狀態</th>
                                     </tr>
                                 </thead>
                                 <tbody id="previewBody">
-                                    <tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>
+                                    <tr><td colspan="8" class="text-center text-muted">請先貼上資料</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -218,16 +233,41 @@
     let employees = []; // 老師資料
     let branches = [];  // 分校資料
     let branchMap = {}; // 代碼 -> 名稱 對照表
+    let currentSemester = '';
 
     document.addEventListener('DOMContentLoaded', async () => {
         dataModal = new bootstrap.Modal(document.getElementById('dataModal'));
         importModal = new bootstrap.Modal(document.getElementById('importModal'));
         
-        await Promise.all([loadTeachers(), loadBranches()]);
+        await Promise.all([loadSemesters(), loadTeachers(), loadBranches()]);
         loadClasses();
     });
 
-    // 1. 載入老師選單
+    // 1. 載入學期 (New)
+    async function loadSemesters() {
+        const { data } = await window.db.from('semesters').select('semester_code, name, status').order('semester_code', { ascending: false });
+        const f_sel = document.getElementById('f_semester');
+        const m_sel = document.getElementById('m_semester');
+        
+        let opts = '';
+        if (data && data.length > 0) {
+            data.forEach(s => {
+                const isCurrent = s.status === 'current';
+                const label = `${s.semester_code} ${s.name} ${isCurrent ? '(目前)' : ''}`;
+                opts += `<option value="${s.semester_code}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
+                
+                // 記住目前的學期
+                if(isCurrent) currentSemester = s.semester_code;
+            });
+        } else {
+            opts = '<option value="">無學期資料</option>';
+        }
+        
+        f_sel.innerHTML = opts;
+        m_sel.innerHTML = opts;
+    }
+
+    // 2. 載入老師選單
     async function loadTeachers() {
         const { data } = await window.db.from('employees').select('id, name, employee_id').eq('status', 'active');
         employees = data || [];
@@ -239,11 +279,11 @@
         document.getElementById('m_assistant').innerHTML = opts;
     }
 
-    // 2. 載入分校選單 (新功能)
+    // 3. 載入分校選單
     async function loadBranches() {
         const { data } = await window.db.from('school_branches').select('branch_code, branch_name').order('branch_code');
         branches = data || [];
-        branchMap = {}; // 重置對照表
+        branchMap = {};
 
         const f_sel = document.getElementById('f_branch');
         const m_sel = document.getElementById('m_branch');
@@ -255,21 +295,23 @@
             const display = `${b.branch_code} ${b.branch_name}`;
             opts += `<option value="${b.branch_name}">${display}</option>`;
             m_opts += `<option value="${b.branch_name}">${display}</option>`;
-            branchMap[b.branch_code] = b.branch_name; // 建立 代碼->名稱 對照 (給匯入用)
+            branchMap[b.branch_code] = b.branch_name;
         });
 
         f_sel.innerHTML = opts;
         m_sel.innerHTML = m_opts;
     }
 
-    // 3. 載入班級列表
+    // 4. 載入班級列表 (加入學期過濾)
     async function loadClasses() {
+        const semester = document.getElementById('f_semester').value; // New
         const branch = document.getElementById('f_branch').value;
         const dept = document.getElementById('f_dept').value;
         const status = document.getElementById('f_status').value;
 
         let query = window.db.from('school_classes').select('*').order('class_code');
         
+        if(semester) query = query.eq('semester_code', semester); // New Filter
         if(branch) query = query.eq('branch', branch);
         if(dept) query = query.eq('department', dept);
         if(status) query = query.eq('status', status);
@@ -279,15 +321,13 @@
         tbody.innerHTML = '';
 
         if(error || !data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">無資料</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">無資料</td></tr>`;
             return;
         }
 
         const empMap = {};
         employees.forEach(e => empMap[e.id] = e.name);
         
-        // 建立分校名稱反查代碼 (為了顯示 A 校本部)
-        // 雖然資料庫存的是名稱，但我們想顯示代碼+名稱
         const getBranchDisplay = (name) => {
             const b = branches.find(x => x.branch_name === name);
             return b ? `${b.branch_code} ${b.branch_name}` : name;
@@ -324,6 +364,7 @@
 
             tbody.innerHTML += `
                 <tr>
+                    <td class="font-monospace text-primary fw-bold">${c.semester_code || '-'}</td>
                     <td>
                         <div class="fw-bold">${getBranchDisplay(c.branch)}</div>
                         <small class="text-muted">${c.department}</small>
@@ -340,9 +381,14 @@
         });
     }
 
-    // 4. 開啟 Modal
+    // 5. 開啟 Modal
     window.openModal = (d = null) => {
         document.getElementById('editId').value = d ? d.id : '';
+        
+        // 預設帶入當前篩選的學期，若無則帶入第一個選項
+        const currentFilterSem = document.getElementById('f_semester').value;
+        document.getElementById('m_semester').value = d ? d.semester_code : (currentFilterSem || '');
+
         document.getElementById('m_branch').value = d ? d.branch : (branches[0] ? branches[0].branch_name : '');
         document.getElementById('m_dept').value = d ? d.department : '國小部';
         document.getElementById('m_code').value = d ? d.class_code : '';
@@ -354,10 +400,11 @@
         dataModal.show();
     }
 
-    // 5. 儲存
+    // 6. 儲存
     window.saveData = async () => {
         const id = document.getElementById('editId').value;
         const payload = {
+            semester_code: document.getElementById('m_semester').value, // New
             branch: document.getElementById('m_branch').value,
             department: document.getElementById('m_dept').value,
             class_code: document.getElementById('m_code').value,
@@ -368,7 +415,8 @@
             status: id ? undefined : 'active'
         };
 
-        if(!payload.class_code || !payload.class_name) return Swal.fire('欄位未填', '代碼與名稱必填', 'warning');
+        if(!payload.semester_code || !payload.class_code || !payload.class_name) 
+            return Swal.fire('欄位未填', '學期、代碼與名稱必填', 'warning');
 
         let error;
         if(id) error = (await window.db.from('school_classes').update(payload).eq('id', id)).error;
@@ -395,7 +443,7 @@
     // --- 匯入功能 ---
     window.openImportModal = () => {
         document.getElementById('pasteArea').value = '';
-        document.getElementById('previewBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>';
+        document.getElementById('previewBody').innerHTML = '<tr><td colspan="8" class="text-center text-muted">請先貼上資料</td></tr>';
         document.getElementById('importCount').textContent = '共 0 筆';
         importModal.show();
     }
@@ -409,20 +457,21 @@
         let count = 0;
         rows.forEach((row) => {
             const cols = row.split('\t');
-            if(cols.length < 2) return; // 至少要有前幾欄
+            if(cols.length < 3) return; 
 
             count++;
-            // 欄位: 分校代碼 | 科部 | 班級代碼 | 班級名稱 | 班導師編號 | 助導編號
-            const [bCode, dept, cCode, cName, hrCode, asCode] = cols;
+            // New: col[0] is semester_code
+            const [semCode, bCode, dept, cCode, cName, hrCode, asCode] = cols;
 
             tbody.innerHTML += `
                 <tr class="import-row">
-                    <td><input type="text" value="${bCode ? bCode.toUpperCase() : ''}" placeholder="例: A"></td>
+                    <td><input type="text" value="${semCode||''}" placeholder="114-1"></td>
+                    <td><input type="text" value="${bCode ? bCode.toUpperCase() : ''}" placeholder="A"></td>
                     <td><input type="text" value="${dept||''}"></td>
                     <td><input type="text" value="${cCode||''}"></td>
                     <td><input type="text" value="${cName||''}"></td>
-                    <td><input type="text" value="${hrCode||''}" placeholder="人事編號"></td>
-                    <td><input type="text" value="${asCode||''}" placeholder="人事編號"></td>
+                    <td><input type="text" value="${hrCode||''}" placeholder="編號"></td>
+                    <td><input type="text" value="${asCode||''}" placeholder="編號"></td>
                     <td class="text-center"><span class="badge bg-info">待匯入</span></td>
                 </tr>
             `;
@@ -435,27 +484,32 @@
         if(rows.length === 0) { Swal.fire('無資料', '請先貼上 Excel 資料', 'warning'); return; }
 
         const payload = [];
-        // 建立 人事編號 -> ID 對照表
         const empCodeMap = {};
         employees.forEach(e => empCodeMap[e.employee_id] = e.id);
 
         for (const tr of rows) {
             const inputs = tr.querySelectorAll('input');
-            const bCode = inputs[0].value.trim();
-            const branchName = branchMap[bCode]; // 用代碼換名稱
+            const semCode = inputs[0].value.trim();
+            const bCode = inputs[1].value.trim();
+            const branchName = branchMap[bCode]; 
 
             if (!branchName) {
-                Swal.fire('資料錯誤', `找不到代碼為 "${bCode}" 的分校，請先在分校管理中建立。`, 'error');
+                Swal.fire('資料錯誤', `分校代碼 "${bCode}" 不存在`, 'error');
+                return;
+            }
+            if (!semCode) {
+                Swal.fire('資料錯誤', `學期代碼未填`, 'error');
                 return;
             }
 
             payload.push({
-                branch: branchName, // 存入分校名稱
-                department: inputs[1].value.trim(),
-                class_code: inputs[2].value.trim(),
-                class_name: inputs[3].value.trim(),
-                homeroom_teacher_id: empCodeMap[inputs[4].value.trim()] || null,
-                assistant_teacher_id: empCodeMap[inputs[5].value.trim()] || null,
+                semester_code: semCode,
+                branch: branchName,
+                department: inputs[2].value.trim(),
+                class_code: inputs[3].value.trim(),
+                class_name: inputs[4].value.trim(),
+                homeroom_teacher_id: empCodeMap[inputs[5].value.trim()] || null,
+                assistant_teacher_id: empCodeMap[inputs[6].value.trim()] || null,
                 needs_scheduling: true,
                 status: 'active'
             });
