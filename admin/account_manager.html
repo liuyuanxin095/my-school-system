@@ -17,6 +17,7 @@
         .btn-sync-stu:hover { background-color: #157347; }
         .status-suspended { text-decoration: line-through; color: #adb5bd; }
         .action-btn-group .btn { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+        .sync-info { font-size: 0.75rem; color: #6c757d; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
@@ -25,12 +26,22 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark"><i class="bi bi-shield-lock-fill"></i> 帳號管理</h3>
         <div>
-            <button class="btn btn-sync-emp me-2 shadow-sm" onclick="syncEmployees()">
-                <i class="bi bi-briefcase-fill"></i> 同步教職員帳號
+            <button class="btn btn-dark me-2 shadow-sm" onclick="openManualAdd()">
+                <i class="bi bi-person-plus-fill"></i> 手動新增
             </button>
-            <button class="btn btn-sync-stu shadow-sm" onclick="syncStudents()">
-                <i class="bi bi-mortarboard-fill"></i> 同步學生帳號
-            </button>
+
+            <div class="d-inline-block text-center me-2">
+                <button class="btn btn-sync-emp shadow-sm" onclick="syncEmployees(true)">
+                    <i class="bi bi-briefcase-fill"></i> 同步教職員
+                </button>
+                <span id="empSyncTime" class="sync-info">未同步</span>
+            </div>
+            <div class="d-inline-block text-center">
+                <button class="btn btn-sync-stu shadow-sm" onclick="syncStudents(true)">
+                    <i class="bi bi-mortarboard-fill"></i> 同步學生
+                </button>
+                <span id="stuSyncTime" class="sync-info">未同步</span>
+            </div>
         </div>
     </div>
 
@@ -63,7 +74,7 @@
                         <th>身分</th>
                         <th>狀態</th>
                         <th>密碼權限</th>
-                        <th class="text-end" width="250">操作</th>
+                        <th class="text-end" width="280">操作</th>
                     </tr>
                 </thead>
                 <tbody id="accTable">
@@ -116,23 +127,63 @@
     </div>
 </div>
 
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">手動新增帳號</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label>帳號 <span class="text-danger">*</span></label>
+                    <input type="text" id="a_username" class="form-control" placeholder="請輸入帳號">
+                </div>
+                <div class="mb-3">
+                    <label>密碼 <span class="text-danger">*</span></label>
+                    <input type="text" id="a_password" class="form-control" placeholder="預設密碼">
+                </div>
+                <div class="mb-3">
+                    <label>姓名 <span class="text-danger">*</span></label>
+                    <input type="text" id="a_name" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label>權限</label>
+                    <select id="a_role" class="form-select">
+                        <option value="staff">職員</option>
+                        <option value="teacher">教師</option>
+                        <option value="admin">管理員</option>
+                        <option value="student">學生</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-dark" onclick="saveNewAccount()">建立</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     let allAccounts = [];
-    let editModal;
+    let editModal, addModal;
 
     document.addEventListener('DOMContentLoaded', () => {
         editModal = new bootstrap.Modal(document.getElementById('editModal'));
-        if (typeof window.db === 'undefined') {
-            Swal.fire('錯誤', '找不到設定檔 ../js/config.js', 'error');
-            return;
-        }
+        addModal = new bootstrap.Modal(document.getElementById('addModal'));
+        
+        loadSyncTime();
         loadAccounts();
+        
+        // 自動檢查同步 (每天一次)
+        checkAutoSync();
     });
 
-    // 1. 載入帳號
+    // 1. 載入與篩選
     async function loadAccounts() {
         const { data, error } = await window.db.from('system_users').select('*').order('username');
         if (error) { Swal.fire('讀取錯誤', error.message, 'error'); return; }
@@ -140,7 +191,6 @@
         filterAccounts();
     }
 
-    // 2. 渲染列表
     function filterAccounts() {
         const key = document.getElementById('searchInput').value.toLowerCase();
         const role = document.getElementById('roleFilter').value;
@@ -191,8 +241,11 @@
                             </button>
                             ${isSuspended 
                                 ? `<button class="btn btn-outline-success" title="啟用" onclick="toggleStatus('${acc.username}', 'active')"><i class="bi bi-play-fill"></i></button>`
-                                : `<button class="btn btn-outline-danger" title="停用" onclick="toggleStatus('${acc.username}', 'suspended')"><i class="bi bi-pause-fill"></i></button>`
+                                : `<button class="btn btn-outline-dark" title="停用" onclick="toggleStatus('${acc.username}', 'suspended')"><i class="bi bi-pause-fill"></i></button>`
                             }
+                            <button class="btn btn-outline-danger" title="刪除帳號" onclick="deleteAccount('${acc.username}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -200,87 +253,86 @@
         });
     }
 
-    // 3. 同步教職員 (容錯版)
-    async function syncEmployees() {
-        if(!(await confirmSync('教職員', '預設密碼 = 身分證字號 + @ (若無身分證則為 0000)'))) return;
+    // 2. 同步邏輯 (包含自動更新時間)
+    function loadSyncTime() {
+        const t1 = localStorage.getItem('lastSync_emp');
+        const t2 = localStorage.getItem('lastSync_stu');
+        if(t1) document.getElementById('empSyncTime').textContent = t1;
+        if(t2) document.getElementById('stuSyncTime').textContent = t2;
+    }
+
+    function updateSyncTime(type) {
+        const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+        localStorage.setItem(`lastSync_${type}`, nowStr);
+        localStorage.setItem(`lastSyncTimeCheck`, Date.now()); // 紀錄 timestamp 供自動檢查
+        loadSyncTime();
+    }
+
+    // 自動同步檢查
+    function checkAutoSync() {
+        const lastCheck = localStorage.getItem('lastSyncTimeCheck');
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        // 如果從未同步過，或距離上次同步超過 24 小時
+        if (!lastCheck || (Date.now() - parseInt(lastCheck)) > oneDay) {
+            console.log('執行每日自動同步...');
+            // 靜默執行，不跳 Alert
+            syncEmployees(false);
+            syncStudents(false);
+        }
+    }
+
+    async function syncEmployees(showAlert = true) {
+        if(showAlert && !(await confirmSync('教職員', '預設密碼 = 身分證字號 + @'))) return;
         
         try {
-            // 注意：這裡使用正確的欄位名稱 id_number
             const { data: emps, error } = await window.db.from('employees').select('*');
-            
-            if (error) throw new Error("讀取人事資料失敗: " + error.message);
-            if (!emps || emps.length === 0) throw new Error("人事資料庫無資料");
+            if (error) throw error;
+            if (!emps) return;
 
-            let count = 0;
             const upsertData = emps.map(e => {
-                if (!e.employee_id) return null; // 略過沒編號的
-
-                // 密碼邏輯：有身分證用身分證+@，沒有則用 0000
+                if (!e.employee_id) return null;
                 let pwd = '0000';
                 if (e.id_number) pwd = e.id_number + '@';
-
-                count++;
                 return {
-                    username: e.employee_id,
-                    password: pwd, 
-                    role: e.role || 'staff',
-                    name: e.name,
-                    ref_id: e.id,
-                    is_student: false,
-                    can_change_password: true,
-                    status: e.status || 'active',
-                    id_number: e.id_number // 存入以供還原密碼使用
+                    username: e.employee_id, password: pwd, role: e.role || 'staff',
+                    name: e.name, ref_id: e.id, is_student: false, can_change_password: true,
+                    status: e.status || 'active', id_number: e.id_number
                 };
             }).filter(x => x);
-
-            if (upsertData.length === 0) {
-                Swal.fire('無資料', '所有員工皆無「人事編號」，無法建立帳號。', 'warning');
-                return;
-            }
 
             const { error: upsertErr } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
             if (upsertErr) throw upsertErr;
             
-            Swal.fire('同步完成', `已處理 ${count} 筆教職員帳號`, 'success');
+            updateSyncTime('emp');
+            if(showAlert) Swal.fire('同步完成', `更新 ${upsertData.length} 筆資料`, 'success');
             loadAccounts();
-        } catch (e) { Swal.fire('錯誤', e.message, 'error'); }
+        } catch (e) { if(showAlert) Swal.fire('錯誤', e.message, 'error'); }
     }
 
-    // 4. 同步學生 (容錯版)
-    async function syncStudents() {
-        if(!(await confirmSync('學生', '預設密碼 = 身分證字號 (若無則為 0000)'))) return;
+    async function syncStudents(showAlert = true) {
+        if(showAlert && !(await confirmSync('學生', '預設密碼 = 身分證字號'))) return;
 
         try {
             const { data: stus, error } = await window.db.from('students').select('*');
-            if (error) throw new Error("讀取學籍資料失敗: " + error.message);
+            if (error) throw error;
 
-            let count = 0;
             const upsertData = stus.map(s => {
                 if (!s.student_id) return null;
-
-                let pwd = '0000';
-                if (s.id_number) pwd = s.id_number;
-
-                count++;
                 return {
-                    username: s.student_id,
-                    password: pwd,
-                    role: 'student',
-                    name: s.name_zh,
-                    ref_id: s.id,
-                    is_student: true,
-                    can_change_password: false,
-                    status: s.status === 'active' ? 'active' : 'suspended',
-                    id_number: s.id_number
+                    username: s.student_id, password: s.id_number || '0000', role: 'student',
+                    name: s.name_zh, ref_id: s.id, is_student: true, can_change_password: false,
+                    status: s.status === 'active' ? 'active' : 'suspended', id_number: s.id_number
                 };
             }).filter(x => x);
 
             const { error: upsertErr } = await window.db.from('system_users').upsert(upsertData, { onConflict: 'username' });
             if (upsertErr) throw upsertErr;
 
-            Swal.fire('同步完成', `已處理 ${count} 筆學生帳號`, 'success');
+            updateSyncTime('stu');
+            if(showAlert) Swal.fire('同步完成', `更新 ${upsertData.length} 筆資料`, 'success');
             loadAccounts();
-        } catch (e) { Swal.fire('錯誤', e.message, 'error'); }
+        } catch (e) { if(showAlert) Swal.fire('錯誤', e.message, 'error'); }
     }
 
     async function confirmSync(type, rule) {
@@ -294,7 +346,60 @@
         return res.isConfirmed;
     }
 
-    // 5. 編輯
+    // 3. 手動新增
+    window.openManualAdd = () => {
+        document.getElementById('a_username').value = '';
+        document.getElementById('a_password').value = '';
+        document.getElementById('a_name').value = '';
+        addModal.show();
+    }
+
+    window.saveNewAccount = async () => {
+        const payload = {
+            username: document.getElementById('a_username').value.trim(),
+            password: document.getElementById('a_password').value.trim(),
+            name: document.getElementById('a_name').value.trim(),
+            role: document.getElementById('a_role').value,
+            status: 'active',
+            is_student: document.getElementById('a_role').value === 'student',
+            can_change_password: true
+        };
+
+        if(!payload.username || !payload.password || !payload.name) {
+            Swal.fire('欄位未填', '請填寫所有欄位', 'warning'); return;
+        }
+
+        const { error } = await window.db.from('system_users').insert([payload]);
+        if(error) Swal.fire('建立失敗', error.message, 'error');
+        else {
+            addModal.hide();
+            Swal.fire('成功', '帳號已建立', 'success');
+            loadAccounts();
+        }
+    }
+
+    // 4. 刪除帳號
+    window.deleteAccount = async (username) => {
+        const confirm = await Swal.fire({
+            title: '刪除帳號？',
+            text: `確定要刪除 ${username} 嗎？此動作無法復原。`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: '刪除'
+        });
+
+        if (confirm.isConfirmed) {
+            const { error } = await window.db.from('system_users').delete().eq('username', username);
+            if(error) Swal.fire('失敗', error.message, 'error');
+            else {
+                Swal.fire('已刪除', '帳號已移除', 'success');
+                loadAccounts();
+            }
+        }
+    }
+
+    // 5. 編輯與其他功能 (維持原樣)
     window.openEdit = (acc) => {
         document.getElementById('e_username_key').value = acc.username;
         document.getElementById('e_username').value = acc.username;
@@ -303,50 +408,19 @@
         document.getElementById('e_status').value = acc.status || 'active';
         editModal.show();
     }
-
     window.saveEdit = async () => {
         const username = document.getElementById('e_username_key').value;
-        const updates = {
-            name: document.getElementById('e_name').value,
-            role: document.getElementById('e_role').value,
-            status: document.getElementById('e_status').value
-        };
+        const updates = { name: document.getElementById('e_name').value, role: document.getElementById('e_role').value, status: document.getElementById('e_status').value };
         const { error } = await window.db.from('system_users').update(updates).eq('username', username);
-        if(error) Swal.fire('失敗', error.message, 'error');
-        else { editModal.hide(); Swal.fire('成功', '已更新', 'success'); loadAccounts(); }
+        if(error) Swal.fire('失敗', error.message, 'error'); else { editModal.hide(); Swal.fire('成功', '已更新', 'success'); loadAccounts(); }
     }
-
-    // 6. 還原密碼
     window.resetPassword = async (username, role, idNumber) => {
-        let newPwd = '0000';
-        // 防呆：如果 system_users 裡的 id_number 是 null，試著給 0000，或提示
-        if (idNumber && idNumber !== 'null' && idNumber !== 'undefined') {
-            newPwd = idNumber;
-            if (role !== 'student') newPwd += '@';
-        }
-
-        const confirm = await Swal.fire({
-            title: '還原預設密碼？',
-            html: `將還原為：<b>${newPwd}</b><br><small>(若無身分證字號則為 0000)</small>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ffc107',
-            confirmButtonText: '確認還原'
-        });
-
-        if (confirm.isConfirmed) {
-            const { error } = await window.db.from('system_users').update({ password: newPwd }).eq('username', username);
-            if(error) Swal.fire('失敗', error.message, 'error');
-            else Swal.fire('成功', '密碼已還原', 'success');
+        let newPwd = idNumber && idNumber!=='null' ? (role!=='student' ? idNumber+'@' : idNumber) : '0000';
+        if((await Swal.fire({title:'還原預設密碼？', html:`還原為：<b>${newPwd}</b>`, icon:'warning', showCancelButton:true})).isConfirmed) {
+            await window.db.from('system_users').update({password:newPwd}).eq('username', username); Swal.fire('成功', '密碼已還原', 'success');
         }
     }
-
-    // 7. 停用啟用
-    window.toggleStatus = async (username, targetStatus) => {
-        const { error } = await window.db.from('system_users').update({ status: targetStatus }).eq('username', username);
-        if(error) Swal.fire('操作失敗', error.message, 'error');
-        else { loadAccounts(); }
-    }
+    window.toggleStatus = async (username, status) => { await window.db.from('system_users').update({status}).eq('username',username); loadAccounts(); }
 </script>
 </body>
 </html>
