@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統權限設定</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-shield-lock-fill"></i> 職稱與權限對照設定</h3>
+    </div>
+    
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle"></i> 當在「人事資料管理」選擇職稱時，系統將自動帶入此處設定的預設權限。
+            </div>
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>職稱名稱</th>
+                        <th>預設系統權限</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="mappingTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', loadMappings);
+
+    async function loadMappings() {
+        const { data } = await window.db.from('title_role_mapping').select('*').order('id');
+        const tbody = document.getElementById('mappingTable');
+        tbody.innerHTML = '';
+        
+        data.forEach(m => {
+            let roleLabel = '';
+            if(m.default_role === 'admin') roleLabel = '<span class="badge bg-danger">管理員 (Admin)</span>';
+            else if(m.default_role === 'teacher') roleLabel = '<span class="badge bg-success">教師 (Teacher)</span>';
+            else roleLabel = '<span class="badge bg-secondary">職員 (Staff)</span>';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold">${m.title_name}</td>
+                    <td>${roleLabel}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRole('${m.title_name}', '${m.default_role}')">修改權限</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function editRole(title, currentRole) {
+        const { value: newRole } = await Swal.fire({
+            title: `設定「${title}」的預設權限`,
+            input: 'select',
+            inputOptions: {
+                'admin': '系統管理員 (可管理所有功能)',
+                'teacher': '授課教師 (僅教學與成績)',
+                'staff': '一般職員 (僅行政功能)'
+            },
+            inputValue: currentRole,
+            showCancelButton: true
+        });
+
+        if (newRole) {
+            await window.db.from('title_role_mapping')
+                .update({ default_role: newRole })
+                .eq('title_name', title);
+            loadMappings();
+            Swal.fire('已更新', `${title} 的預設權限已變更`, 'success');
+        }
+    }
+</script>
+</body>
+</html>
