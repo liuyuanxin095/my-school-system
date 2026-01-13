@@ -47,17 +47,17 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="150" class="ps-4">人事編號</th>
+                        <th width="120" class="ps-4">人事編號</th>
                         <th width="80" class="text-center">照片</th>
                         <th>姓名</th>
                         <th>職稱 / 部門</th>
-                        <th>權限</th>
+                        <th>校內 Email / 電話</th>
                         <th>狀態</th>
                         <th class="text-end">操作</th>
                     </tr>
                 </thead>
                 <tbody id="empTable">
-                    <tr><td colspan="7" class="text-center py-5 text-muted">系統準備中...</td></tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted">載入中...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -114,21 +114,11 @@
     let importModal;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. 初始化 Modal
         importModal = new bootstrap.Modal(document.getElementById('importModal'));
-        
-        // 2. 檢查資料庫連線
         if (typeof window.db === 'undefined') {
-            Swal.fire({ 
-                icon: 'error', 
-                title: '連線失敗', 
-                html: '找不到 <code>config.js</code>。<br>請確認檔案是否在 <code>js/config.js</code> 且路徑引用正確。' 
-            });
-            document.querySelector('#empTable td').innerHTML = "<span class='text-danger'>設定檔載入失敗</span>";
+            Swal.fire({ icon: 'error', title: '連線失敗', text: '找不到設定檔' });
             return;
         }
-
-        // 3. 載入資料
         loadEmployees();
     });
 
@@ -141,7 +131,6 @@
             if (status) query = query.eq('status', status);
 
             const { data, error } = await query;
-            
             if (error) throw error;
 
             const filtered = (data || []).filter(emp => {
@@ -167,14 +156,14 @@
         }
 
         data.forEach(e => {
-            let roleBadge = 'bg-secondary';
-            if(e.role === 'admin') roleBadge = 'bg-danger';
-            if(e.role === 'teacher') roleBadge = 'bg-success';
-
             let nameDisplay = e.name;
             if (e.role === 'teacher' && e.teacher_code) nameDisplay += `<span class="teacher-code-badge">${e.teacher_code}</span>`;
 
             let avatarSrc = e.photo_url || `https://ui-avatars.com/api/?name=${e.name}&background=random`;
+
+            // 修正欄位：顯示 Email 與電話
+            let contactInfo = `<div><i class="bi bi-envelope"></i> ${e.email_school || '-'}</div>`;
+            contactInfo += `<div class="text-muted small"><i class="bi bi-telephone"></i> ${e.phone_contact || '-'}</div>`;
 
             tbody.innerHTML += `
                 <tr>
@@ -182,21 +171,46 @@
                     <td class="text-center"><img src="${avatarSrc}" class="avatar-small"></td>
                     <td class="fs-5 fw-bold">${nameDisplay}</td>
                     <td>
-                        <div>${e.title || '-'}</div>
+                        <div class="fw-bold">${e.title || '-'}</div>
                         <small class="text-muted">${e.department || '-'}</small>
                     </td>
-                    <td><span class="badge ${roleBadge}">${e.role}</span></td>
+                    <td>${contactInfo}</td>
                     <td>${e.status==='active'?'<span class="badge bg-success">在職</span>':'<span class="badge bg-secondary">離職</span>'}</td>
                     <td class="text-end">
-                        <a href="edit_employee.html?id=${e.id}" class="btn btn-sm btn-outline-primary">
+                        <a href="edit_employee.html?id=${e.id}" class="btn btn-sm btn-outline-primary me-1">
                             <i class="bi bi-pencil-square"></i> 編輯
                         </a>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteEmp('${e.id}')">
+                            <i class="bi bi-trash"></i> 刪除
+                        </button>
                     </td>
                 </tr>
             `;
         });
     }
 
+    // 刪除功能
+    async function deleteEmp(id) {
+        const confirm = await Swal.fire({
+            title: '確定刪除？',
+            text: "刪除後無法復原，且相關帳號可能會失效！",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: '刪除'
+        });
+
+        if (confirm.isConfirmed) {
+            const { error } = await window.db.from('employees').delete().eq('id', id);
+            if (error) Swal.fire('刪除失敗', error.message, 'error');
+            else {
+                Swal.fire('已刪除', '資料已移除', 'success');
+                loadEmployees();
+            }
+        }
+    }
+
+    // --- 匯入功能 (維持原樣) ---
     function openImportModal() {
         document.getElementById('pasteArea').value = '';
         document.getElementById('previewBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">請先貼上資料</td></tr>';
@@ -247,13 +261,11 @@
                 department: inputs[3].value.trim(),
                 email: inputs[4].value.trim(),
                 phone: inputs[5].value.trim(),
-                status: 'active',
-                role: 'staff'
+                status: 'active'
             });
         });
 
         const { error } = await window.db.from('employees').insert(payload);
-        
         if(error) {
             Swal.fire('匯入失敗', error.message, 'error');
         } else {
