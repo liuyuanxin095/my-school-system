@@ -7,213 +7,144 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        .system-card {
-            transition: transform 0.3s;
-            cursor: pointer;
-            border: none;
-            border-radius: 12px;
-            text-decoration: none;
-            display: block;
-            color: inherit;
-        }
-        .system-card:hover { transform: translateY(-5px); }
-        .card-body { padding: 2rem 1rem !important; }
-        .card-icon { font-size: 2.5rem; margin-bottom: 15px; display: block; }
-
-        /* 卡片顏色定義 */
-        .bg-academic   { background-color: #e3f2fd; color: #0d47a1; } /* 教務-藍 */
-        .bg-student    { background-color: #e8f5e9; color: #1b5e20; } /* 學務-綠 */
-        .bg-counseling { background-color: #f3e5f5; color: #4a148c; } /* 輔導-紫 */
-        .bg-general    { background-color: #e0f7fa; color: #006064; } /* 總務-青 */
-        .bg-message    { background-color: #ffebee; color: #b71c1c; } /* 訊息-紅 */
-        .bg-hr         { background-color: #fff3cd; color: #856404; } /* 人資-黃 */
-
-        /* 公告列表樣式 */
-        .news-item { cursor: pointer; transition: background-color 0.2s; }
-        .news-item:hover { background-color: #f8f9fa; }
+        body { background-color: #f8f9fa; padding: 30px; font-family: 'Microsoft JhengHei', sans-serif; }
+        
+        .announcement-card { border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); background: white; overflow: hidden; }
+        .card-header { background-color: white; border-bottom: 2px solid #f0f2f5; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; }
+        
+        .list-group-item { border: none; border-bottom: 1px solid #f0f2f5; padding: 15px 25px; transition: background-color 0.2s; cursor: pointer; }
+        .list-group-item:hover { background-color: #f8f9fa; }
+        .list-group-item:last-child { border-bottom: none; }
+        
+        /* 分類標籤顏色 */
+        .badge-sys { background-color: #0d6efd; }
+        .badge-edu { background-color: #198754; }
+        .badge-urg { background-color: #dc3545; }
+        .badge-gen { background-color: #6c757d; }
+        
+        .pinned-icon { color: #dc3545; transform: rotate(45deg); display: inline-block; margin-right: 5px; }
+        .date-text { font-size: 0.85rem; color: #adb5bd; min-width: 100px; text-align: right; }
+        .title-text { font-weight: bold; color: #343a40; font-size: 1.05rem; }
+        
+        .welcome-section { margin-bottom: 30px; }
+        .welcome-title { font-weight: bold; color: #343a40; }
     </style>
 </head>
-<body class="bg-light p-4">
+<body>
 
 <div class="container">
-    <h2 class="mb-4 text-secondary">
-        <span id="welcomeName">歡迎回來</span> 
-    </h2>
-    
-    <div class="row g-4 mb-5">
-        
-        <div class="col-md-6 col-lg-4">
-            <a href="#" class="card system-card bg-academic h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-journal-bookmark-fill card-icon"></i>
-                    <h3 class="fw-bold mb-3">教務系統</h3>
-                    <p class="mb-0 opacity-75 small">學生學籍、課程維護<br>成績管理</p>
-                    <span class="btn btn-sm btn-outline-primary rounded-pill mt-3 px-3">開發中 🛠️</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a href="#" class="card system-card bg-student h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-backpack2-fill card-icon"></i>
-                    <h3 class="fw-bold mb-3">學務系統</h3>
-                    <p class="mb-0 opacity-75 small">學生操行、巡堂紀錄</p>
-                    <span class="btn btn-sm btn-outline-success rounded-pill mt-3 px-3">開發中 🛠️</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a href="#" class="card system-card bg-counseling h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-heart-pulse-fill card-icon"></i>
-                    <h3 class="fw-bold mb-3">輔導系統</h3>
-                    <p class="mb-0 opacity-75 small">個案紀錄、心理測驗</p>
-                    <span class="btn btn-sm btn-outline-info rounded-pill mt-3 px-3">開發中 🛠️</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a href="#" class="card system-card bg-general h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-tools card-icon"></i>
-                    <h3 class="fw-bold mb-3">總務系統</h3>
-                    <p class="mb-0 opacity-75 small">財產管理、設備報修<br>出納支付</p>
-                    <span class="btn btn-sm btn-outline-dark rounded-pill mt-3 px-3">開發中 🛠️</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a href="admin/announcement_manager.html" class="card system-card bg-message h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-megaphone-fill card-icon"></i>
-                    <h3 class="fw-bold mb-3">訊息系統</h3>
-                    <p class="mb-0 opacity-75 small">校園公告、模組作業推播</p>
-                    <span class="btn btn-sm btn-outline-danger rounded-pill mt-3 px-3">開發中 🛠️</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a href="hr/add_employee.html" class="card system-card bg-hr h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-people-fill card-icon"></i>
-                    <h3 class="fw-bold mb-3">人資系統</h3>
-                    <p class="mb-0 opacity-75 small">職員資料、薪資考勤<br>表單流程</p>
-                    <span class="btn btn-sm btn-warning text-dark rounded-pill mt-3 px-3">進入系統</span>
-                </div>
-            </a>
-        </div>
-
+    <div class="welcome-section">
+        <h2 class="welcome-title"><i class="bi bi-sun-fill text-warning me-2"></i> 早安，歡迎回來！</h2>
+        <p class="text-muted" id="dateDisplay">載入中...</p>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center py-3">
-            <span>📢 最新系統公告 (點擊查看詳情)</span>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadNews()">重新整理</button>
+    <div class="card announcement-card">
+        <div class="card-header">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-megaphone-fill text-primary me-2"></i> 最新公告</h5>
         </div>
-        <ul class="list-group list-group-flush" id="newsList">
-            <li class="list-group-item text-center text-muted py-5">正在連線資料庫讀取公告...</li>
-        </ul>
-    </div>
-</div>
-
-<div class="modal fade" id="newsModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title" id="modalTitle">公告標題</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="modalContent" style="white-space: pre-wrap;">
-                公告內容...
-            </div>
-            <div class="modal-footer">
-                <small class="text-muted me-auto" id="modalDate">發布日期</small>
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush" id="newsList">
+                <div class="text-center py-5 text-muted"><span class="spinner-border spinner-border-sm text-primary"></span> 讀取中...</div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="js/config.js"></script> 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="js/config.js"></script>
 <script>
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    if (user && user.name) {
-        document.getElementById('welcomeName').textContent = "👋 歡迎回來，" + user.name + " (" + user.role + ")";
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDate();
+        loadAnnouncements();
+    });
+
+    function updateDate() {
+        const now = new Date();
+        const opts = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('dateDisplay').textContent = `今天是 ${now.toLocaleDateString('zh-TW', opts)}`;
     }
 
-    // 儲存公告資料的暫存區
-    let currentNewsData = [];
-
-    async function loadNews() {
-        const list = document.getElementById('newsList');
-        
-        const { data: news, error } = await window.db
-            .from('announcements')
+    async function loadAnnouncements() {
+        // 改為讀取 announcements 表
+        const { data, error } = await window.db.from('announcements')
             .select('*')
-            .order('created_at', { ascending: false })
-            .limit(5);
+            .order('is_pinned', { ascending: false })
+            .order('publish_date', { ascending: false })
+            .limit(10);
 
-        if (error) {
-            list.innerHTML = `<li class="list-group-item text-danger text-center py-3">❌ 載入失敗: ${error.message}</li>`;
-            return;
-        }
-
-        if (!news || news.length === 0) {
-            list.innerHTML = '<li class="list-group-item text-muted text-center py-5">📭 目前沒有任何公告</li>';
-            return;
-        }
-
-        currentNewsData = news; // 存起來給 Modal 用
+        const list = document.getElementById('newsList');
         list.innerHTML = '';
-        
-        news.forEach((item, index) => {
-            const dateStr = item.created_at.split('T')[0];
-            const isNew = (new Date() - new Date(item.created_at)) / (1000 * 3600 * 24) <= 3;
-            const badge = isNew ? '<span class="badge bg-danger rounded-pill ms-2">New</span>' : '';
 
-            let colorClass = 'bg-secondary';
-            if(item.category === '系統公告') colorClass = 'bg-dark';
-            if(item.category === '教務通知') colorClass = 'bg-primary';
-            if(item.category === '學務通知') colorClass = 'bg-success';
-            if(item.category === '人資快訊') colorClass = 'bg-warning text-dark';
+        if (error || !data || data.length === 0) {
+            list.innerHTML = `<div class="p-5 text-center text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i> 目前沒有公告</div>`;
+            return;
+        }
 
-            // 加入 onclick 事件，傳入 index
+        data.forEach(item => {
+            let badgeClass = 'badge-gen';
+            if(item.category === '系統') badgeClass = 'badge-sys';
+            if(item.category === '教務') badgeClass = 'badge-edu';
+            if(item.category === '緊急') badgeClass = 'badge-urg';
+
+            const pinHtml = item.is_pinned ? `<i class="bi bi-pin-angle-fill pinned-icon"></i>` : '';
+            const attachIcon = item.attachment_url ? `<i class="bi bi-paperclip text-muted ms-2" title="有附件"></i>` : '';
+            
+            // 安全處理標題
+            const safeTitle = (item.title || '(無標題)').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
             list.innerHTML += `
-                <li class="list-group-item news-item d-flex justify-content-between align-items-center py-3" onclick="openNews(${index})">
-                    <div>
-                        <span class="badge ${colorClass} me-2">${item.category}</span>
-                        <span class="fw-bold text-dark">${item.title}</span>
-                        ${badge}
+                <div class="list-group-item d-flex align-items-center justify-content-between" onclick="showDetail('${item.id}')">
+                    <div class="d-flex align-items-center text-truncate">
+                        <span class="badge ${badgeClass} me-3 rounded-pill px-3">${item.category || '一般'}</span>
+                        ${pinHtml}
+                        <span class="title-text text-truncate">${safeTitle}</span>
+                        ${attachIcon}
                     </div>
-                    <small class="text-muted">${dateStr}</small>
-                </li>
+                    <div class="date-text d-none d-md-block">
+                        <i class="bi bi-calendar3 me-1"></i> ${item.publish_date}
+                    </div>
+                </div>
             `;
         });
     }
 
-    // 打開公告詳情
-    function openNews(index) {
-        const item = currentNewsData[index];
-        document.getElementById('modalTitle').textContent = item.title;
-        // 如果內容是空的，顯示預設文字
-        document.getElementById('modalContent').textContent = item.content || "（無詳細內容）";
-        document.getElementById('modalDate').textContent = "發布於： " + item.created_at.split('T')[0];
-        
-        // 使用 Bootstrap Modal API 顯示
-        const myModal = new bootstrap.Modal(document.getElementById('newsModal'));
-        myModal.show();
+    window.showDetail = async (id) => {
+        const { data } = await window.db.from('announcements').select('*').eq('id', id).single();
+        if(data) {
+            let fileHtml = '';
+            if (data.attachment_url) {
+                fileHtml = `
+                    <div class="alert alert-light border mt-3 d-flex align-items-center">
+                        <i class="bi bi-file-earmark-arrow-down fs-4 text-primary me-3"></i>
+                        <div>
+                            <div class="fw-bold">附件下載</div>
+                            <a href="${data.attachment_url}" target="_blank" class="text-decoration-none stretched-link">
+                                ${data.attachment_name || '點擊下載檔案'}
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: data.title,
+                html: `
+                    <div class="text-start px-2">
+                        <div class="mb-3 text-muted small">
+                            <span class="badge bg-secondary me-2">${data.category || '一般'}</span> 
+                            發布日期：${data.publish_date}
+                        </div>
+                        <div style="line-height: 1.8; white-space: pre-wrap; font-size: 1.05rem;">${data.content || ''}</div>
+                        ${fileHtml}
+                    </div>
+                `,
+                width: 700,
+                confirmButtonText: '關閉',
+                confirmButtonColor: '#6c757d'
+            });
+        }
     }
-
-    loadNews();
 </script>
-
 </body>
 </html>
