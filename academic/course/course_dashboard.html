@@ -21,10 +21,8 @@
         .menu-card .card-body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 15px; text-align: center; }
         .icon-large { font-size: 3rem; margin-bottom: 15px; }
         
-        /* 分區標題 */
         .section-title { font-size: 0.9rem; font-weight: bold; color: #6c757d; text-transform: uppercase; margin: 20px 0 10px 5px; border-left: 4px solid #0d6efd; padding-left: 10px; }
         
-        /* 統計小卡 */
         .stat-card { background: #fff; border-radius: 8px; padding: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .stat-icon { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; }
     </style>
@@ -48,37 +46,25 @@
         <div class="col-md-3 col-6">
             <div class="stat-card">
                 <div class="stat-icon bg-primary"><i class="bi bi-book"></i></div>
-                <div>
-                    <h6 class="mb-0 text-muted">科目總數</h6>
-                    <h4 class="fw-bold mb-0" id="count-subjects">-</h4>
-                </div>
+                <div><h6 class="mb-0 text-muted">科目總數</h6><h4 class="fw-bold mb-0" id="count-subjects">-</h4></div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
                 <div class="stat-icon bg-success"><i class="bi bi-people"></i></div>
-                <div>
-                    <h6 class="mb-0 text-muted">本學期教師</h6>
-                    <h4 class="fw-bold mb-0" id="count-teachers">-</h4>
-                </div>
+                <div><h6 class="mb-0 text-muted">本學期教師</h6><h4 class="fw-bold mb-0" id="count-teachers">-</h4></div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
                 <div class="stat-icon bg-warning text-dark"><i class="bi bi-shop"></i></div>
-                <div>
-                    <h6 class="mb-0 text-muted">可用教室</h6>
-                    <h4 class="fw-bold mb-0" id="count-rooms">-</h4>
-                </div>
+                <div><h6 class="mb-0 text-muted">可用教室</h6><h4 class="fw-bold mb-0" id="count-rooms">-</h4></div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
                 <div class="stat-icon bg-info text-dark"><i class="bi bi-mortarboard"></i></div>
-                <div>
-                    <h6 class="mb-0 text-muted">班級總數</h6>
-                    <h4 class="fw-bold mb-0" id="count-classes">-</h4>
-                </div>
+                <div><h6 class="mb-0 text-muted">班級總數</h6><h4 class="fw-bold mb-0" id="count-classes">-</h4></div>
             </div>
         </div>
     </div>
@@ -90,7 +76,16 @@
                 <div class="card-body">
                     <i class="bi bi-calendar-event icon-large text-danger"></i>
                     <h5 class="fw-bold">學期設定</h5>
-                    <small class="text-muted">設定當前學期與週次</small>
+                    <small class="text-muted">設定當前學期</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="schedule_settings.html" class="card menu-card">
+                <div class="card-body">
+                    <i class="bi bi-clock-history icon-large text-warning"></i>
+                    <h5 class="fw-bold">作息時間設定</h5>
+                    <small class="text-muted">設定節次與時間</small>
                 </div>
             </a>
         </div>
@@ -99,7 +94,7 @@
                 <div class="card-body">
                     <i class="bi bi-journal-bookmark icon-large text-primary"></i>
                     <h5 class="fw-bold">科目資料維護</h5>
-                    <small class="text-muted">新增與管理全校科目</small>
+                    <small class="text-muted">管理全校科目</small>
                 </div>
             </a>
         </div>
@@ -108,7 +103,7 @@
                 <div class="card-body">
                     <i class="bi bi-building icon-large text-success"></i>
                     <h5 class="fw-bold">教室資料維護</h5>
-                    <small class="text-muted">專科教室與普通教室</small>
+                    <small class="text-muted">教室與場館管理</small>
                 </div>
             </a>
         </div>
@@ -130,7 +125,7 @@
                 <div class="card-body">
                     <i class="bi bi-person-lines-fill icon-large text-warning"></i>
                     <h5 class="fw-bold">教師排課設定</h5>
-                    <small class="text-muted">同步人資資料、設定授課時數</small>
+                    <small class="text-muted">時數與授課設定</small>
                 </div>
             </a>
         </div>
@@ -139,7 +134,7 @@
                 <div class="card-body">
                     <i class="bi bi-collection icon-large text-secondary"></i>
                     <h5 class="fw-bold">班級開課/配課</h5>
-                    <small class="text-muted">為各班級分配科目與教師</small>
+                    <small class="text-muted">班級課程分配</small>
                 </div>
             </a>
         </div>
@@ -148,7 +143,7 @@
                 <div class="card-body">
                     <i class="bi bi-cpu icon-large text-dark"></i>
                     <h5 class="fw-bold">自動排課系統</h5>
-                    <small class="text-muted">執行演算法自動產生課表</small>
+                    <small class="text-muted">演算法排課</small>
                 </div>
             </a>
         </div>
@@ -161,25 +156,15 @@
                 <div class="card-body">
                     <i class="bi bi-table icon-large text-success"></i>
                     <h5 class="fw-bold">課表查詢</h5>
-                    <small class="text-muted">查詢班級、教師、教室課表</small>
+                    <small class="text-muted">班級/教師/教室課表</small>
                 </div>
             </a>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="card menu-card" style="opacity: 0.5; cursor: not-allowed;">
-                <div class="card-body">
-                    <i class="bi bi-printer icon-large text-muted"></i>
-                    <h5 class="fw-bold">列印報表</h5>
-                    <small class="text-muted">(功能開發中)</small>
-                </div>
-            </div>
         </div>
     </div>
 
 </div>
 
 <script src="../../js/config.js"></script>
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         checkLogin();
@@ -188,29 +173,22 @@
 
     function checkLogin() {
         const user = localStorage.getItem('currentUser');
-        if (!user) {
-            Swal.fire('未登入', '請先登入系統', 'warning').then(() => {
-                window.location.href = '../../login.html';
-            });
-        }
+        if (!user) window.location.href = '../../login.html';
     }
 
     async function loadStats() {
-        // 1. 科目數
-        const { count: subCount } = await window.db.from('subjects').select('*', { count: 'exact', head: true });
-        document.getElementById('count-subjects').textContent = subCount || 0;
-
-        // 2. 本學期教師 (course_teachers)
-        const { count: teaCount } = await window.db.from('course_teachers').select('*', { count: 'exact', head: true });
-        document.getElementById('count-teachers').textContent = teaCount || 0;
-
-        // 3. 教室數
-        const { count: roomCount } = await window.db.from('classrooms').select('*', { count: 'exact', head: true });
-        document.getElementById('count-rooms').textContent = roomCount || 0;
-
-        // 4. 班級數
-        const { count: clsCount } = await window.db.from('classes').select('*', { count: 'exact', head: true });
-        document.getElementById('count-classes').textContent = clsCount || 0;
+        // 取得各表 count
+        const counts = await Promise.all([
+            window.db.from('subjects').select('*', { count: 'exact', head: true }),
+            window.db.from('course_teachers').select('*', { count: 'exact', head: true }),
+            window.db.from('classrooms').select('*', { count: 'exact', head: true }),
+            window.db.from('classes').select('*', { count: 'exact', head: true })
+        ]);
+        
+        document.getElementById('count-subjects').textContent = counts[0].count || 0;
+        document.getElementById('count-teachers').textContent = counts[1].count || 0;
+        document.getElementById('count-rooms').textContent = counts[2].count || 0;
+        document.getElementById('count-classes').textContent = counts[3].count || 0;
     }
 </script>
 </body>
