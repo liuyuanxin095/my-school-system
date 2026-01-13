@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人事資料卡</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .required-field { background-color: #fff9db !important; border-color: #ffeeba; }
+        .photo-box {
+            width: 150px; height: 150px; 
+            background-color: #e9ecef; border: 2px dashed #ced4da;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            margin: 0 auto 15px auto; cursor: pointer; position: relative;
+        }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5);
+            color: white; font-size: 0.8rem; text-align: center; padding: 15px 5px 5px 5px; display: none; height: 50%; align-items: flex-end; justify-content: center;
+        }
+        .photo-box:hover .photo-overlay { display: flex; }
+        .nav-tabs .nav-link { color: #495057; }
+        .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; color: #0d6efd; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-person-vcard-fill"></i> 員工資料卡</h3>
+        <div>
+            <a href="list_employee.html" class="btn btn-outline-secondary me-2">回列表</a>
+            <button class="btn btn-success" onclick="saveData()">
+                <i class="bi bi-save"></i> 儲存確認
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body text-center">
+                    <div class="photo-box" onclick="document.getElementById('photoInput').click()">
+                        <img id="photoPreview" src="https://via.placeholder.com/150?text=Photo">
+                        <div class="photo-overlay">更換照片</div>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="uploadPhoto()">
+                    <input type="hidden" id="photoUrl">
+
+                    <h5 class="fw-bold mt-2" id="display-name">---</h5>
+                    <p class="text-muted mb-1" id="display-id">員工編號：---</p>
+                    <span class="badge bg-secondary" id="display-status">New</span>
+                    <hr>
+                    <div id="display-role" class="badge bg-light text-dark border">---</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs" id="empTabs">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-basic">基本資料</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ins">勞健保/人資</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salary">薪資設定</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-teacher">教師設定</button></li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        
+                        <div class="tab-pane fade show active" id="tab-basic">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">員工編號 <span class="text-danger">*</span></label>
+                                    <input type="text" id="employee_id" class="form-control required-field">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" id="name" class="form-control required-field">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">身分證字號</label>
+                                    <input type="text" id="id_number" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">職稱 (連動權限)</label>
+                                    <select id="title" class="form-select" onchange="autoSetRole()">
+                                        <option value="">請選擇</option>
+                                        </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">部門</label>
+                                    <input type="text" id="department" class="form-control" list="deptList">
+                                    <datalist id="deptList">
+                                        <option value="校長室"><option value="教務處"><option value="學務處"><option value="總務處">
+                                        <option value="輔導室"><option value="人事室"><option value="會計室"><option value="幼兒園">
+                                    </datalist>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">系統權限</label>
+                                    <select id="role" class="form-select bg-light">
+                                        <option value="staff">職員 (Staff)</option>
+                                        <option value="teacher">教師 (Teacher)</option>
+                                        <option value="admin">管理員 (Admin)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">到職日</label>
+                                    <input type="date" id="join_date" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">狀態</label>
+                                    <select id="status" class="form-select">
+                                        <option value="active">在職</option>
+                                        <option value="resigned">離職</option>
+                                    </select>
+                                </div>
+                                <div class="col-12"><hr></div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" id="email" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">聯絡電話</label>
+                                    <input type="text" id="phone" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">通訊地址</label>
+                                    <input type="text" id="address" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-ins">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">勞保投保日</label>
+                                    <input type="date" id="labor_ins_date" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">勞保投保薪資</label>
+                                    <input type="number" id="labor_ins_salary" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">健保投保日</label>
+                                    <input type="date" id="health_ins_date" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">健保投保薪資</label>
+                                    <input type="number" id="health_ins_salary" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">備註事項</label>
+                                    <textarea id="note" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-salary">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">本俸 (底薪)</label>
+                                    <input type="number" id="base_salary" class="form-control">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">銀行代碼</label>
+                                    <input type="text" id="bank_code" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">銀行帳號</label>
+                                    <input type="text" id="bank_account" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tab-teacher">
+                            <div class="alert alert-warning small">
+                                <i class="bi bi-exclamation-triangle"></i> 
+                                只有當權限為 <strong>Teacher</strong> 或 <strong>Admin</strong> 時，才需設定此頁面。
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold text-primary">教師代碼 (排課用) <span class="text-danger">*</span></label>
+                                    <input type="text" id="teacher_code" class="form-control border-primary">
+                                    <div class="form-text">若為教師，此欄位必填。</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">基本鐘點 (每週)</label>
+                                    <input type="number" id="basic_teaching_hours" class="form-control" value="0">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">超鐘點費率 (元/節)</label>
+                                    <input type="number" id="hourly_rate" class="form-control" value="0">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('id');
+    let roleMapping = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadMappings(); // 載入職稱權限
+        if (editId) {
+            loadEmployeeData(editId);
+        } else {
+            // 新增預設
+            document.getElementById('status').value = 'active';
+            document.getElementById('role').value = 'staff';
+        }
+    });
+
+    // 載入職稱設定
+    async function loadMappings() {
+        const { data } = await window.db.from('title_role_mapping').select('*');
+        const sel = document.getElementById('title');
+        if (data) {
+            data.forEach(m => {
+                roleMapping[m.title_name] = m.default_role;
+                sel.innerHTML += `<option value="${m.title_name}">${m.title_name}</option>`;
+            });
+        }
+    }
+
+    // 職稱連動權限
+    window.autoSetRole = () => {
+        const t = document.getElementById('title').value;
+        if (roleMapping[t]) {
+            document.getElementById('role').value = roleMapping[t];
+        }
+    }
+
+    // 載入資料 (編輯模式)
+    async function loadEmployeeData(id) {
+        const { data, error } = await window.db.from('employees').select('*').eq('id', id).single();
+        if (error || !data) { Swal.fire('錯誤', '無法讀取資料', 'error'); return; }
+
+        // 左側摘要
+        document.getElementById('display-name').textContent = data.name;
+        document.getElementById('display-id').textContent = `員工編號：${data.employee_id}`;
+        document.getElementById('display-status').textContent = data.status === 'active' ? '在職' : '離職';
+        document.getElementById('display-status').className = data.status === 'active' ? 'badge bg-success' : 'badge bg-secondary';
+        document.getElementById('display-role').textContent = data.role.toUpperCase();
+
+        if (data.photo_url) {
+            document.getElementById('photoPreview').src = data.photo_url;
+            document.getElementById('photoUrl').value = data.photo_url;
+        }
+
+        // 填入所有欄位
+        const fields = [
+            'employee_id', 'name', 'id_number', 'title', 'department', 'role', 'status', 'join_date',
+            'email', 'phone', 'address',
+            'labor_ins_date', 'labor_ins_salary', 'health_ins_date', 'health_ins_salary', 'note',
+            'base_salary', 'bank_code', 'bank_account',
+            'teacher_code', 'basic_teaching_hours', 'hourly_rate'
+        ];
+        
+        fields.forEach(f => {
+            if(document.getElementById(f)) document.getElementById(f).value = data[f] || '';
+        });
+        
+        // 編輯模式鎖定編號
+        document.getElementById('employee_id').disabled = true;
+    }
+
+    // 上傳照片
+    async function uploadPhoto() {
+        const fileInput = document.getElementById('photoInput');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => document.getElementById('photoPreview').src = e.target.result;
+        reader.readAsDataURL(file);
+
+        // 使用 "emp_" 開頭
+        const fileName = `emp_${Date.now()}.${file.name.split('.').pop()}`;
+        
+        const { data, error } = await window.db.storage.from('avatars').upload(fileName, file);
+
+        if (error) {
+            Swal.fire('上傳失敗', error.message, 'error');
+        } else {
+            const { data: { publicUrl } } = window.db.storage.from('avatars').getPublicUrl(fileName);
+            document.getElementById('photoUrl').value = publicUrl;
+        }
+    }
+
+    // 儲存資料
+    async function saveData() {
+        const payload = {
+            employee_id: document.getElementById('employee_id').value,
+            name: document.getElementById('name').value,
+            id_number: document.getElementById('id_number').value,
+            title: document.getElementById('title').value,
+            department: document.getElementById('department').value,
+            role: document.getElementById('role').value,
+            status: document.getElementById('status').value,
+            join_date: document.getElementById('join_date').value || null,
+            
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            address: document.getElementById('address').value,
+            photo_url: document.getElementById('photoUrl').value,
+
+            labor_ins_date: document.getElementById('labor_ins_date').value || null,
+            labor_ins_salary: document.getElementById('labor_ins_salary').value || null,
+            health_ins_date: document.getElementById('health_ins_date').value || null,
+            health_ins_salary: document.getElementById('health_ins_salary').value || null,
+            note: document.getElementById('note').value,
+
+            base_salary: document.getElementById('base_salary').value || null,
+            bank_code: document.getElementById('bank_code').value,
+            bank_account: document.getElementById('bank_account').value,
+
+            teacher_code: document.getElementById('teacher_code').value || null,
+            basic_teaching_hours: document.getElementById('basic_teaching_hours').value || 0,
+            hourly_rate: document.getElementById('hourly_rate').value || 0
+        };
+
+        if (!payload.employee_id || !payload.name) {
+            Swal.fire('欄位未填', '員工編號與姓名為必填', 'warning');
+            return;
+        }
+
+        if (payload.role === 'teacher' && !payload.teacher_code) {
+             Swal.fire('教師資料不全', '請切換至「教師設定」分頁填寫教師代碼', 'warning');
+             return;
+        }
+
+        let error;
+        if (editId) {
+            const { error: updErr } = await window.db.from('employees').update(payload).eq('id', editId);
+            error = updErr;
+        } else {
+            const { error: insErr } = await window.db.from('employees').insert([payload]);
+            error = insErr;
+        }
+
+        if (error) {
+            Swal.fire('儲存失敗', error.message, 'error');
+        } else {
+            Swal.fire({
+                title: '儲存成功',
+                icon: 'success',
+                showConfirmButton: false,
+                timer: 1500
+            }).then(() => {
+                window.location.href = 'list_employee.html';
+            });
+        }
+    }
+</script>
+</body>
+</html>
