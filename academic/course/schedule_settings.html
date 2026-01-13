@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作息時間設定</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-clock-history"></i> 作息時間設定</h3>
+        <div>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">回儀表板</a>
+            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增節次</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="80" class="text-center">排序</th>
+                        <th>節次名稱</th>
+                        <th>類型</th>
+                        <th>時間區間</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="schedTable"><tr><td colspan="5" class="text-center py-5">載入中...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="schedModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">節次編輯</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label>排序 <span class="text-danger">*</span></label>
+                    <input type="number" id="m_sort" class="form-control" placeholder="數字越小越前面">
+                </div>
+                <div class="mb-3">
+                    <label>節次名稱 <span class="text-danger">*</span></label>
+                    <input type="text" id="m_name" class="form-control" placeholder="例: 第1節">
+                </div>
+                <div class="mb-3">
+                    <label>類型</label>
+                    <select id="m_type" class="form-select">
+                        <option value="academic">教學節次 (可排課)</option>
+                        <option value="non-academic">非教學 (休息/午休/集會)</option>
+                    </select>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label>開始時間</label>
+                        <input type="time" id="m_start" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label>結束時間</label>
+                        <input type="time" id="m_end" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../../js/config.js"></script>
+<script>
+    let schedModal;
+    document.addEventListener('DOMContentLoaded', () => {
+        schedModal = new bootstrap.Modal(document.getElementById('schedModal'));
+        if(window.db) loadSchedule(); else setTimeout(loadSchedule, 500);
+    });
+
+    async function loadSchedule() {
+        const { data, error } = await window.db.from('daily_time_slots').select('*').order('sort_order');
+        const tbody = document.getElementById('schedTable');
+        tbody.innerHTML = '';
+        if(error || !data) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5">無資料</td></tr>`; return; }
+
+        data.forEach(s => {
+            const typeBadge = s.type === 'academic' 
+                ? '<span class="badge bg-primary">教學</span>' 
+                : '<span class="badge bg-secondary">休息/活動</span>';
+            
+            // 格式化時間 (去掉秒數)
+            const fmtTime = (t) => t ? t.substring(0, 5) : '';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-center fw-bold text-muted">${s.sort_order}</td>
+                    <td class="fw-bold fs-5">${s.name}</td>
+                    <td>${typeBadge}</td>
+                    <td class="font-monospace">${fmtTime(s.start_time)} ~ ${fmtTime(s.end_time)}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick='openModal(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delSlot('${s.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    window.openModal = (d) => {
+        document.getElementById('editId').value = d?d.id:'';
+        document.getElementById('m_sort').value = d?d.sort_order:'';
+        document.getElementById('m_name').value = d?d.name:'';
+        document.getElementById('m_type').value = d?d.type:'academic';
+        document.getElementById('m_start').value = d?d.start_time:'';
+        document.getElementById('m_end').value = d?d.end_time:'';
+        schedModal.show();
+    }
+
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            sort_order: document.getElementById('m_sort').value,
+            name: document.getElementById('m_name').value,
+            type: document.getElementById('m_type').value,
+            start_time: document.getElementById('m_start').value,
+            end_time: document.getElementById('m_end').value
+        };
+
+        if(!payload.name || !payload.sort_order) return Swal.fire('必填未填', '排序與名稱為必填', 'warning');
+        
+        let error;
+        if(id) error = (await window.db.from('daily_time_slots').update(payload).eq('id',id)).error;
+        else error = (await window.db.from('daily_time_slots').insert([payload])).error;
+        
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else { schedModal.hide(); loadSchedule(); Swal.fire('成功','','success'); }
+    }
+
+    window.delSlot = async (id) => {
+        if(confirm('確定刪除此節次？')) { await window.db.from('daily_time_slots').delete().eq('id',id); loadSchedule(); }
+    }
+</script>
+</body>
+</html>
