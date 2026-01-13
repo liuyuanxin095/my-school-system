@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生考勤系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #e9ecef; font-family: 'Microsoft JhengHei', sans-serif; height: 100vh; overflow: hidden; }
+        
+        /* 左側控制區 */
+        .control-panel { height: 100%; background: white; padding: 40px; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid #dee2e6; }
+        .clock-display { font-size: 3.5rem; font-weight: bold; color: #212529; font-family: monospace; letter-spacing: 2px; }
+        .date-display { font-size: 1.2rem; color: #6c757d; margin-bottom: 30px; }
+        
+        /* 右側顯示區 */
+        .display-panel { height: 100%; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; }
+        
+        /* 學生資訊卡 */
+        .student-card { 
+            background: white; width: 80%; max-width: 600px; border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 40px; text-align: center;
+            display: none; /* 預設隱藏，刷卡後顯示 */
+            animation: popIn 0.3s ease-out;
+        }
+        
+        .stu-photo { 
+            width: 200px; height: 200px; border-radius: 50%; object-fit: cover; 
+            border: 5px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .stu-name { font-size: 2.5rem; font-weight: bold; margin-bottom: 10px; }
+        .stu-id { font-size: 1.5rem; color: #6c757d; font-family: monospace; }
+        
+        /* 狀態標籤 */
+        .status-box { 
+            margin-top: 30px; padding: 15px; border-radius: 10px; 
+            font-size: 2rem; font-weight: bold; color: white;
+        }
+        .status-in { background-color: #198754; box-shadow: 0 5px 15px rgba(25, 135, 84, 0.4); }
+        .status-out { background-color: #ffc107; color: #000; box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4); }
+
+        /* 待機畫面 */
+        .standby-msg { color: #adb5bd; text-align: center; }
+        .standby-icon { font-size: 5rem; margin-bottom: 20px; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <div class="col-md-5 control-panel shadow">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold text-primary mb-4"><i class="bi bi-person-bounding-box"></i> 學生考勤系統</h2>
+                <div id="clock" class="clock-display">00:00:00</div>
+                <div id="date" class="date-display">YYYY-MM-DD Week</div>
+            </div>
+
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <label class="form-label fw-bold text-muted">請輸入學號或感應卡片：</label>
+                    <input type="text" id="inputScan" class="form-control form-control-lg text-center fs-4" placeholder="等待輸入..." autofocus autocomplete="off">
+                    <div class="d-grid mt-3">
+                        <button class="btn btn-primary btn-lg" onclick="processInput()">
+                            <i class="bi bi-upc-scan"></i> 手動送出
+                        </button>
+                    </div>
+                    <div class="form-text text-center mt-2">支援 Barcode / QRCode / RFID 讀卡機</div>
+                </div>
+            </div>
+            
+            <div class="mt-auto">
+                <h6 class="text-muted border-bottom pb-2">最近紀錄</h6>
+                <ul id="logList" class="list-group list-group-flush small" style="max-height: 150px; overflow-y: auto;">
+                    </ul>
+            </div>
+        </div>
+
+        <div class="col-md-7 display-panel">
+            
+            <div id="standbyView" class="standby-msg">
+                <i class="bi bi-card-checklist standby-icon"></i>
+                <h1>請刷卡或輸入學號</h1>
+                <p class="fs-4">系統待命中...</p>
+            </div>
+
+            <div id="resultCard" class="student-card">
+                <img id="resPhoto" src="" class="stu-photo">
+                <h2 id="resName" class="stu-name">---</h2>
+                <div id="resId" class="stu-id">---</div>
+                
+                <div id="resStatus" class="status-box">---</div>
+                <div id="resTime" class="mt-3 text-muted fs-5">刷卡時間：--:--:--</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    let isProcessing = false; // 防止連刷
+
+    // 1. 初始化與時鐘
+    document.addEventListener('DOMContentLoaded', () => {
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // 監聽 Enter 鍵 (刷卡機通常會送出 Enter)
+        const input = document.getElementById('inputScan');
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+
+        // 點擊任何地方都把焦點還給輸入框 (Kiosk 模式)
+        document.body.addEventListener('click', () => {
+            document.getElementById('inputScan').focus();
+        });
+    });
+
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('date').textContent = now.toLocaleDateString('zh-TW', options);
+    }
+
+    // 2. 處理輸入 (核心邏輯)
+    async function processInput() {
+        if (isProcessing) return;
+        const inputEl = document.getElementById('inputScan');
+        const val = inputEl.value.trim();
+
+        if (!val) return;
+
+        isProcessing = true;
+        inputEl.disabled = true; // 暫時鎖定
+
+        try {
+            // A. 搜尋學生 (學號 OR 卡號)
+            const { data: students, error } = await window.db.from('students')
+                .select('*')
+                .or(`student_id.eq.${val},card_number.eq.${val}`);
+
+            if (error) throw error;
+
+            if (!students || students.length === 0) {
+                // 找不到學生
+                showError('查無此學生資料');
+            } else {
+                const stu = students[0];
+                await handleAttendance(stu, val);
+            }
+
+        } catch (err) {
+            console.error(err);
+            showError('系統錯誤');
+        } finally {
+            // 重置輸入框
+            inputEl.value = '';
+            inputEl.disabled = false;
+            inputEl.focus();
+            isProcessing = false;
+        }
+    }
+
+    // 3. 判斷進出並寫入紀錄
+    async function handleAttendance(stu, source) {
+        // 先查該學生「今天」最後一筆紀錄
+        const todayStart = new Date();
+        todayStart.setHours(0,0,0,0);
+        
+        const { data: logs } = await window.db.from('attendance_logs')
+            .select('*')
+            .eq('student_id', stu.id)
+            .gte('check_time', todayStart.toISOString())
+            .order('check_time', { ascending: false })
+            .limit(1);
+
+        // 邏輯：如果沒紀錄 -> 進校 (IN)
+        //       如果上一筆是 IN -> 離校 (OUT)
+        //       如果上一筆是 OUT -> 進校 (IN)
+        let type = 'IN';
+        if (logs && logs.length > 0) {
+            if (logs[0].check_type === 'IN') type = 'OUT';
+        }
+
+        // 寫入資料庫
+        const { error } = await window.db.from('attendance_logs').insert([{
+            student_id: stu.id,
+            check_type: type,
+            input_source: source
+        }]);
+
+        if (error) throw error;
+
+        // 顯示結果
+        showResult(stu, type);
+    }
+
+    // 4. 顯示結果 UI
+    function showResult(stu, type) {
+        // 切換顯示面板
+        document.getElementById('standbyView').style.display = 'none';
+        const card = document.getElementById('resultCard');
+        card.style.display = 'block';
+        
+        // 重新觸發動畫
+        card.style.animation = 'none';
+        card.offsetHeight; /* trigger reflow */
+        card.style.animation = 'popIn 0.3s ease-out';
+
+        // 填入資料
+        document.getElementById('resName').textContent = stu.name_zh;
+        document.getElementById('resId').textContent = stu.student_id;
+        
+        // 照片 (如果沒照片用預設)
+        const photoUrl = stu.photo_url || `https://ui-avatars.com/api/?name=${stu.name_zh}&size=200&background=random`;
+        document.getElementById('resPhoto').src = photoUrl;
+
+        // 狀態樣式
+        const statusBox = document.getElementById('resStatus');
+        if (type === 'IN') {
+            statusBox.textContent = "✅ 上學 / 到校";
+            statusBox.className = "status-box status-in";
+        } else {
+            statusBox.textContent = "👋 放學 / 離校";
+            statusBox.className = "status-box status-out";
+        }
+
+        const nowTime = new Date().toLocaleTimeString();
+        document.getElementById('resTime').textContent = `刷卡時間：${nowTime}`;
+
+        // 加入左側清單
+        addLogItem(stu.name_zh, type, nowTime);
+    }
+
+    function showError(msg) {
+        const Toast = Swal.mixin({
+            toast: true, position: 'top', showConfirmButton: false, timer: 2000,
+            background: '#dc3545', color: '#fff'
+        });
+        Toast.fire({ icon: 'error', title: msg });
+        
+        // 也可以播放錯誤音效 (選用)
+        // new Audio('../assets/error.mp3').play();
+    }
+
+    function addLogItem(name, type, time) {
+        const list = document.getElementById('logList');
+        const badge = type === 'IN' ? '<span class="badge bg-success">到校</span>' : '<span class="badge bg-warning text-dark">離校</span>';
+        
+        const item = document.createElement('li');
+        item.className = "list-group-item d-flex justify-content-between align-items-center";
+        item.innerHTML = `
+            <div>${badge} <strong>${name}</strong></div>
+            <span class="text-muted small">${time}</span>
+        `;
+        
+        list.prepend(item); // 加在最上面
+        if (list.children.length > 10) list.lastElementChild.remove(); // 保持列表長度
+    }
+</script>
+</body>
+</html>
