@@ -10,9 +10,12 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
-        .avatar-circle { width: 40px; height: 40px; background: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
-        .excel-area { width: 100%; height: 150px; font-family: monospace; font-size: 0.8rem; white-space: pre; }
+        .avatar-small {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+            border: 1px solid #dee2e6; background-color: #fff;
+        }
+        .status-badge { font-size: 0.85rem; padding: 5px 10px; border-radius: 20px; }
+        .teacher-code-badge { font-size: 0.75rem; background-color: #fff3cd; color: #856404; padding: 1px 5px; border-radius: 4px; border: 1px solid #ffeeba; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -21,12 +24,24 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark"><i class="bi bi-person-badge-fill"></i> 人事資料管理</h3>
         <div>
-            <button class="btn btn-success me-2" onclick="openImport()">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Excel 匯入
-            </button>
-            <button class="btn btn-primary" onclick="openModal()">
+            <a href="edit_employee.html" class="btn btn-primary">
                 <i class="bi bi-person-plus-fill"></i> 新增人員
-            </button>
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex gap-3 align-items-center flex-wrap">
+            <input type="text" id="searchInput" class="form-control w-auto" placeholder="搜尋編號、姓名..." style="min-width: 250px;">
+            <select id="deptFilter" class="form-select w-auto">
+                <option value="">所有部門</option>
+            </select>
+            <select id="statusFilter" class="form-select w-auto">
+                <option value="active" selected>在職</option>
+                <option value="resigned">離職</option>
+                <option value="">所有狀態</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadEmployees()">查詢</button>
         </div>
     </div>
 
@@ -35,361 +50,126 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="text-center">#</th>
+                        <th width="60" class="text-center">照片</th>
                         <th>員工編號</th>
                         <th>姓名</th>
-                        <th>職稱/部門</th>
+                        <th>職稱 / 部門</th>
                         <th>權限</th>
                         <th>狀態</th>
                         <th class="text-end">操作</th>
                     </tr>
                 </thead>
-                <tbody id="empTable"><tr><td colspan="7" class="text-center py-5">載入中...</td></tr></tbody>
+                <tbody id="empTable">
+                    <tr><td colspan="7" class="text-center py-5 text-muted">載入中...</td></tr>
+                </tbody>
             </table>
         </div>
-    </div>
-</div>
-
-<div class="modal fade" id="empModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalTitle">人事資料卡</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editId">
-                
-                <ul class="nav nav-tabs mb-3" id="hrTabs">
-                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-basic">基本資料</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ins">勞健保/人資</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salary">薪資設定</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-teacher">教師設定</button></li>
-                </ul>
-
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="tab-basic">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">員工編號 <span class="text-danger">*</span></label>
-                                <input type="text" id="m_code" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">姓名 <span class="text-danger">*</span></label>
-                                <input type="text" id="m_name" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">身分證字號</label>
-                                <input type="text" id="m_id_no" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">職稱 (連動權限)</label>
-                                <select id="m_title" class="form-select" onchange="autoSetRole()">
-                                    </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">部門</label>
-                                <input type="text" id="m_dept" class="form-control" list="deptList">
-                                <datalist id="deptList">
-                                    <option value="教務處"><option value="學務處"><option value="總務處"><option value="輔導室">
-                                </datalist>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">到職日</label>
-                                <input type="date" id="m_join_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">系統權限</label>
-                                <select id="m_role" class="form-select bg-light">
-                                    <option value="staff">職員 (Staff)</option>
-                                    <option value="teacher">教師 (Teacher)</option>
-                                    <option value="admin">管理員 (Admin)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">狀態</label>
-                                <select id="m_status" class="form-select">
-                                    <option value="active">在職</option>
-                                    <option value="resigned">離職</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">聯絡資訊 (Email/電話/地址)</label>
-                                <div class="input-group mb-2">
-                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                    <input type="text" id="m_email" class="form-control" placeholder="Email">
-                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                                    <input type="text" id="m_phone" class="form-control" placeholder="電話">
-                                </div>
-                                <input type="text" id="m_addr" class="form-control" placeholder="通訊地址">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="tab-ins">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">勞保投保日</label>
-                                <input type="date" id="m_li_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">勞保投保薪資</label>
-                                <input type="number" id="m_li_salary" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">健保投保日</label>
-                                <input type="date" id="m_hi_date" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">健保投保薪資</label>
-                                <input type="number" id="m_hi_salary" class="form-control">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">備註事項</label>
-                                <textarea id="m_note" class="form-control" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="tab-salary">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">本俸 (底薪)</label>
-                                <input type="number" id="m_base_salary" class="form-control">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">銀行代碼</label>
-                                <input type="text" id="m_bank_code" class="form-control">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">銀行帳號</label>
-                                <input type="text" id="m_bank_acc" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="tab-teacher">
-                        <div class="alert alert-warning small">
-                            只有當權限為 <strong>Teacher</strong> 或 <strong>Admin</strong> 時，此頁設定才有效。
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold text-primary">教師代碼 (排課用) <span class="text-danger">*</span></label>
-                                <input type="text" id="m_tcode" class="form-control border-primary">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">基本鐘點 (每週)</label>
-                                <input type="number" id="m_basic_hours" class="form-control" value="0">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">超鐘點費率 (元/節)</label>
-                                <input type="number" id="m_hr_rate" class="form-control" value="0">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button class="btn btn-primary" onclick="saveData()">儲存資料</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="importModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">Excel 匯入</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="small text-muted">格式順序：<strong>編號 | 姓名 | 職稱 | 部門 | 到職日</strong> (請複製 Excel 內容貼上)</p>
-                <textarea id="importText" class="form-control excel-area" placeholder="T11401	王大明	專任教師	教務處	2025-01-01"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-success" onclick="processImport()">開始匯入</button>
-            </div>
+        <div class="card-footer bg-white text-muted small">
+            共 <span id="countDisplay">0</span> 筆資料
         </div>
     </div>
 </div>
 
 <script src="../js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    let empModal, importModal;
-    let roleMapping = {}; // 職稱->權限 對照表
+    let allData = [];
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        empModal = new bootstrap.Modal(document.getElementById('empModal'));
-        importModal = new bootstrap.Modal(document.getElementById('importModal'));
-        await loadMappings(); // 先載入權限設定
+    document.addEventListener('DOMContentLoaded', () => {
         loadEmployees();
     });
 
-    // 載入職稱權限設定
-    async function loadMappings() {
-        const { data } = await window.db.from('title_role_mapping').select('*');
-        const sel = document.getElementById('m_title');
-        sel.innerHTML = '<option value="">(請選擇職稱)</option>';
-        if (data) {
-            data.forEach(m => {
-                roleMapping[m.title_name] = m.default_role;
-                sel.innerHTML += `<option value="${m.title_name}">${m.title_name}</option>`;
-            });
-        }
-    }
-
-    // 自動依據職稱帶入權限
-    window.autoSetRole = () => {
-        const title = document.getElementById('m_title').value;
-        const roleSel = document.getElementById('m_role');
-        if (roleMapping[title]) {
-            roleSel.value = roleMapping[title];
-        }
-    }
-
     async function loadEmployees() {
-        const { data, error } = await window.db.from('employees').select('*').order('employee_id');
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const dept = document.getElementById('deptFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        // 1. 建構查詢
+        let query = window.db.from('employees').select('*').order('employee_id');
+
+        // 2. 獲取資料
+        const { data, error } = await query;
+        if (error) { Swal.fire('錯誤', error.message, 'error'); return; }
+        
+        allData = data || [];
+        
+        // 更新部門選單 (僅第一次或需要時更新，這裡簡化每次更新)
+        updateDeptFilter(allData);
+
+        // 3. 前端篩選 (Supabase OR 查詢比較複雜，這裡用前端篩選比較靈活)
+        const filtered = allData.filter(emp => {
+            const matchKey = (emp.name + emp.employee_id).toLowerCase().includes(keyword);
+            const matchDept = dept ? emp.department === dept : true;
+            const matchStatus = status ? emp.status === status : true;
+            return matchKey && matchDept && matchStatus;
+        });
+
+        renderTable(filtered);
+    }
+
+    function renderTable(data) {
         const tbody = document.getElementById('empTable');
+        const countSpan = document.getElementById('countDisplay');
         tbody.innerHTML = '';
-        
-        if(error) { console.error(error); return; }
-        
+        countSpan.textContent = data.length;
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">查無資料</td></tr>';
+            return;
+        }
+
         data.forEach(e => {
-            let roleBadge = e.role==='admin'?'bg-danger':(e.role==='teacher'?'bg-success':'bg-secondary');
+            const isResigned = e.status === 'resigned';
+            const statusBadge = isResigned 
+                ? '<span class="badge bg-secondary status-badge">離職</span>'
+                : '<span class="badge bg-success status-badge">在職</span>';
+            const rowClass = isResigned ? 'text-muted' : '';
+
+            let roleBadge = 'bg-secondary';
+            if(e.role === 'admin') roleBadge = 'bg-danger';
+            if(e.role === 'teacher') roleBadge = 'bg-success';
+
+            // 顯示教師代碼
+            let nameDisplay = e.name;
+            if (e.role === 'teacher' && e.teacher_code) {
+                nameDisplay += `<span class="teacher-code-badge">${e.teacher_code}</span>`;
+            }
+
+            // 照片處理
+            let avatarSrc = e.photo_url || `https://ui-avatars.com/api/?name=${e.name}&background=random`;
+
             tbody.innerHTML += `
-                <tr>
-                    <td class="text-center"><div class="avatar-circle mx-auto">${e.name[0]}</div></td>
-                    <td>${e.employee_id}</td>
-                    <td class="fw-bold">${e.name}</td>
-                    <td>${e.title||'-'} / ${e.department||'-'}</td>
+                <tr class="${rowClass}">
+                    <td class="text-center">
+                        <img src="${avatarSrc}" class="avatar-small">
+                    </td>
+                    <td class="font-monospace fw-bold">${e.employee_id}</td>
+                    <td class="fs-5">${nameDisplay}</td>
+                    <td>
+                        <div class="fw-bold">${e.title || '-'}</div>
+                        <small class="text-muted">${e.department || '-'}</small>
+                    </td>
                     <td><span class="badge ${roleBadge}">${e.role}</span></td>
-                    <td>${e.status==='active'?'在職':'離職'}</td>
+                    <td>${statusBadge}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick='editEmp(${JSON.stringify(e)})'><i class="bi bi-pencil"></i></button>
+                        <a href="edit_employee.html?id=${e.id}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil-square"></i> 編輯
+                        </a>
                     </td>
                 </tr>
             `;
         });
     }
 
-    window.openModal = () => {
-        document.getElementById('modalTitle').textContent = "新增人員";
-        document.getElementById('editId').value = "";
-        document.getElementById('m_code').disabled = false;
-        // 清空表單 (略) - 實務上建議寫一個 resetForm 函式
-        document.querySelectorAll('input').forEach(i => i.value = '');
-        document.getElementById('m_status').value = 'active';
-        empModal.show();
-    }
-
-    window.editEmp = (e) => {
-        document.getElementById('modalTitle').textContent = "編輯資料";
-        document.getElementById('editId').value = e.id;
-        document.getElementById('m_code').value = e.employee_id;
-        document.getElementById('m_code').disabled = true;
-        document.getElementById('m_name').value = e.name;
-        document.getElementById('m_id_no').value = e.id_number||'';
-        document.getElementById('m_title').value = e.title||'';
-        document.getElementById('m_dept').value = e.department||'';
-        document.getElementById('m_join_date').value = e.join_date||'';
-        document.getElementById('m_role').value = e.role||'staff';
-        document.getElementById('m_status').value = e.status||'active';
+    function updateDeptFilter(data) {
+        const currentVal = document.getElementById('deptFilter').value;
+        const deptSet = new Set();
+        data.forEach(e => { if(e.department) deptSet.add(e.department); });
         
-        // Tab 2, 3, 4
-        document.getElementById('m_email').value = e.email||'';
-        document.getElementById('m_phone').value = e.phone||'';
-        document.getElementById('m_addr').value = e.address||'';
-        document.getElementById('m_li_date').value = e.labor_ins_date||'';
-        document.getElementById('m_li_salary').value = e.labor_ins_salary||'';
-        document.getElementById('m_base_salary').value = e.base_salary||'';
-        document.getElementById('m_tcode').value = e.teacher_code||'';
-        document.getElementById('m_basic_hours').value = e.basic_teaching_hours||0;
-        
-        empModal.show();
-    }
-
-    window.saveData = async () => {
-        const id = document.getElementById('editId').value;
-        const payload = {
-            employee_id: document.getElementById('m_code').value,
-            name: document.getElementById('m_name').value,
-            id_number: document.getElementById('m_id_no').value,
-            title: document.getElementById('m_title').value,
-            department: document.getElementById('m_dept').value,
-            role: document.getElementById('m_role').value,
-            status: document.getElementById('m_status').value,
-            join_date: document.getElementById('m_join_date').value || null,
-            email: document.getElementById('m_email').value,
-            phone: document.getElementById('m_phone').value,
-            address: document.getElementById('m_addr').value,
-            labor_ins_date: document.getElementById('m_li_date').value || null,
-            labor_ins_salary: document.getElementById('m_li_salary').value || null,
-            base_salary: document.getElementById('m_base_salary').value || null,
-            teacher_code: document.getElementById('m_tcode').value || null,
-            basic_teaching_hours: document.getElementById('m_basic_hours').value || 0
-        };
-
-        if(payload.role === 'teacher' && !payload.teacher_code) {
-            Swal.fire('錯誤', '角色為教師時，必須填寫「教師代碼」(在教師設定分頁)', 'error');
-            return;
-        }
-
-        let error;
-        if(id) {
-            const { error: err } = await window.db.from('employees').update(payload).eq('id', id);
-            error = err;
-        } else {
-            const { error: err } = await window.db.from('employees').insert([payload]);
-            error = err;
-        }
-
-        if(error) Swal.fire('儲存失敗', error.message, 'error');
-        else {
-            empModal.hide();
-            loadEmployees();
-            Swal.fire('成功', '資料已儲存', 'success');
-        }
-    }
-
-    window.openImport = () => importModal.show();
-
-    window.processImport = async () => {
-        const text = document.getElementById('importText').value;
-        const rows = text.trim().split('\n');
-        const inserts = [];
-        
-        for(let r of rows) {
-            const c = r.split('\t'); // Tab 分隔
-            if(c.length >= 2) {
-                const title = c[2]?.trim() || '職員';
-                // 自動對應權限
-                const role = roleMapping[title] || 'staff';
-                
-                inserts.push({
-                    employee_id: c[0].trim(),
-                    name: c[1].trim(),
-                    title: title,
-                    department: c[3]?.trim() || '',
-                    join_date: c[4]?.trim() || null,
-                    role: role,
-                    status: 'active'
-                });
-            }
-        }
-        
-        if(inserts.length) {
-            const { error } = await window.db.from('employees').insert(inserts);
-            if(error) Swal.fire('匯入失敗', error.message, 'error');
-            else {
-                importModal.hide();
-                loadEmployees();
-                Swal.fire('成功', `已匯入 ${inserts.length} 筆`, 'success');
-            }
-        }
+        const sel = document.getElementById('deptFilter');
+        sel.innerHTML = '<option value="">所有部門</option>';
+        deptSet.forEach(d => {
+            sel.innerHTML += `<option value="${d}" ${currentVal===d?'selected':''}>${d}</option>`;
+        });
     }
 </script>
 </body>
