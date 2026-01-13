@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線上打卡</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .punch-card { max-width: 600px; margin: 20px auto; border: none; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .avatar-large { width: 120px; height: 120px; object-fit: cover; border: 5px solid #f8f9fa; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: -60px; background: white; }
+        .btn-punch-action { height: 100px; font-size: 1.2rem; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s; }
+        .btn-punch-action:hover { transform: translateY(-5px); }
+        .clock-display { font-size: 2.5rem; font-weight: bold; color: #495057; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div class="container text-center">
+    
+    <div id="clock" class="clock-display mb-2">00:00:00</div>
+    <div id="date" class="text-muted mb-5">YYYY-MM-DD</div>
+
+    <div class="card punch-card">
+        <div class="card-body p-4 pt-0">
+            <img id="myPhoto" src="https://via.placeholder.com/150" class="rounded-circle avatar-large">
+            <h3 id="myName" class="fw-bold mt-3">載入中...</h3>
+            <p id="myTitle" class="text-muted">---</p>
+
+            <hr class="my-4">
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <button class="btn btn-primary w-100 btn-punch-action" onclick="punch('WORK_IN')">
+                        <i class="bi bi-sun-fill fs-2 mb-2"></i> 上班
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button class="btn btn-secondary w-100 btn-punch-action" onclick="punch('WORK_OUT')">
+                        <i class="bi bi-moon-stars-fill fs-2 mb-2"></i> 下班
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button class="btn btn-danger w-100 btn-punch-action" onclick="punch('OT_IN')">
+                        <i class="bi bi-lightning-charge-fill fs-2 mb-2"></i> 加班上班
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button class="btn btn-success w-100 btn-punch-action" onclick="punch('OT_OUT')">
+                        <i class="bi bi-house-door-fill fs-2 mb-2"></i> 加班下班
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card punch-card mt-4">
+        <div class="card-header bg-white fw-bold text-start">今日打卡紀錄</div>
+        <ul id="todayLogs" class="list-group list-group-flush text-start small">
+            <li class="list-group-item text-muted text-center py-3">尚無紀錄</li>
+        </ul>
+    </div>
+
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    let myEmpId = null; // 資料庫 ID (PK)
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        updateTime();
+        setInterval(updateTime, 1000);
+        await loadMyInfo();
+        loadTodayLogs();
+    });
+
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString();
+        document.getElementById('date').textContent = now.toLocaleDateString();
+    }
+
+    async function loadMyInfo() {
+        const userStr = localStorage.getItem('currentUser');
+        if (!userStr) {
+            Swal.fire('錯誤', '請先登入', 'error').then(() => window.parent.location.href='../login.html');
+            return;
+        }
+        const user = JSON.parse(userStr);
+
+        // 用 username (員工編號) 去查 employees 表
+        const { data, error } = await window.db.from('employees')
+            .select('*')
+            .eq('employee_id', user.username)
+            .single();
+
+        if (error || !data) {
+            Swal.fire('錯誤', '找不到您的人事資料，無法打卡', 'error');
+            return;
+        }
+
+        myEmpId = data.id;
+        document.getElementById('myName').textContent = data.name;
+        document.getElementById('myTitle').textContent = `${data.department || ''} / ${data.title || ''}`;
+        if(data.photo_url) document.getElementById('myPhoto').src = data.photo_url;
+    }
+
+    async function punch(type) {
+        if(!myEmpId) return;
+
+        const { error } = await window.db.from('employee_attendance_logs').insert([{
+            employee_id: myEmpId,
+            check_type: type,
+            input_source: 'WEB'
+        }]);
+
+        if(error) {
+            Swal.fire('打卡失敗', error.message, 'error');
+        } else {
+            Swal.fire({
+                title: '打卡成功',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            loadTodayLogs();
+        }
+    }
+
+    async function loadTodayLogs() {
+        if(!myEmpId) return;
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        
+        const { data } = await window.db.from('employee_attendance_logs')
+            .select('*')
+            .eq('employee_id', myEmpId)
+            .gte('check_time', todayStart.toISOString())
+            .order('check_time', { ascending: false });
+
+        const list = document.getElementById('todayLogs');
+        list.innerHTML = '';
+
+        if(data && data.length > 0) {
+            data.forEach(log => {
+                let badge = '';
+                switch(log.check_type) {
+                    case 'WORK_IN': badge = '<span class="badge bg-primary">上班</span>'; break;
+                    case 'WORK_OUT': badge = '<span class="badge bg-secondary">下班</span>'; break;
+                    case 'OT_IN': badge = '<span class="badge bg-danger">加班上</span>'; break;
+                    case 'OT_OUT': badge = '<span class="badge bg-success">加班下</span>'; break;
+                }
+                const time = new Date(log.check_time).toLocaleTimeString();
+                list.innerHTML += `<li class="list-group-item d-flex justify-content-between"><span>${badge}</span> <span class="font-monospace">${time}</span></li>`;
+            });
+        } else {
+            list.innerHTML = '<li class="list-group-item text-muted text-center py-3">今日尚無紀錄</li>';
+        }
+    }
+</script>
+</body>
+</html>
