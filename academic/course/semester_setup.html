@@ -8,7 +8,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .week-status-btn { width: 100%; transition: all 0.2s; text-align: left; display: flex; align-items: center; justify-content: space-between; }
+        .week-status-btn:hover { background-color: #e9ecef; transform: translateX(5px); }
+    </style>
 </head>
 <body>
 <div class="container">
@@ -16,7 +20,7 @@
         <h3 class="fw-bold text-dark"><i class="bi bi-calendar-event"></i> 學期設定</h3>
         <div>
             <a href="course_dashboard.html" class="btn btn-outline-secondary me-2">回儀表板</a>
-            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增學期</button>
+            <button class="btn btn-primary" onclick="openEditModal()"><i class="bi bi-plus-lg"></i> 新增學期</button>
         </div>
     </div>
 
@@ -25,12 +29,12 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th width="150">學期代碼</th>
+                        <th width="120">學期代碼</th>
                         <th>學期名稱</th>
                         <th>狀態</th>
-                        <th class="text-center">國小部週次</th>
-                        <th class="text-center">國(高)中部週次</th>
-                        <th class="text-end">操作</th>
+                        <th width="200" class="text-center">國小部週次</th>
+                        <th width="200" class="text-center">國(高)中部週次</th>
+                        <th width="120" class="text-end">操作</th>
                     </tr>
                 </thead>
                 <tbody id="semTable">
@@ -45,7 +49,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">學期維護</h5>
+                <h5 class="modal-title">學期基本資料</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -64,24 +68,11 @@
                         <option value="current">目前系統學期</option>
                         <option value="archive">歷史存檔</option>
                     </select>
-                    <div class="form-text text-danger">注意：同一時間只能有一個「目前系統學期」。</div>
-                </div>
-                <hr>
-                <div class="mb-3">
-                    <label class="fw-bold">週次設定狀態 (手動標記)</label>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="m_elem_set">
-                        <label class="form-check-label" for="m_elem_set">國小部已設定</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="m_high_set">
-                        <label class="form-check-label" for="m_high_set">國(高)中部已設定</label>
-                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+                <button type="button" class="btn btn-primary" onclick="saveSemester()">儲存</button>
             </div>
         </div>
     </div>
@@ -91,42 +82,49 @@
 <script src="../../js/config.js"></script>
 <script>
     let semModal;
+
     document.addEventListener('DOMContentLoaded', () => {
         semModal = new bootstrap.Modal(document.getElementById('semModal'));
         if(window.db) loadSemesters();
-        else setTimeout(loadSemesters, 500); // 延遲重試，解決讀取中問題
+        else setTimeout(loadSemesters, 500);
     });
 
     async function loadSemesters() {
-        const { data, error } = await window.db.from('semesters').select('*').order('semester_code', { ascending: false });
+        const { data: sems, error } = await window.db.from('semesters').select('*').order('semester_code', { ascending: false });
+        // 取得週次統計
+        const { data: weeks } = await window.db.from('semester_weeks').select('semester_id, department_type');
+
         const tbody = document.getElementById('semTable');
         tbody.innerHTML = '';
         
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">讀取失敗: ${error.message}</td></tr>`; return; }
-        if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">尚無資料</td></tr>`; return; }
+        if (error || !sems) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5">無資料</td></tr>`; return; }
 
-        data.forEach(s => {
+        sems.forEach(s => {
             const statusBadge = s.status === 'current' 
                 ? '<span class="badge bg-success">目前系統學期</span>' 
                 : '<span class="badge bg-secondary">歷史存檔</span>';
             
-            // 週次狀態顯示
-            const elemStatus = s.is_elem_set 
-                ? '<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> 已設定學期週次</span>' 
-                : '<span class="text-muted"><i class="bi bi-dash-circle"></i> 未設定</span>';
-            const highStatus = s.is_high_set 
-                ? '<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> 已設定學期週次</span>' 
-                : '<span class="text-muted"><i class="bi bi-dash-circle"></i> 未設定</span>';
+            const elemCount = weeks.filter(w => w.semester_id === s.id && w.department_type === 'elem').length;
+            const highCount = weeks.filter(w => w.semester_id === s.id && w.department_type === 'high').length;
+
+            // 連結到 week_manager.html，並傳遞參數
+            const makeLink = (type, count, title) => `
+                <a href="week_manager.html?semId=${s.id}&type=${type}&title=${encodeURIComponent(title)}" 
+                   class="btn btn-sm ${count > 0 ? 'btn-outline-success' : 'btn-outline-secondary text-muted'} week-status-btn">
+                   <span>${count > 0 ? '<i class="bi bi-check-circle-fill"></i> 已設定' : '<i class="bi bi-dash-circle"></i> 未設定'}</span>
+                   <span class="badge bg-light text-dark border">${count} 週</span>
+                </a>
+            `;
 
             tbody.innerHTML += `
                 <tr>
                     <td class="font-monospace fw-bold ps-3">${s.semester_code}</td>
                     <td>${s.name}</td>
                     <td>${statusBadge}</td>
-                    <td class="text-center">${elemStatus}</td>
-                    <td class="text-center">${highStatus}</td>
+                    <td>${makeLink('elem', elemCount, s.semester_code + ' 國小部')}</td>
+                    <td>${makeLink('high', highCount, s.semester_code + ' 國(高)中部')}</td>
                     <td class="text-end pe-3">
-                        <button class="btn btn-sm btn-outline-primary" onclick='openModal(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-primary" onclick='openEditModal(${JSON.stringify(s)})'><i class="bi bi-pencil"></i></button>
                         <button class="btn btn-sm btn-outline-danger" onclick="delSem('${s.id}')"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
@@ -134,41 +132,28 @@
         });
     }
 
-    window.openModal = (data = null) => {
+    // Modal 與 CRUD
+    window.openEditModal = (data = null) => {
         document.getElementById('editId').value = data ? data.id : '';
         document.getElementById('m_code').value = data ? data.semester_code : '';
         document.getElementById('m_name').value = data ? data.name : '';
         document.getElementById('m_status').value = data ? data.status : 'archive';
-        document.getElementById('m_elem_set').checked = data ? data.is_elem_set : false;
-        document.getElementById('m_high_set').checked = data ? data.is_high_set : false;
         semModal.show();
     }
-
-    window.saveData = async () => {
+    window.saveSemester = async () => {
         const id = document.getElementById('editId').value;
         const payload = {
             semester_code: document.getElementById('m_code').value,
             name: document.getElementById('m_name').value,
-            status: document.getElementById('m_status').value,
-            is_elem_set: document.getElementById('m_elem_set').checked,
-            is_high_set: document.getElementById('m_high_set').checked
+            status: document.getElementById('m_status').value
         };
-        
         if (!payload.semester_code || !payload.name) return Swal.fire('欄位未填', '', 'warning');
-
-        if (payload.status === 'current') {
-            // 若設為目前學期，先把其他的設為歷史
-            await window.db.from('semesters').update({ status: 'archive' }).neq('id', 0);
-        }
-
+        if (payload.status === 'current') await window.db.from('semesters').update({ status: 'archive' }).neq('id', 0);
         let error;
         if (id) error = (await window.db.from('semesters').update(payload).eq('id', id)).error;
         else error = (await window.db.from('semesters').insert([payload])).error;
-
-        if (error) Swal.fire('失敗', error.message, 'error');
-        else { semModal.hide(); loadSemesters(); Swal.fire('成功', '資料已更新', 'success'); }
+        if (error) Swal.fire('失敗', error.message, 'error'); else { semModal.hide(); loadSemesters(); Swal.fire('成功', '資料已更新', 'success'); }
     }
-
     window.delSem = async (id) => {
         if((await Swal.fire({title:'確定刪除？',icon:'warning',showCancelButton:true})).isConfirmed) {
             await window.db.from('semesters').delete().eq('id', id); loadSemesters();
