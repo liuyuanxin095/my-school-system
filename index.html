@@ -10,15 +10,17 @@
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
-        /* --- 側邊欄全黑設定 --- */
+        /* --- 側邊欄 (Sidebar) --- */
         .sidebar {
             width: 260px;
-            background-color: #212529;
+            background-color: #212529; /* 深黑 */
             color: white;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             border-right: 1px solid #333;
+            transition: all 0.3s;
+            z-index: 1050; /* 確保在遮罩之上 */
         }
         
         .sidebar-header { 
@@ -28,7 +30,7 @@
         }
         .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; color: #fff; }
 
-        /* --- 按鈕樣式 --- */
+        /* --- 選單按鈕樣式 --- */
         .menu-btn, .accordion-button {
             background-color: transparent !important;
             color: #adb5bd !important;
@@ -60,30 +62,70 @@
         }
         .submenu-link:hover { color: #fff; background-color: #2c3034; }
 
-        /* --- 藍色高亮狀態 --- */
-        .menu-btn.active {
+        /* 激活狀態 */
+        .menu-btn.active, .submenu-link.active {
             color: #fff !important;
-            background-color: #212529 !important;
+            background-color: #2c3034 !important;
             border-left-color: #0d6efd;
         }
-
-        .submenu-link.active {
-            color: #fff !important;
-            background-color: #2c3034;
-            border-left-color: #0d6efd;
-        }
-
+        
         .accordion-button:not(.collapsed) { 
             color: #fff !important; 
             font-weight: bold;
             background-color: #212529 !important;
         }
-
         .accordion-button::after { display: none; }
         .accordion-item { background-color: transparent; border: none; }
         
-        .main-content { flex-grow: 1; display: flex; flex-direction: column; }
+        /* --- 主要內容區 (Main Content) --- */
+        .main-content { 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            width: 100%; /* 確保寬度正確 */
+            position: relative;
+        }
+        
+        /* 手機版頂部導覽列 (預設隱藏，手機顯示) */
+        .mobile-navbar {
+            display: none;
+            background-color: #fff;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            align-items: center;
+            justify-content: space-between;
+        }
+
         iframe { width: 100%; height: 100%; border: none; }
+
+        /* --- 響應式設計 (Mobile RWD) --- */
+        @media (max-width: 768px) {
+            /* 1. 側邊欄預設隱藏 (移到畫面左邊外面) */
+            .sidebar {
+                position: fixed;
+                top: 0; left: -260px; /* 藏在左邊 */
+                height: 100vh;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            }
+            
+            /* 2. 當側邊欄被激活時 (滑入) */
+            .sidebar.show {
+                left: 0;
+            }
+
+            /* 3. 顯示手機頂部導覽列 */
+            .mobile-navbar { display: flex; }
+
+            /* 4. 遮罩層 (Overlay) - 當側邊欄打開時顯示 */
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 1040; /* 在側邊欄之下，內容之上 */
+            }
+            .overlay.show { display: block; }
+        }
     </style>
     <script>
         if (!localStorage.getItem('currentUser')) {
@@ -93,11 +135,18 @@
 </head>
 <body>
 
-    <div class="sidebar">
+    <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+    <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-building-fill text-primary"></i>
-                <span class="brand-text">智慧校務整合系統</span>
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-building-fill text-primary"></i>
+                    <span class="brand-text">智慧校務整合系統</span>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="toggleSidebar()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             
             <div class="d-flex align-items-center mt-3 text-light ps-1">
@@ -127,7 +176,7 @@
                 </h2>
                 <div id="menu-academic" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
                     <a href="academic/calendar.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">行事曆維護</a>
-                    <a href="academic/semester_settings.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期週次設定</a>
+                    <a href="academic/semester_setup.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期設定</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學生學籍資料維護</a>
                     <a href="academic/course/course_dashboard.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">課程維護系統</a>
                     <a href="#" class="submenu-link" onclick="handleMenuClick(this)">調代課作業</a>
@@ -199,7 +248,6 @@
                 </h2>
                 <div id="menu-hr" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
                     <a href="hr/list_employee.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">教職員清單</a>
-                    
                     <a href="hr/add_employee.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">單位用人作業</a>
                     <a href="hr/attendance.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">線上打卡</a>
                 </div>
@@ -233,6 +281,13 @@
     </div>
 
     <div class="main-content">
+        <div class="mobile-navbar d-md-none">
+            <button class="btn btn-outline-dark border-0" onclick="toggleSidebar()">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            <span class="fw-bold">智慧校務系統</span>
+            <div style="width: 40px;"></div> </div>
+
         <iframe name="content-frame" src="welcome.html"></iframe>
     </div>
 
@@ -262,11 +317,30 @@
             })
         });
 
+        // 側邊欄切換功能 (手機版)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        // 點選選單後自動收合 (僅限手機版)
         function handleMenuClick(clickedEl) {
+            // 移除所有 active
             document.querySelectorAll('.menu-btn, .submenu-link').forEach(el => {
                 el.classList.remove('active');
             });
+            // 加上 active
             clickedEl.classList.add('active');
+
+            // 如果是手機版，點選後自動關閉側邊欄
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('show')) {
+                    toggleSidebar();
+                }
+            }
         }
     </script>
 </body>
