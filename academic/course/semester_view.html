@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學期資料檢視</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-calendar-event"></i> 學期資料檢視</h3>
+        <a href="course_dashboard.html" class="btn btn-outline-secondary">回儀表板</a>
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm">
+        <i class="bi bi-info-circle-fill me-2"></i> 
+        本頁面僅供查詢。如需新增學期或修改週次，請聯繫系統管理員至「系統管理 > 學期資料管理」進行操作。
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="150">學期代碼</th>
+                        <th>學期名稱</th>
+                        <th>狀態</th>
+                        <th class="text-center">國小部週次</th>
+                        <th class="text-center">國(高)中部週次</th>
+                    </tr>
+                </thead>
+                <tbody id="semTable"><tr><td colspan="5" class="text-center py-5">載入中...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if(window.db) loadSemesters();
+    });
+
+    async function loadSemesters() {
+        const { data: sems } = await window.db.from('semesters').select('*').order('semester_code', { ascending: false });
+        const { data: weeks } = await window.db.from('semester_weeks').select('semester_id, department_type');
+
+        const tbody = document.getElementById('semTable');
+        tbody.innerHTML = '';
+        
+        if (!sems) return;
+
+        sems.forEach(s => {
+            const statusBadge = s.status === 'current' 
+                ? '<span class="badge bg-success">目前學期</span>' 
+                : '<span class="badge bg-secondary">其他</span>';
+            
+            const elemCount = weeks.filter(w => w.semester_id === s.id && w.department_type === 'elem').length;
+            const highCount = weeks.filter(w => w.semester_id === s.id && w.department_type === 'high').length;
+
+            const badge = (cnt) => cnt > 0 
+                ? `<span class="text-success fw-bold"><i class="bi bi-check-circle-fill"></i> 已設定 (${cnt}週)</span>` 
+                : `<span class="text-muted"><i class="bi bi-dash-circle"></i> 未設定</span>`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="font-monospace fw-bold ps-3">${s.semester_code}</td>
+                    <td>${s.name}</td>
+                    <td>${statusBadge}</td>
+                    <td class="text-center">${badge(elemCount)}</td>
+                    <td class="text-center">${badge(highCount)}</td>
+                </tr>
+            `;
+        });
+    }
+</script>
+</body>
+</html>
