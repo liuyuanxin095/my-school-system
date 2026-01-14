@@ -13,17 +13,17 @@
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
-        /* --- 側邊欄 (Sidebar) --- */
+        /* 側邊欄 */
         .sidebar {
             width: 260px;
-            background-color: #212529; /* 深黑 */
+            background-color: #212529;
             color: white;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             border-right: 1px solid #333;
             transition: all 0.3s;
-            z-index: 1050; /* Bootstrap 標準層級 */
+            z-index: 1050;
         }
         
         .sidebar-header { 
@@ -33,7 +33,7 @@
         }
         .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; color: #fff; }
 
-        /* --- 選單按鈕樣式 --- */
+        /* 選單樣式 */
         .menu-btn, .accordion-button {
             background-color: transparent !important;
             color: #adb5bd !important;
@@ -98,11 +98,12 @@
 
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* ★★★ 修復登出視窗層級與背景問題 ★★★ */
+        /* ★★★ 修復登出視窗問題 ★★★ */
+        /* 強制將 SweetAlert 層級拉到最高，避免被其他元素蓋住 */
         .swal2-container {
-            z-index: 20000 !important; /* 確保遠高於側邊欄 (1050) */
+            z-index: 99999 !important;
         }
-        
+
         /* 響應式遮罩 */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1040; }
         .overlay.show { display: block; }
@@ -185,7 +186,7 @@
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
         }
 
-        // 登出功能 (保留 SweetAlert 視窗，修復遮擋問題)
+        // 登出功能
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
@@ -196,12 +197,8 @@
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: '登出',
                 cancelButtonText: '取消',
-                // ★★★ 確保背景是乾淨的遮罩 ★★★
-                backdrop: `
-                    rgba(0,0,0,0.5)
-                    left top
-                    no-repeat
-                `
+                // 使用標準的黑色半透明遮罩，避免出現"白色方塊"
+                backdrop: true
             }).then((result) => {
                 if (result.isConfirmed) {
                     localStorage.clear();
@@ -225,7 +222,7 @@
             }
         }
 
-        // --- 動態選單邏輯 ---
+        // 動態選單邏輯
         async function renderDynamicMenu() {
             if (typeof window.db === 'undefined') {
                 document.getElementById('menuAccordion').innerHTML = 
