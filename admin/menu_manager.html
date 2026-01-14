@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>選單模組管理</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
@@ -148,28 +150,46 @@
 <script src="../js/config.js"></script>
 
 <script>
-    // 定義全域變數，確保各個函式都能存取
+    // 定義全域變數
     let modal;
     let allMenus = [];
 
     document.addEventListener('DOMContentLoaded', () => {
-        // 確保 Bootstrap Modal 在 DOM 載入後才初始化
-        modal = new bootstrap.Modal(document.getElementById('menuModal'));
+        // ★★★ 安全檢查：確認 Bootstrap 是否載入 ★★★
+        if (typeof bootstrap === 'undefined') {
+            alert('系統偵測到 Bootstrap 載入失敗，將嘗試重新載入，請稍候...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';
+            script.onload = () => { initSystem(); }; // 載入完後再初始化
+            document.head.appendChild(script);
+        } else {
+            initSystem();
+        }
+    });
 
+    function initSystem() {
+        // 初始化 Modal
+        const modalEl = document.getElementById('menuModal');
+        if (modalEl) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+
+        // 檢查 Supabase
         if (typeof window.db === 'undefined') {
             Swal.fire({
                 icon: 'error',
                 title: '設定檔錯誤',
-                text: '找不到 window.db，請確認 js/config.js 設定。'
+                text: '找不到 window.db，請確認 js/config.js 是否已設定正確的金鑰。'
             });
             return;
         }
         loadMenus();
-    });
+    }
 
-    // ★★★ 將所有操作函式綁定到 window，解決 "is not defined" 問題 ★★★
-
+    // 將函式掛載到 window，避免作用域錯誤
     window.openModal = function() {
+        if (!modal) return Swal.fire('錯誤', '系統尚未初始化完成，請重新整理頁面', 'error');
+        
         document.getElementById('menuId').value = '';
         document.getElementById('menuTitle').value = '';
         document.getElementById('menuLink').value = '';
@@ -272,6 +292,7 @@
     }
 
     window.editMenu = function(id) {
+        if (!modal) return;
         const item = allMenus.find(m => m.id === id);
         if(!item) return;
 
