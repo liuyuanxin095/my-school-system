@@ -6,8 +6,11 @@
     <title>智慧校務整合系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
         
@@ -78,7 +81,6 @@
         .accordion-button::after { display: none; }
         .accordion-item { background-color: transparent; border: none; }
         
-        /* --- 主要內容區 --- */
         .main-content { 
             flex-grow: 1; 
             display: flex; 
@@ -98,7 +100,6 @@
 
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* --- 響應式設計 --- */
         @media (max-width: 768px) {
             .sidebar { position: fixed; top: 0; left: -260px; height: 100vh; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
             .sidebar.show { left: 0; }
@@ -107,8 +108,8 @@
             .overlay.show { display: block; }
         }
     </style>
+    
     <script>
-        // 登入檢查
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'login.html';
         }
@@ -150,7 +151,7 @@
         <div class="accordion accordion-flush" id="menuAccordion" style="overflow-y: auto; flex-grow: 1;">
             <div class="text-center mt-5 text-muted small">
                 <div class="spinner-border spinner-border-sm text-secondary" role="status"></div><br>
-                正在讀取選單...
+                系統連線中...
             </div>
         </div>
     </div>
@@ -168,6 +169,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script src="js/config.js"></script>
 
     <script>
@@ -178,15 +180,15 @@
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
         }
 
-        // 登出功能
+        // 登出
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
-                cancelButtonText: '取消',
-                confirmButtonText: '登出'
+                confirmButtonText: '登出',
+                cancelButtonText: '取消'
             }).then((result) => {
                 if (result.isConfirmed) {
                     localStorage.removeItem('currentUser');
@@ -195,13 +197,11 @@
             })
         });
 
-        // 手機版側邊欄切換
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('show');
             document.getElementById('overlay').classList.toggle('show');
         }
 
-        // 點擊後處理 active 狀態與手機版自動收合
         window.handleMenuClick = function(clickedEl) {
             document.querySelectorAll('.menu-btn, .submenu-link').forEach(el => el.classList.remove('active'));
             clickedEl.classList.add('active');
@@ -211,89 +211,91 @@
             }
         }
 
-        // ▼▼▼ 動態生成選單的核心程式碼 ▼▼▼
+        // ▼▼▼ 這裡就是「動態選單」的核心程式碼 ▼▼▼
         async function renderDynamicMenu() {
+            // 1. 檢查 db 是否存在 (這是您之前卡死的主因)
+            if (typeof window.db === 'undefined') {
+                document.getElementById('menuAccordion').innerHTML = 
+                    '<div class="p-3 text-danger text-center small">錯誤：找不到 js/config.js 或 Supabase SDK。<br>請檢查檔案是否正確引入。</div>';
+                return;
+            }
+
             if (!user) return;
-            
-            // 檢查 db 是否連線
-            if (!window.db) {
-                console.error("Supabase 連線失敗，請檢查 js/config.js");
-                return;
-            }
 
-            // 1. 從資料庫撈取所有啟用選單
-            const { data: allMenus, error } = await window.db
-                .from('system_menus')
-                .select('*')
-                .eq('is_active', true)
-                .order('sort_order', { ascending: true });
+            try {
+                // 2. 從資料庫抓選單
+                const { data: allMenus, error } = await window.db
+                    .from('system_menus')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
 
-            const menuContainer = document.getElementById('menuAccordion');
+                const menuContainer = document.getElementById('menuAccordion');
 
-            if (error || !allMenus || allMenus.length === 0) {
-                console.error("選單讀取錯誤:", error);
-                menuContainer.innerHTML = '<div class="p-3 text-center text-muted small">目前沒有選單資料，請聯繫管理員建立選單。</div>';
-                return;
-            }
+                if (error) {
+                    console.error("選單錯誤:", error);
+                    menuContainer.innerHTML = `<div class="p-3 text-danger text-center small">讀取錯誤: ${error.message}</div>`;
+                    return;
+                }
 
-            menuContainer.innerHTML = ''; // 清空讀取中訊息
+                if (!allMenus || allMenus.length === 0) {
+                    menuContainer.innerHTML = '<div class="p-3 text-center text-muted small">資料庫內沒有選單資料。<br>請聯繫管理員。</div>';
+                    return;
+                }
 
-            // 2. 篩選權限 (只留下此角色能看到的)
-            // 如果 allowed_roles 是 null，預設所有人可見
-            const allowedMenus = allMenus.filter(m => 
-                !m.allowed_roles || m.allowed_roles.includes(user.role)
-            );
+                menuContainer.innerHTML = ''; // 清空
 
-            // 3. 分離父層與子層
-            const parents = allowedMenus.filter(m => !m.parent_id);
+                // 3. 權限過濾
+                const allowedMenus = allMenus.filter(m => 
+                    !m.allowed_roles || m.allowed_roles.includes(user.role)
+                );
 
-            // 4. 產生 HTML
-            parents.forEach(parent => {
-                const children = allowedMenus.filter(m => m.parent_id === parent.id);
-                
-                if (children.length > 0) {
-                    // === 情況 A: 折疊式選單 (有子項目) ===
-                    const collapseId = `menu-${parent.id}`;
-                    // 組合子選單 HTML
-                    const childrenHtml = children.map(child => `
-                        <a href="${child.link || '#'}" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">
-                            ${child.title}
-                        </a>
-                    `).join('');
+                // 4. 產生 HTML
+                const parents = allowedMenus.filter(m => !m.parent_id);
 
-                    const html = `
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-                                    <i class="bi ${parent.icon || 'bi-folder'} me-2"></i> ${parent.title}
-                                </button>
-                            </h2>
-                            <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                                ${childrenHtml}
-                            </div>
-                        </div>
-                    `;
-                    menuContainer.innerHTML += html;
-                } else {
-                    // === 情況 B: 單一連結 (沒有子項目) ===
-                    // 只有當父層自己有連結時才顯示
-                    if (parent.link) {
-                        const html = `
+                parents.forEach(parent => {
+                    const children = allowedMenus.filter(m => m.parent_id === parent.id);
+                    
+                    if (children.length > 0) {
+                        // 有子選單
+                        const collapseId = `menu-${parent.id}`;
+                        const childrenHtml = children.map(child => `
+                            <a href="${child.link || '#'}" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">
+                                ${child.title}
+                            </a>
+                        `).join('');
+
+                        menuContainer.innerHTML += `
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                                        <i class="bi ${parent.icon || 'bi-folder'} me-2"></i> ${parent.title}
+                                    </button>
+                                </h2>
+                                <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                                    ${childrenHtml}
+                                </div>
+                            </div>`;
+                    } else if (parent.link) {
+                        // 單一層連結
+                        menuContainer.innerHTML += `
                             <div class="accordion-item">
                                 <a href="${parent.link}" target="content-frame" class="menu-btn" onclick="handleMenuClick(this)">
                                     <i class="bi ${parent.icon || 'bi-link'} me-2"></i> ${parent.title}
                                 </a>
-                            </div>
-                        `;
-                        menuContainer.innerHTML += html;
+                            </div>`;
                     }
-                }
-            });
-            
-            menuContainer.innerHTML += '<div style="height: 20px;"></div>';
+                });
+                
+                menuContainer.innerHTML += '<div style="height: 20px;"></div>';
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('menuAccordion').innerHTML = '<div class="p-3 text-danger">系統發生例外錯誤，請按 F12 查看 Console。</div>';
+            }
         }
 
-        // 執行載入
+        // 啟動！
         document.addEventListener('DOMContentLoaded', () => {
             renderDynamicMenu();
         });
