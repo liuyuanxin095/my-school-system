@@ -169,7 +169,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script src="js/config.js"></script>
 
     <script>
@@ -180,19 +179,27 @@
             document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
         }
 
-        // 登出
+        // ▼▼▼ 更新後的登出功能 (含清除快取) ▼▼▼
         document.getElementById('logoutBtn').addEventListener('click', () => {
             Swal.fire({
                 title: '確定要登出嗎？',
-                icon: 'question',
+                text: "這將會清除您的登入狀態與暫存資料",
+                icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
                 confirmButtonText: '登出',
                 cancelButtonText: '取消'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
+                    // 1. 強制清除所有 LocalStorage (包含 currentUser)
+                    localStorage.clear();
+                    
+                    // 2. 清除 SessionStorage (瀏覽器暫存)
+                    sessionStorage.clear();
+
+                    // 3. 使用 replace 跳轉 (防止上一頁回到系統)
+                    window.location.replace('login.html');
                 }
             })
         });
@@ -211,9 +218,8 @@
             }
         }
 
-        // ▼▼▼ 這裡就是「動態選單」的核心程式碼 ▼▼▼
+        // 動態選單邏輯
         async function renderDynamicMenu() {
-            // 1. 檢查 db 是否存在 (這是您之前卡死的主因)
             if (typeof window.db === 'undefined') {
                 document.getElementById('menuAccordion').innerHTML = 
                     '<div class="p-3 text-danger text-center small">錯誤：找不到 js/config.js 或 Supabase SDK。<br>請檢查檔案是否正確引入。</div>';
@@ -223,7 +229,6 @@
             if (!user) return;
 
             try {
-                // 2. 從資料庫抓選單
                 const { data: allMenus, error } = await window.db
                     .from('system_menus')
                     .select('*')
@@ -243,21 +248,18 @@
                     return;
                 }
 
-                menuContainer.innerHTML = ''; // 清空
+                menuContainer.innerHTML = ''; 
 
-                // 3. 權限過濾
                 const allowedMenus = allMenus.filter(m => 
                     !m.allowed_roles || m.allowed_roles.includes(user.role)
                 );
 
-                // 4. 產生 HTML
                 const parents = allowedMenus.filter(m => !m.parent_id);
 
                 parents.forEach(parent => {
                     const children = allowedMenus.filter(m => m.parent_id === parent.id);
                     
                     if (children.length > 0) {
-                        // 有子選單
                         const collapseId = `menu-${parent.id}`;
                         const childrenHtml = children.map(child => `
                             <a href="${child.link || '#'}" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">
@@ -277,7 +279,6 @@
                                 </div>
                             </div>`;
                     } else if (parent.link) {
-                        // 單一層連結
                         menuContainer.innerHTML += `
                             <div class="accordion-item">
                                 <a href="${parent.link}" target="content-frame" class="menu-btn" onclick="handleMenuClick(this)">
@@ -295,7 +296,6 @@
             }
         }
 
-        // 啟動！
         document.addEventListener('DOMContentLoaded', () => {
             renderDynamicMenu();
         });
