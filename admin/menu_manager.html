@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>選單模組管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-menu-button-wide-fill"></i> 系統選單管理</h3>
+        <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增選單</button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th width="10%">排序</th>
+                        <th width="25%">名稱</th>
+                        <th width="20%">連結 / 子項目</th>
+                        <th width="25%">權限設定</th>
+                        <th width="10%">狀態</th>
+                        <th width="10%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="menuTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="menuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalTitle">新增選單</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="menuId">
+                <div class="mb-3">
+                    <label class="form-label">選單名稱</label>
+                    <input type="text" class="form-control" id="menuTitle" placeholder="例如：教務系統">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label">圖示 (Bootstrap Icons)</label>
+                        <input type="text" class="form-control" id="menuIcon" placeholder="例如：bi-person">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">排序 (數字小在對前)</label>
+                        <input type="number" class="form-control" id="menuSort" value="10">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">父層選單 (若為第一層請留空)</label>
+                    <select class="form-select" id="menuParent">
+                        <option value="">(無 - 設為第一層)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">連結網址 (父層選單可留空)</label>
+                    <input type="text" class="form-control" id="menuLink" placeholder="例如：academic/student_list.html">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label d-block">可見角色權限</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input role-check" type="checkbox" value="admin" id="role_admin">
+                        <label class="form-check-label" for="role_admin">管理員</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input role-check" type="checkbox" value="teacher" id="role_teacher">
+                        <label class="form-check-label" for="role_teacher">教師</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input role-check" type="checkbox" value="staff" id="role_staff">
+                        <label class="form-check-label" for="role_staff">職員</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input role-check" type="checkbox" value="student" id="role_student">
+                        <label class="form-check-label" for="role_student">學生</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveMenu()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+    let allMenus = [];
+    const modal = new bootstrap.Modal(document.getElementById('menuModal'));
+
+    document.addEventListener('DOMContentLoaded', loadMenus);
+
+    async function loadMenus() {
+        // 讀取所有選單
+        const { data, error } = await window.db.from('system_menus').select('*').order('sort_order', { ascending: true });
+        if(error) return console.error(error);
+        
+        allMenus = data;
+        renderTable();
+        updateParentSelect();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('menuTable');
+        tbody.innerHTML = '';
+
+        // 分離父層與子層
+        const parents = allMenus.filter(m => !m.parent_id);
+        
+        parents.forEach(p => {
+            const children = allMenus.filter(m => m.parent_id === p.id);
+            // 渲染父層
+            tbody.innerHTML += rowHtml(p, true);
+            // 渲染子層
+            children.forEach(c => {
+                tbody.innerHTML += rowHtml(c, false);
+            });
+        });
+    }
+
+    function rowHtml(item, isParent) {
+        const roles = item.allowed_roles ? item.allowed_roles.join(', ') : 'All';
+        const indent = isParent ? '' : '<span class="text-muted ms-4">└─ </span>';
+        const bg = isParent ? 'bg-light' : '';
+        const titleStyle = isParent ? 'fw-bold' : '';
+
+        return `
+            <tr class="${bg}">
+                <td>${item.sort_order}</td>
+                <td class="${titleStyle}">
+                    ${indent}<i class="bi ${item.icon} me-2"></i>${item.title}
+                </td>
+                <td class="small text-muted">${item.link || '-'}</td>
+                <td><span class="badge bg-secondary">${roles}</span></td>
+                <td>${item.is_active ? '<span class="text-success">啟用</span>' : '<span class="text-danger">停用</span>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editMenu(${item.id})"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMenu(${item.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }
+
+    function updateParentSelect() {
+        const select = document.getElementById('menuParent');
+        select.innerHTML = '<option value="">(無 - 設為第一層)</option>';
+        allMenus.filter(m => !m.parent_id).forEach(m => {
+            select.innerHTML += `<option value="${m.id}">${m.title}</option>`;
+        });
+    }
+
+    function openModal() {
+        document.getElementById('menuId').value = '';
+        document.getElementById('menuTitle').value = '';
+        document.getElementById('menuLink').value = '';
+        document.getElementById('menuIcon').value = '';
+        document.getElementById('menuSort').value = 10;
+        document.getElementById('menuParent').value = '';
+        document.querySelectorAll('.role-check').forEach(c => c.checked = true);
+        document.getElementById('modalTitle').textContent = '新增選單';
+        modal.show();
+    }
+
+    async function editMenu(id) {
+        const item = allMenus.find(m => m.id === id);
+        if(!item) return;
+
+        document.getElementById('menuId').value = item.id;
+        document.getElementById('menuTitle').value = item.title;
+        document.getElementById('menuLink').value = item.link || '';
+        document.getElementById('menuIcon').value = item.icon || '';
+        document.getElementById('menuSort').value = item.sort_order;
+        document.getElementById('menuParent').value = item.parent_id || '';
+        
+        // 設定 Checkbox
+        document.querySelectorAll('.role-check').forEach(c => c.checked = false);
+        if (item.allowed_roles) {
+            item.allowed_roles.forEach(r => {
+                const el = document.getElementById('role_' + r);
+                if(el) el.checked = true;
+            });
+        }
+
+        document.getElementById('modalTitle').textContent = '編輯選單';
+        modal.show();
+    }
+
+    async function saveMenu() {
+        const id = document.getElementById('menuId').value;
+        const roles = Array.from(document.querySelectorAll('.role-check:checked')).map(c => c.value);
+        
+        const payload = {
+            title: document.getElementById('menuTitle').value,
+            link: document.getElementById('menuLink').value,
+            icon: document.getElementById('menuIcon').value,
+            sort_order: document.getElementById('menuSort').value,
+            parent_id: document.getElementById('menuParent').value || null,
+            allowed_roles: roles,
+            is_active: true
+        };
+
+        let error;
+        if (id) {
+            const res = await window.db.from('system_menus').update(payload).eq('id', id);
+            error = res.error;
+        } else {
+            const res = await window.db.from('system_menus').insert([payload]);
+            error = res.error;
+        }
+
+        if (error) {
+            Swal.fire('錯誤', error.message, 'error');
+        } else {
+            modal.hide();
+            loadMenus();
+            Swal.fire('成功', '選單已儲存', 'success');
+        }
+    }
+    
+    async function deleteMenu(id) {
+        if(confirm('確定要刪除嗎？若此為父選單，子選單可能會顯示異常。')) {
+            await window.db.from('system_menus').delete().eq('id', id);
+            loadMenus();
+        }
+    }
+</script>
+</body>
+</html>
