@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級開課/配課作業</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f0f2f5; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .filter-bar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .class-card { cursor: pointer; transition: 0.2s; border: 1px solid #dee2e6; }
+        .class-card:hover { border-color: #0d6efd; background-color: #f8f9fa; }
+        .class-card.active { border-color: #0d6efd; background-color: #e7f1ff; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-collection-fill"></i> 班級開課/配課作業</h3>
+        <div>
+            <a href="course_dashboard.html" class="btn btn-outline-secondary">回儀表板</a>
+        </div>
+    </div>
+
+    <div class="filter-bar d-flex gap-3 align-items-center flex-wrap">
+        <div class="input-group w-auto">
+            <span class="input-group-text bg-primary text-white fw-bold"><i class="bi bi-calendar-event me-2"></i> 作業學期</span>
+            <select id="f_semester" class="form-select border-primary" onchange="loadClasses()">
+                <option value="">載入中...</option>
+            </select>
+        </div>
+        
+        <div class="vr"></div>
+
+        <select id="f_branch" class="form-select w-auto" onchange="loadClasses()">
+            <option value="">所有分校</option>
+        </select>
+        <select id="f_dept" class="form-select w-auto" onchange="loadClasses()">
+            <option value="國小部">國小部</option>
+            <option value="國中部">國中部</option>
+            <option value="高中部">高中部</option>
+        </select>
+
+        <button class="btn btn-secondary ms-auto" onclick="loadClasses()">
+            <i class="bi bi-arrow-repeat"></i> 重新整理
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0" style="height: calc(100vh - 200px);">
+                <div class="card-header bg-white fw-bold">班級列表</div>
+                <div class="card-body p-2 overflow-auto" id="classList">
+                    <div class="text-center text-muted py-5">請選擇學期與分校</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm border-0" style="height: calc(100vh - 200px);">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold" id="currentClassName">請選擇班級</span>
+                    <button class="btn btn-sm btn-primary" id="btnAddCourse" onclick="openAddModal()" disabled>
+                        <i class="bi bi-plus-lg"></i> 新增開課
+                    </button>
+                </div>
+                <div class="card-body p-0 overflow-auto">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>科目名稱</th>
+                                <th>每週節數</th>
+                                <th>授課教師</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="courseTable">
+                            <tr><td colspan="4" class="text-center py-5 text-muted">尚未選取班級</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增班級課程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label>科目 <span class="text-danger">*</span></label>
+                    <select id="m_subject" class="form-select">
+                        <option value="">載入中...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>授課教師</label>
+                    <select id="m_teacher" class="form-select">
+                        <option value="">(未指定)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>每週節數</label>
+                    <input type="number" id="m_periods" class="form-control" value="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveCourse()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let addModal;
+    let currentClassId = null;
+    let currentSemester = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        addModal = new bootstrap.Modal(document.getElementById('addModal'));
+        await Promise.all([loadSemesters(), loadBranches(), loadSubjects(), loadTeachers()]);
+        loadClasses();
+    });
+
+    // 1. 載入學期 (預設選中 current)
+    async function loadSemesters() {
+        const { data } = await window.db.from('semesters').select('*').order('semester_code', { ascending: false });
+        const sel = document.getElementById('f_semester');
+        sel.innerHTML = '';
+        if(data) {
+            data.forEach(s => {
+                const isCurrent = s.status === 'current';
+                sel.innerHTML += `<option value="${s.semester_code}" ${isCurrent?'selected':''}>${s.semester_code} ${s.name} ${isCurrent?'(目前)':''}</option>`;
+            });
+        }
+    }
+
+    // 2. 載入分校
+    async function loadBranches() {
+        const { data } = await window.db.from('school_branches').select('branch_name').order('branch_code');
+        const sel = document.getElementById('f_branch');
+        if(data) {
+            data.forEach(b => {
+                sel.innerHTML += `<option value="${b.branch_name}">${b.branch_name}</option>`;
+            });
+        }
+    }
+
+    // 3. 載入科目與教師 (給 Modal 用)
+    async function loadSubjects() {
+        const { data } = await window.db.from('subjects').select('id, name, subject_code');
+        const sel = document.getElementById('m_subject');
+        sel.innerHTML = '<option value="">請選擇科目...</option>';
+        if(data) data.forEach(s => sel.innerHTML += `<option value="${s.id}">${s.subject_code} ${s.name}</option>`);
+    }
+    async function loadTeachers() {
+        const { data } = await window.db.from('employees').select('id, name').eq('status', 'active');
+        const sel = document.getElementById('m_teacher');
+        sel.innerHTML = '<option value="">(未指定)</option>';
+        if(data) data.forEach(t => sel.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+    }
+
+    // 4. 載入班級 (根據學期、分校、科部)
+    async function loadClasses() {
+        currentSemester = document.getElementById('f_semester').value;
+        const branch = document.getElementById('f_branch').value;
+        const dept = document.getElementById('f_dept').value;
+
+        // Reset 右側
+        document.getElementById('courseTable').innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">請選擇左側班級</td></tr>';
+        document.getElementById('currentClassName').textContent = '請選擇班級';
+        document.getElementById('btnAddCourse').disabled = true;
+        currentClassId = null;
+
+        let query = window.db.from('school_classes')
+            .select('*')
+            .eq('semester_code', currentSemester) // 關鍵：根據學期篩選
+            .eq('department', dept)
+            .order('class_code');
+        
+        if(branch) query = query.eq('branch', branch);
+
+        const { data } = await query;
+        const list = document.getElementById('classList');
+        list.innerHTML = '';
+
+        if(!data || data.length === 0) {
+            list.innerHTML = '<div class="text-center text-muted mt-5">無符合班級<br>請確認該學期是否已建立班級</div>';
+            return;
+        }
+
+        data.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'card class-card mb-2 p-2';
+            div.innerHTML = `
+                <div class="fw-bold">${c.class_name}</div>
+                <div class="small text-muted">${c.class_code}</div>
+            `;
+            div.onclick = () => selectClass(c, div);
+            list.appendChild(div);
+        });
+    }
+
+    // 5. 選擇班級 -> 載入已開課程 (這裡需要一張 course_offerings 表，假設尚未建立，先模擬)
+    /* 注意：這邊需要建立一張 'course_offerings' 表來連結 班級、科目、老師。
+       如果沒有，請執行下方的 SQL。
+    */
+    async function selectClass(cls, el) {
+        // UI Highlight
+        document.querySelectorAll('.class-card').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
+
+        currentClassId = cls.id;
+        document.getElementById('currentClassName').innerHTML = `<span class="badge bg-primary me-2">${cls.class_code}</span> ${cls.class_name}`;
+        document.getElementById('btnAddCourse').disabled = false;
+
+        // 載入課程
+        const { data, error } = await window.db.from('course_offerings')
+            .select('*, subjects(name), employees(name)')
+            .eq('class_id', currentClassId);
+            
+        const tbody = document.getElementById('courseTable');
+        tbody.innerHTML = '';
+
+        if(error) { 
+            // 可能是表還沒建
+            console.error(error); 
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">讀取失敗 (請檢查資料庫表)</td></tr>';
+            return;
+        }
+
+        if(!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-5 text-muted">此班級尚未開課</td></tr>';
+            return;
+        }
+
+        data.forEach(co => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${co.subjects?.name || '-'}</td>
+                    <td>${co.periods_per_week}</td>
+                    <td>${co.employees?.name || '<span class="text-muted">未排</span>'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delCourse('${co.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 6. 儲存開課
+    async function saveCourse() {
+        if(!currentClassId) return;
+        const payload = {
+            class_id: currentClassId,
+            subject_id: document.getElementById('m_subject').value,
+            teacher_id: document.getElementById('m_teacher').value || null,
+            periods_per_week: document.getElementById('m_periods').value
+        };
+
+        if(!payload.subject_id) return Swal.fire('請選擇科目', '', 'warning');
+
+        const { error } = await window.db.from('course_offerings').insert([payload]);
+        if(error) Swal.fire('失敗', error.message, 'error');
+        else {
+            addModal.hide();
+            // 重新整理右側列表 (模擬點擊)
+            const activeCard = document.querySelector('.class-card.active');
+            if(activeCard) activeCard.click(); 
+        }
+    }
+
+    window.openAddModal = () => {
+        document.getElementById('m_subject').value = '';
+        document.getElementById('m_teacher').value = '';
+        document.getElementById('m_periods').value = '1';
+        addModal.show();
+    }
+
+    window.delCourse = async (id) => {
+        if(confirm('確定刪除此課程？')) {
+            await window.db.from('course_offerings').delete().eq('id', id);
+            const activeCard = document.querySelector('.class-card.active');
+            if(activeCard) activeCard.click(); 
+        }
+    }
+</script>
+</body>
+</html>
