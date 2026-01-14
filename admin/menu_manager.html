@@ -6,6 +6,7 @@
     <title>選單管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
@@ -18,20 +19,29 @@
 </div>
 <div class="modal fade" id="menuModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">新增選單</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="menuId"><input type="text" class="form-control mb-2" id="menuTitle" placeholder="名稱"><input type="text" class="form-control mb-2" id="menuLink" placeholder="連結"><input type="number" class="form-control mb-2" id="menuSort" placeholder="排序" value="10"></div><div class="modal-footer"><button class="btn btn-primary" onclick="saveMenu()">儲存</button></div></div></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script src="../js/config.js"></script>
+
 <script>
     if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js', 'error'); }
 
     const modal = new bootstrap.Modal(document.getElementById('menuModal'));
+    
     document.addEventListener('DOMContentLoaded', loadMenus);
+
     async function loadMenus() {
+        if (!window.db) return;
         const { data, error } = await window.db.from('system_menus').select('*').order('sort_order');
+        
         if(error) return console.error(error);
         const tbody = document.getElementById('menuTable');
         tbody.innerHTML = '';
         data.forEach(m => tbody.innerHTML += `<tr><td>${m.sort_order}</td><td>${m.title}</td><td>${m.link||''}</td><td><button class="btn btn-sm btn-danger" onclick="del(${m.id})">刪</button></td></tr>`);
     }
+
     window.openModal = () => modal.show();
+    
     window.saveMenu = async () => {
         const payload = {
             title: document.getElementById('menuTitle').value,
@@ -41,8 +51,10 @@
             allowed_roles: ['admin', 'staff', 'teacher', 'student']
         };
         const { error } = await window.db.from('system_menus').insert([payload]);
-        if(error) Swal.fire('錯誤', error.message, 'error'); else { modal.hide(); loadMenus(); Swal.fire('成功','','success'); }
+        if(error) Swal.fire('錯誤', error.message, 'error'); 
+        else { modal.hide(); loadMenus(); Swal.fire('成功','','success'); }
     }
+    
     window.del = async (id) => { await window.db.from('system_menus').delete().eq('id', id); loadMenus(); }
 </script>
 </body>
