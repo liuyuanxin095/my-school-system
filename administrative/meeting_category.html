@@ -97,41 +97,37 @@
     document.addEventListener('DOMContentLoaded', loadData);
 
     async function loadData() {
+        if (!window.db) { Swal.fire('錯誤', '找不到 js/config.js', 'error'); return; }
         const { data, error } = await window.db.from('meeting_categories').select('*').order('id');
+        if (error) { console.error(error); return; }
+        
         const tbody = document.getElementById('listTable');
         tbody.innerHTML = '';
-
-        if(data) {
-            data.forEach(item => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${item.parent_item || '-'}</td>
-                        <td>${item.child_item || '-'}</td>
-                        <td class="fw-bold">${item.name}</td>
-                        <td><span class="badge bg-info text-dark">${item.cycle}</span></td>
-                        <td>${item.method}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" onclick="editItem(${item.id})"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
+        data.forEach(item => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.parent_item || '-'}</td>
+                    <td>${item.child_item || '-'}</td>
+                    <td class="fw-bold">${item.name}</td>
+                    <td><span class="badge bg-info text-dark">${item.cycle}</span></td>
+                    <td>${item.method}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editItem(${item.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
     }
 
-    // 開啟新增模式
     window.openModal = () => {
         document.getElementById('dataId').value = '';
         document.getElementById('parentItem').value = '';
         document.getElementById('childItem').value = '';
         document.getElementById('catName').value = '';
-        document.getElementById('cycle').value = '不定期';
-        document.getElementById('method').value = '實體會議';
         modal.show();
     }
 
-    // 編輯載入
     window.editItem = async (id) => {
         const { data } = await window.db.from('meeting_categories').select('*').eq('id', id).single();
         if(data) {
@@ -145,7 +141,6 @@
         }
     }
 
-    // 儲存資料
     window.saveData = async () => {
         const id = document.getElementById('dataId').value;
         const payload = {
@@ -158,17 +153,24 @@
 
         if(!payload.name) return Swal.fire('錯誤', '請輸入會議類別名稱', 'error');
 
+        let error;
         if(id) {
-            await window.db.from('meeting_categories').update(payload).eq('id', id);
+            const res = await window.db.from('meeting_categories').update(payload).eq('id', id);
+            error = res.error;
         } else {
-            await window.db.from('meeting_categories').insert([payload]);
+            const res = await window.db.from('meeting_categories').insert([payload]);
+            error = res.error;
         }
-        modal.hide();
-        loadData();
-        Swal.fire('成功', '資料已儲存', 'success');
+
+        if(error) {
+            Swal.fire('失敗', error.message, 'error');
+        } else {
+            modal.hide();
+            loadData();
+            Swal.fire('成功', '資料已儲存', 'success');
+        }
     }
 
-    // 刪除
     window.deleteItem = async (id) => {
         if((await Swal.fire({ title: '確定刪除？', showCancelButton: true })).isConfirmed) {
             await window.db.from('meeting_categories').delete().eq('id', id);
