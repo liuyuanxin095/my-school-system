@@ -13,48 +13,22 @@
     <style>
         body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
         
-        /* --- 右側預覽區樣式 (模擬首頁 Sidebar) --- */
+        /* 預覽區樣式 */
         .preview-sidebar {
-            background-color: #212529;
-            color: white;
-            padding: 10px 0;
-            border-radius: 0 0 8px 8px; /* 下方圓角 */
-            min-height: 600px;
-            font-size: 0.95rem;
+            background-color: #212529; color: white; padding: 10px 0; border-radius: 0 0 8px 8px;
+            min-height: 600px; font-size: 0.95rem;
         }
         .preview-header {
-            padding: 15px 20px;
-            font-weight: bold;
-            border-bottom: 1px solid #444;
-            margin-bottom: 10px;
-            color: #fff;
-            background-color: #212529;
-            border-radius: 8px 8px 0 0; /* 上方圓角 */
+            padding: 15px 20px; font-weight: bold; border-bottom: 1px solid #444; margin-bottom: 10px;
+            color: #fff; background-color: #212529; border-radius: 8px 8px 0 0;
         }
-        /* 模擬父選單按鈕 */
         .preview-menu-btn {
-            color: #adb5bd;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            border-left: 3px solid transparent;
-            cursor: default; /* 預覽僅供觀看 */
+            color: #adb5bd; padding: 12px 20px; display: flex; align-items: center; text-decoration: none; border-left: 3px solid transparent; cursor: default;
         }
         .preview-menu-btn:hover { background-color: #2c3034; color: #fff; }
-        .preview-menu-btn.active { color: #fff; background-color: #2c3034; border-left-color: #0d6efd; }
-        
-        /* 模擬子選單連結 */
         .preview-submenu-link {
-            display: block;
-            padding: 8px 10px 8px 45px;
-            color: #888;
-            text-decoration: none;
-            font-size: 0.9rem;
-            background-color: #15171a;
-            border-left: 3px solid transparent;
+            display: block; padding: 8px 10px 8px 45px; color: #888; text-decoration: none; font-size: 0.9rem; background-color: #15171a; border-left: 3px solid transparent;
         }
-        .preview-submenu-link:hover { color: #fff; background-color: #2c3034; }
     </style>
 </head>
 <body>
@@ -69,7 +43,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="alert alert-info py-2 small">
-                        <i class="bi bi-info-circle-fill"></i> 拖曳排序功能尚未實裝，請透過「排序數字」來調整順序 (數字越小越前面)。
+                        <i class="bi bi-info-circle-fill"></i> 請透過「排序數字」來調整順序 (數字越小越前面)。
                     </div>
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
@@ -92,17 +66,12 @@
         <div class="col-md-4">
             <div class="sticky-top" style="top: 20px;">
                 <div class="shadow-sm">
-                    <div class="preview-header">
-                        <i class="bi bi-eye"></i> 首頁側邊欄預覽
-                    </div>
+                    <div class="preview-header"><i class="bi bi-eye"></i> 首頁側邊欄預覽</div>
                     <div class="preview-sidebar">
-                        <div id="previewContainer">
-                            </div>
+                        <div id="previewContainer"></div>
                     </div>
                 </div>
-                <div class="text-center mt-2 text-muted small">
-                    * 此為預覽畫面，實際效果以首頁為準
-                </div>
+                <div class="text-center mt-2 text-muted small">* 此為預覽畫面，實際效果以首頁為準</div>
             </div>
         </div>
     </div>
@@ -123,15 +92,14 @@
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
-                        <label class="form-label">圖示 (Bootstrap Icons)</label>
+                        <label class="form-label">圖示 (Bi Icons)</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-stars"></i></span>
                             <input type="text" class="form-control" id="menuIcon" placeholder="bi-house">
                         </div>
-                        <div class="form-text small">只需填寫名稱，如 <code>bi-person</code></div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">排序 (數字)</label>
+                        <label class="form-label">排序</label>
                         <input type="number" class="form-control" id="menuSort" value="10">
                     </div>
                 </div>
@@ -144,7 +112,6 @@
                 <div class="mb-3">
                     <label class="form-label">連結網址</label>
                     <input type="text" class="form-control" id="menuLink" placeholder="例如：academic/student_list.html">
-                    <div class="form-text small">若此選單有子項目，請留空。</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold d-block">可見角色權限</label>
@@ -181,24 +148,41 @@
 <script src="../js/config.js"></script>
 
 <script>
-    const modal = new bootstrap.Modal(document.getElementById('menuModal'));
+    // 定義全域變數，確保各個函式都能存取
+    let modal;
     let allMenus = [];
 
     document.addEventListener('DOMContentLoaded', () => {
-        // 檢查設定檔是否正確載入
+        // 確保 Bootstrap Modal 在 DOM 載入後才初始化
+        modal = new bootstrap.Modal(document.getElementById('menuModal'));
+
         if (typeof window.db === 'undefined') {
             Swal.fire({
                 icon: 'error',
                 title: '設定檔錯誤',
-                text: '找不到 window.db，請確認 js/config.js 是否已設定正確的金鑰。'
+                text: '找不到 window.db，請確認 js/config.js 設定。'
             });
             return;
         }
         loadMenus();
     });
 
-    // 讀取所有選單
-    async function loadMenus() {
+    // ★★★ 將所有操作函式綁定到 window，解決 "is not defined" 問題 ★★★
+
+    window.openModal = function() {
+        document.getElementById('menuId').value = '';
+        document.getElementById('menuTitle').value = '';
+        document.getElementById('menuLink').value = '';
+        document.getElementById('menuIcon').value = '';
+        document.getElementById('menuSort').value = 10;
+        document.getElementById('menuParent').value = '';
+        document.getElementById('menuActive').checked = true;
+        document.querySelectorAll('.role-check').forEach(c => c.checked = true);
+        document.getElementById('modalTitle').textContent = '新增選單';
+        modal.show();
+    };
+
+    window.loadMenus = async function() {
         const { data, error } = await window.db
             .from('system_menus')
             .select('*')
@@ -212,27 +196,21 @@
         
         allMenus = data;
         renderTable();
-        renderPreview(); // 同步更新右側預覽
+        renderPreview();
         updateParentSelect();
-    }
+    };
 
-    // 渲染左側表格
     function renderTable() {
         const tbody = document.getElementById('menuTable');
         tbody.innerHTML = '';
-
         if (allMenus.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">目前沒有選單資料，請新增。</td></tr>';
             return;
         }
-
         const parents = allMenus.filter(m => !m.parent_id);
-        
         parents.forEach(p => {
             const children = allMenus.filter(m => m.parent_id === p.id);
-            // 父層
             tbody.innerHTML += rowHtml(p, true);
-            // 子層
             children.forEach(c => tbody.innerHTML += rowHtml(c, false));
         });
     }
@@ -247,12 +225,8 @@
         return `
             <tr class="${bg}">
                 <td>${item.sort_order}</td>
-                <td class="${isParent ? 'fw-bold' : ''}">
-                    ${indent}${icon} ${item.title} ${status}
-                </td>
-                <td class="small text-muted text-truncate" style="max-width: 150px;">
-                    ${item.link || '<span class="text-black-50">(無連結)</span>'}
-                </td>
+                <td class="${isParent ? 'fw-bold' : ''}">${indent}${icon} ${item.title} ${status}</td>
+                <td class="small text-muted text-truncate" style="max-width: 150px;">${item.link || '<span class="text-black-50">(無連結)</span>'}</td>
                 <td><small class="badge bg-secondary">${roleCount} 角色</small></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="editMenu(${item.id})"><i class="bi bi-pencil"></i></button>
@@ -262,12 +236,9 @@
         `;
     }
 
-    // ★★★ 渲染右側預覽 (模擬 Sidebar) ★★★
     function renderPreview() {
         const container = document.getElementById('previewContainer');
         container.innerHTML = '';
-        
-        // 只顯示啟用的選單
         const activeMenus = allMenus.filter(m => m.is_active);
         const parents = activeMenus.filter(m => !m.parent_id);
 
@@ -276,59 +247,31 @@
             const icon = p.icon ? `<i class="bi ${p.icon} me-2"></i>` : '';
 
             if (children.length > 0) {
-                // 折疊式選單樣式
                 container.innerHTML += `
                     <div style="border-bottom: 1px solid #333;">
                         <div class="preview-menu-btn fw-bold text-white">
                             ${icon} ${p.title} 
                             <i class="bi bi-chevron-down ms-auto small text-muted"></i>
                         </div>
-                        ${children.map(c => `
-                            <div class="preview-submenu-link">
-                                ${c.title}
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+                        ${children.map(c => `<div class="preview-submenu-link">${c.title}</div>`).join('')}
+                    </div>`;
             } else {
-                // 單一連結樣式
-                container.innerHTML += `
-                    <div class="preview-menu-btn">
-                        ${icon} ${p.title}
-                    </div>
-                `;
+                container.innerHTML += `<div class="preview-menu-btn">${icon} ${p.title}</div>`;
             }
         });
     }
 
-    // 更新下拉選單 (父層選擇)
     function updateParentSelect() {
         const select = document.getElementById('menuParent');
         const currentVal = select.value;
         select.innerHTML = '<option value="">(無 - 設為第一層)</option>';
-        // 只有第一層可以當父層
         allMenus.filter(m => !m.parent_id).forEach(m => {
             select.innerHTML += `<option value="${m.id}">${m.title}</option>`;
         });
         if (currentVal) select.value = currentVal;
     }
 
-    // 開啟新增視窗
-    window.openModal = () => {
-        document.getElementById('menuId').value = '';
-        document.getElementById('menuTitle').value = '';
-        document.getElementById('menuLink').value = '';
-        document.getElementById('menuIcon').value = '';
-        document.getElementById('menuSort').value = 10;
-        document.getElementById('menuParent').value = '';
-        document.getElementById('menuActive').checked = true;
-        document.querySelectorAll('.role-check').forEach(c => c.checked = true);
-        document.getElementById('modalTitle').textContent = '新增選單';
-        modal.show();
-    }
-
-    // 開啟編輯視窗
-    window.editMenu = (id) => {
+    window.editMenu = function(id) {
         const item = allMenus.find(m => m.id === id);
         if(!item) return;
 
@@ -340,7 +283,6 @@
         document.getElementById('menuParent').value = item.parent_id || '';
         document.getElementById('menuActive').checked = item.is_active;
         
-        // 權限回填
         document.querySelectorAll('.role-check').forEach(c => c.checked = false);
         if(item.allowed_roles) {
             item.allowed_roles.forEach(r => {
@@ -350,10 +292,9 @@
         }
         document.getElementById('modalTitle').textContent = '編輯選單';
         modal.show();
-    }
+    };
 
-    // 儲存邏輯
-    window.saveMenu = async () => {
+    window.saveMenu = async function() {
         const id = document.getElementById('menuId').value;
         const roles = Array.from(document.querySelectorAll('.role-check:checked')).map(c => c.value);
         
@@ -369,7 +310,6 @@
 
         if(!payload.title) return Swal.fire('錯誤', '請輸入選單名稱', 'error');
 
-        // 使用 window.db 操作
         const { error } = id 
             ? await window.db.from('system_menus').update(payload).eq('id', id)
             : await window.db.from('system_menus').insert([payload]);
@@ -378,20 +318,18 @@
             Swal.fire('失敗', error.message, 'error');
         } else {
             modal.hide();
-            loadMenus(); // 重新讀取並刷新預覽
+            loadMenus();
             Swal.fire('成功', '選單已更新', 'success');
         }
-    }
+    };
 
-    // 刪除邏輯
-    window.deleteMenu = async (id) => {
+    window.deleteMenu = async function(id) {
         const result = await Swal.fire({
             title: '確定刪除？',
-            text: "若刪除父選單，子選單可能會顯示異常！",
+            text: "若刪除父選單，子選單將會消失！",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
             confirmButtonText: '刪除',
             cancelButtonText: '取消'
         });
@@ -401,7 +339,7 @@
             if(error) Swal.fire('失敗', error.message, 'error');
             else loadMenus();
         }
-    }
+    };
 </script>
 </body>
 </html>
