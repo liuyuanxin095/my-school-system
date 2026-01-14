@@ -59,7 +59,7 @@
                         <select class="form-select" id="categoryId"></select>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label">會議名稱</label>
+                        <label class="form-label">會議名稱 <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="meetingName" required>
                     </div>
                     <div class="col-md-2">
@@ -80,7 +80,8 @@
                             <input type="text" class="form-control readonly-field" id="chairDisplay" placeholder="點擊選擇..." readonly>
                             <span class="input-group-text"><i class="bi bi-person"></i></span>
                         </div>
-                        <input type="hidden" id="chairData"> </div>
+                        <input type="hidden" id="chairData">
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">記錄者 (單選)</label>
                         <div class="input-group" onclick="openUserSelector('recorder')">
@@ -94,12 +95,13 @@
                         <div class="form-control readonly-field" style="min-height: 38px;" id="attendeesDisplay" onclick="openUserSelector('attendees')">
                             <span class="text-muted small">點擊選擇與會人員...</span>
                         </div>
-                        <input type="hidden" id="attendeesData"> </div>
+                        <input type="hidden" id="attendeesData">
+                    </div>
                     <div class="col-12">
-                        <label class="form-label">列席人員 (手動輸入或選取)</label>
+                        <label class="form-label">列席人員 (手動輸入)</label>
                         <div class="input-group">
                             <input type="text" class="form-control" id="observersInput" placeholder="請輸入姓名，多位請用逗號隔開">
-                            <button class="btn btn-outline-secondary" type="button" onclick="openUserSelector('observers')">從名單選取加入</button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="openUserSelector('observers')">從名單選取</button>
                         </div>
                     </div>
                 </div>
@@ -117,7 +119,6 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <span class="text-muted me-auto small">* 簽核功能將於表單系統上線後整合</span>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
                 <button type="button" class="btn btn-primary" onclick="saveMeeting()">儲存會議記錄</button>
             </div>
@@ -134,8 +135,7 @@
             </div>
             <div class="modal-body">
                 <input type="text" class="form-control mb-3" id="userSearch" placeholder="搜尋姓名..." onkeyup="filterUsers()">
-                <div class="list-group" id="userListGroup">
-                    </div>
+                <div class="list-group" id="userListGroup"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" onclick="confirmUserSelection()">確定選擇</button>
@@ -146,35 +146,39 @@
 
 <script src="../js/config.js"></script>
 <script>
-    let currentSelectorType = ''; // 'chair', 'recorder', 'attendees', 'observers'
-    let allUsers = []; // 快取使用者資料
+    let currentSelectorType = '';
+    let allUsers = [];
     const meetingModal = new bootstrap.Modal(document.getElementById('meetingModal'));
     const userModal = new bootstrap.Modal(document.getElementById('userSelectorModal'));
 
     document.addEventListener('DOMContentLoaded', async () => {
+        if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js', 'error'); return; }
+        
         loadMeetings();
         loadCategories();
-        // 預先載入使用者資料
+        
+        // 預載使用者
         const { data } = await window.db.from('system_users').select('id, name, ref_id');
         allUsers = data || [];
     });
 
-    // --- 載入資料函式 ---
     async function loadCategories() {
         const { data } = await window.db.from('meeting_categories').select('*');
         const select = document.getElementById('categoryId');
         select.innerHTML = '<option value="">請選擇類別...</option>';
-        data.forEach(c => {
-            select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-        });
+        if(data) {
+            data.forEach(c => select.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+        }
     }
 
     async function loadMeetings() {
-        const { data } = await window.db
+        const { data, error } = await window.db
             .from('meetings')
             .select(`*, meeting_categories(name)`)
             .order('meeting_time', { ascending: false });
         
+        if (error) { console.error("Load Error:", error); return; }
+
         const tbody = document.getElementById('meetingTable');
         tbody.innerHTML = '';
         
@@ -190,29 +194,27 @@
                         <td>${m.location || ''}</td>
                         <td>${chairName}</td>
                         <td>${m.approval_status === 'draft' ? '草稿' : '已簽核'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editMeeting(${m.id})">編輯</button>
-                        </td>
+                        <td><button class="btn btn-sm btn-primary" onclick="editMeeting(${m.id})">編輯</button></td>
                     </tr>
                 `;
             });
         }
     }
 
-    // --- 編輯/新增邏輯 ---
+    // --- 新增/編輯 ---
     window.openMeetingModal = () => {
         document.getElementById('meetingId').value = '';
-        // 清空欄位
         document.getElementById('meetingName').value = '';
         document.getElementById('meetingLocation').value = '';
         document.getElementById('agenda').value = '';
         document.getElementById('minutes').value = '';
-        // 清空人員資料
+        document.getElementById('meetingTime').value = '';
+        document.getElementById('categoryId').value = '';
+        
         setSingleUser('chair', null);
         setSingleUser('recorder', null);
         setMultiUser('attendees', []);
         document.getElementById('observersInput').value = '';
-        
         meetingModal.show();
     }
 
@@ -220,7 +222,7 @@
         const { data } = await window.db.from('meetings').select('*').eq('id', id).single();
         if(data) {
             document.getElementById('meetingId').value = data.id;
-            document.getElementById('categoryId').value = data.category_id;
+            document.getElementById('categoryId').value = data.category_id || '';
             document.getElementById('meetingName').value = data.name;
             document.getElementById('meetingTime').value = data.meeting_time ? data.meeting_time.slice(0, 16) : '';
             document.getElementById('meetingLocation').value = data.location;
@@ -229,7 +231,6 @@
             setSingleUser('recorder', data.recorder);
             setMultiUser('attendees', data.attendees || []);
             document.getElementById('observersInput').value = data.observers || '';
-            
             document.getElementById('agenda').value = data.agenda;
             document.getElementById('minutes').value = data.minutes;
             
@@ -237,67 +238,88 @@
         }
     }
 
+    // ★ 重寫的 Save Function (包含詳細錯誤顯示)
     window.saveMeeting = async () => {
-        const id = document.getElementById('meetingId').value;
-        const payload = {
-            category_id: document.getElementById('categoryId').value || null,
-            name: document.getElementById('meetingName').value,
-            meeting_time: document.getElementById('meetingTime').value || null,
-            location: document.getElementById('meetingLocation').value,
-            chair_person: getJsonData('chairData'),
-            recorder: getJsonData('recorderData'),
-            attendees: getJsonData('attendeesData'),
-            observers: document.getElementById('observersInput').value,
-            agenda: document.getElementById('agenda').value,
-            minutes: document.getElementById('minutes').value
-        };
+        const btn = document.querySelector('#meetingModal .btn-primary');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '處理中...';
 
-        if(!payload.name) return Swal.fire('請輸入會議名稱');
+        try {
+            const id = document.getElementById('meetingId').value;
+            const payload = {
+                category_id: document.getElementById('categoryId').value || null,
+                name: document.getElementById('meetingName').value,
+                meeting_time: document.getElementById('meetingTime').value || null,
+                location: document.getElementById('meetingLocation').value,
+                chair_person: getJsonData('chairData'),
+                recorder: getJsonData('recorderData'),
+                attendees: getJsonData('attendeesData'),
+                observers: document.getElementById('observersInput').value,
+                agenda: document.getElementById('agenda').value,
+                minutes: document.getElementById('minutes').value
+            };
 
-        if(id) {
-            await window.db.from('meetings').update(payload).eq('id', id);
-        } else {
-            await window.db.from('meetings').insert([payload]);
+            if(!payload.name) throw new Error('請輸入會議名稱');
+
+            let result;
+            if(id) {
+                result = await window.db.from('meetings').update(payload).eq('id', id).select();
+            } else {
+                result = await window.db.from('meetings').insert([payload]).select();
+            }
+
+            if (result.error) {
+                console.error('Supabase Error:', result.error);
+                throw new Error(result.error.message);
+            }
+
+            meetingModal.hide();
+            loadMeetings();
+            Swal.fire({ icon: 'success', title: '成功', text: '會議資料已儲存' });
+
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: '儲存失敗',
+                text: err.message,
+                footer: '請按 F12 查看 Console 以獲得詳細資訊'
+            });
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
-        meetingModal.hide();
-        loadMeetings();
-        Swal.fire('已儲存');
     }
 
+    // --- Helper Functions ---
     function getJsonData(elementId) {
         const val = document.getElementById(elementId).value;
-        return val ? JSON.parse(val) : null;
+        try { return val ? JSON.parse(val) : null; } catch(e) { return null; }
     }
 
-    // --- 人員選擇器邏輯 (核心) ---
+    // --- 人員選取器 ---
     window.openUserSelector = (type) => {
         currentSelectorType = type;
         const listGroup = document.getElementById('userListGroup');
         listGroup.innerHTML = '';
-
-        // 判斷是否為多選
         const isMulti = (type === 'attendees' || type === 'observers');
         const inputType = isMulti ? 'checkbox' : 'radio';
 
-        // 渲染列表
         allUsers.forEach(u => {
             listGroup.innerHTML += `
                 <label class="list-group-item">
                     <input class="form-check-input me-2 user-check" type="${inputType}" name="userSelect" value="${u.id}" data-name="${u.name}">
-                    ${u.name} <small class="text-muted">(${u.ref_id || '無編號'})</small>
+                    ${u.name} <small class="text-muted">(${u.ref_id || ''})</small>
                 </label>
             `;
         });
-        
-        // 如果是編輯，嘗試勾選已選項目 (這裡簡化處理，若需完美回填需比對ID)
         userModal.show();
     }
 
     window.filterUsers = () => {
         const term = document.getElementById('userSearch').value.toLowerCase();
         document.querySelectorAll('#userListGroup label').forEach(el => {
-            const text = el.textContent.toLowerCase();
-            el.style.display = text.includes(term) ? '' : 'none';
+            el.style.display = el.textContent.toLowerCase().includes(term) ? '' : 'none';
         });
     }
 
@@ -308,65 +330,47 @@
             name: c.getAttribute('data-name')
         }));
 
-        if (currentSelectorType === 'chair') {
-            setSingleUser('chair', selected[0] || null);
-        } else if (currentSelectorType === 'recorder') {
-            setSingleUser('recorder', selected[0] || null);
-        } else if (currentSelectorType === 'attendees') {
-            // 與會人員：追加或覆蓋？目前邏輯是覆蓋，若要追加需讀取舊資料
-            // 這裡做簡單的：將這次選的加入顯示
-            // 為了完整性，我們先讀取舊的
+        if (currentSelectorType === 'chair') setSingleUser('chair', selected[0] || null);
+        else if (currentSelectorType === 'recorder') setSingleUser('recorder', selected[0] || null);
+        else if (currentSelectorType === 'attendees') {
             const oldData = getJsonData('attendeesData') || [];
-            // 合併並去重
-            const newData = [...oldData, ...selected].filter((v,i,a)=>a.findIndex(t=>(t.id===v.id))===i);
-            setMultiUser('attendees', newData);
-        } else if (currentSelectorType === 'observers') {
-            // 列席人員：直接把名字串接進 input
+            // 合併並簡單去重 (依 ID)
+            const map = new Map();
+            [...oldData, ...selected].forEach(item => map.set(item.id, item));
+            setMultiUser('attendees', Array.from(map.values()));
+        } 
+        else if (currentSelectorType === 'observers') {
             const input = document.getElementById('observersInput');
             const newNames = selected.map(s => s.name).join(', ');
             input.value = input.value ? (input.value + ', ' + newNames) : newNames;
         }
-
         userModal.hide();
     }
 
-    // --- UI 顯示 helpers ---
     function setSingleUser(type, userObj) {
-        if(userObj) {
-            document.getElementById(`${type}Display`).value = userObj.name;
-            document.getElementById(`${type}Data`).value = JSON.stringify(userObj);
-        } else {
-            document.getElementById(`${type}Display`).value = '';
-            document.getElementById(`${type}Data`).value = '';
-        }
+        document.getElementById(`${type}Display`).value = userObj ? userObj.name : '';
+        document.getElementById(`${type}Data`).value = userObj ? JSON.stringify(userObj) : '';
     }
 
     function setMultiUser(type, userArray) {
         const displayDiv = document.getElementById(`${type}Display`);
-        const hiddenInput = document.getElementById(`${type}Data`);
-        
-        hiddenInput.value = JSON.stringify(userArray);
+        document.getElementById(`${type}Data`).value = JSON.stringify(userArray);
         displayDiv.innerHTML = '';
-        
-        if (userArray.length === 0) {
+        if (!userArray || userArray.length === 0) {
             displayDiv.innerHTML = '<span class="text-muted small">點擊選擇...</span>';
             return;
         }
-
         userArray.forEach((u, index) => {
-            // 這裡可以做一個 "X" 按鈕來移除陣列中的人
             displayDiv.innerHTML += `
                 <span class="user-tag">
                     ${u.name} 
                     <i class="bi bi-x-circle-fill" onclick="removeMultiUser('${type}', ${index}); event.stopPropagation();"></i>
-                </span>
-            `;
+                </span>`;
         });
     }
 
     window.removeMultiUser = (type, index) => {
-        const hiddenInput = document.getElementById(`${type}Data`);
-        const list = JSON.parse(hiddenInput.value);
+        const list = getJsonData(`${type}Data`) || [];
         list.splice(index, 1);
         setMultiUser(type, list);
     }
