@@ -3,222 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>班級學生管理</title>
+    <title>選取班級學生</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body { background-color: #f8f9fa; font-family: 'Microsoft JhengHei', sans-serif; padding: 20px; }
-        .selection-container {
-            background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); height: calc(100vh - 40px);
-            display: flex; flex-direction: column;
-        }
-        .header-area { padding: 20px; border-bottom: 1px solid #dee2e6; background-color: #fff; border-radius: 12px 12px 0 0; }
-        .list-area { flex-grow: 1; overflow-y: auto; padding: 0; }
-        .footer-area { padding: 20px; border-top: 1px solid #dee2e6; background-color: #f8f9fa; border-radius: 0 0 12px 12px; }
-        
-        /* 列表樣式 */
-        .student-item {
-            padding: 10px 20px; border-bottom: 1px solid #f1f1f1; display: flex; align-items: center; transition: background 0.2s; cursor: pointer;
-        }
-        .student-item:hover { background-color: #f8f9fa; }
-        .student-item.selected { background-color: #e8f5e9; }
-        .form-check-input { cursor: pointer; width: 1.3em; height: 1.3em; }
-    </style>
+    
+    <style>body { background-color: #f8f9fa; padding: 20px; }</style>
 </head>
 <body>
-
-    <div class="container-fluid h-100">
-        <div class="selection-container">
-            <div class="header-area d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="text-muted mb-1">正在管理班級：</h5>
-                    <h3 class="fw-bold text-success mb-0" id="classNameDisplay">載入中...</h3>
-                </div>
-                <div class="w-50">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="searchInput" placeholder="搜尋學生姓名或學號..." onkeyup="filterList()">
-                    </div>
-                </div>
+    <div class="card shadow-sm h-100">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 text-primary fw-bold" id="titleDisplay">班級學生管理</h5>
+            <div class="mt-2">
+                <input type="text" class="form-control" id="search" placeholder="搜尋學生..." onkeyup="filter()">
             </div>
-
-            <div class="list-area">
-                <table class="table table-hover mb-0 sticky-top">
-                    <thead class="table-light sticky-top" style="z-index: 1;">
-                        <tr>
-                            <th width="80" class="text-center">選取</th>
-                            <th width="150">學號</th>
-                            <th>姓名</th>
-                            <th>年級</th>
-                            <th width="150">狀態</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentList">
-                        <tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-secondary"></div></td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="footer-area d-flex justify-content-between align-items-center">
-                <div>
-                    已選取：<span class="fw-bold fs-4 text-success" id="selectedCount">0</span> 人
-                </div>
-                <div>
-                    <button class="btn btn-secondary me-2" onclick="window.close()">取消關閉</button>
-                    <button class="btn btn-success px-4" onclick="saveSelection()">
-                        <i class="bi bi-save me-1"></i> 儲存名單
-                    </button>
-                </div>
-            </div>
+        </div>
+        <div class="card-body p-0" style="height: 500px; overflow-y: auto;">
+            <table class="table table-hover mb-0">
+                <thead class="table-light sticky-top">
+                    <tr><th class="text-center" width="60">選取</th><th>學號</th><th>姓名</th><th>年級</th></tr>
+                </thead>
+                <tbody id="listBody">
+                    <tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-secondary"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-bold">已選取：<span id="count" class="text-primary">0</span> 人</span>
+            <button class="btn btn-success" onclick="save()">儲存名單</button>
         </div>
     </div>
 
     <script src="../../js/config.js"></script>
-
+    
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const classId = urlParams.get('class_id');
-        const className = urlParams.get('class_name');
+        const params = new URLSearchParams(location.search);
+        const classId = params.get('class_id');
+        const className = params.get('class_name');
+        if(className) document.getElementById('titleDisplay').textContent = `管理學生：${className}`;
 
         let allStudents = [];
-        let enrolledIds = new Set(); // 使用 Set 加速查詢
+        let enrolledSet = new Set();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!classId) return Swal.fire('錯誤', '未指定班級 ID', 'error');
+        window.onload = async () => {
+            if(!classId) return Swal.fire('錯誤', '無班級ID', 'error');
             
-            document.getElementById('classNameDisplay').textContent = className || '未命名班級';
-            loadData();
-        });
-
-        async function loadData() {
-            // 1. 取得所有學生
-            const { data: students, error: err1 } = await window.db.from('students').select('*').order('student_id');
-            if(err1) return console.error(err1);
-            allStudents = students;
-
-            // 2. 取得該班級已加入的學生
-            const { data: enrolled, error: err2 } = await window.db
-                .from('student_classes')
-                .select('student_id')
-                .eq('class_id', classId);
+            // 撈學生
+            const { data: sData } = await window.db.from('students').select('*').order('student_id');
+            allStudents = sData || [];
             
-            if(err2) return console.error(err2);
+            // 撈已選
+            const { data: eData } = await window.db.from('student_classes').select('student_id').eq('class_id', classId);
+            if(eData) eData.forEach(e => enrolledSet.add(e.student_id));
             
-            enrolledIds = new Set(enrolled.map(e => e.student_id));
-            
-            renderList(allStudents);
+            render();
         }
 
-        function renderList(data) {
-            const tbody = document.getElementById('studentList');
+        function render() {
+            const tbody = document.getElementById('listBody');
             tbody.innerHTML = '';
-
-            data.forEach(s => {
-                const isChecked = enrolledIds.has(s.id);
+            const txt = document.getElementById('search').value.toLowerCase();
+            
+            let count = 0;
+            allStudents.forEach(s => {
+                if(txt && !s.name.includes(txt) && !s.student_id.includes(txt)) return;
+                
+                const isChecked = enrolledSet.has(s.id);
+                if(isChecked) count++;
+                
                 tbody.innerHTML += `
-                    <tr class="student-row ${isChecked ? 'selected' : ''}" onclick="toggleCheck(this, ${s.id})">
-                        <td class="text-center">
-                            <input type="checkbox" class="form-check-input" id="check_${s.id}" value="${s.id}" ${isChecked ? 'checked' : ''}>
-                        </td>
-                        <td class="fw-bold text-secondary">${s.student_id}</td>
-                        <td class="fw-bold text-dark search-name">${s.name}</td>
-                        <td>${s.grade || '-'}</td>
-                        <td>${isChecked ? '<span class="badge bg-success-subtle text-success">已加入</span>' : '<span class="text-muted small">未加入</span>'}</td>
+                    <tr onclick="toggle(${s.id})" style="cursor:pointer" class="${isChecked?'table-success':''}">
+                        <td class="text-center"><input type="checkbox" class="form-check-input" id="chk_${s.id}" ${isChecked?'checked':''}></td>
+                        <td>${s.student_id}</td>
+                        <td>${s.name}</td>
+                        <td>${s.grade||'-'}</td>
                     </tr>
                 `;
             });
-            updateCount();
+            document.getElementById('count').textContent = count;
         }
 
-        // 點擊整行都能勾選
-        window.toggleCheck = (row, id) => {
-            // 避免點擊 checkbox 本身時觸發兩次
-            if (event.target.type === 'checkbox') {
-                updateRowStyle(row, event.target.checked);
-                updateCount();
-                return;
+        window.toggle = (id) => {
+            // 如果點擊的是 checkbox 本身，不要再觸發一次
+            if(event.target.type !== 'checkbox') {
+                const chk = document.getElementById('chk_'+id);
+                chk.checked = !chk.checked;
             }
-            
-            const checkbox = document.getElementById('check_' + id);
-            checkbox.checked = !checkbox.checked;
-            updateRowStyle(row, checkbox.checked);
-            updateCount();
+            const chk = document.getElementById('chk_'+id);
+            if(chk.checked) enrolledSet.add(id); else enrolledSet.delete(id);
+            render();
         }
 
-        function updateRowStyle(row, checked) {
-            if (checked) {
-                row.classList.add('selected');
-                row.cells[4].innerHTML = '<span class="badge bg-success-subtle text-success">已加入</span>';
-            } else {
-                row.classList.remove('selected');
-                row.cells[4].innerHTML = '<span class="text-muted small">未加入</span>';
-            }
-        }
+        window.filter = () => render();
 
-        window.updateCount = () => {
-            const count = document.querySelectorAll('.form-check-input:checked').length;
-            document.getElementById('selectedCount').textContent = count;
-        }
-
-        window.filterList = () => {
-            const txt = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('.student-row');
-            rows.forEach(r => {
-                const name = r.querySelector('.search-name').textContent.toLowerCase();
-                const sid = r.cells[1].textContent.toLowerCase();
-                if (name.includes(txt) || sid.includes(txt)) {
-                    r.style.display = '';
-                } else {
-                    r.style.display = 'none';
-                }
-            });
-        }
-
-        window.saveSelection = async () => {
-            const checkboxes = document.querySelectorAll('.form-check-input:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-
-            Swal.fire({
-                title: '儲存中...',
-                text: '正在更新班級名單',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+        window.save = async () => {
+            Swal.fire({title:'儲存中...', didOpen:()=>Swal.showLoading()});
             try {
-                // 1. 刪除舊紀錄 (全部清空該班級)
+                // 先刪除舊的
                 await window.db.from('student_classes').delete().eq('class_id', classId);
-
-                // 2. 插入新紀錄
-                if (selectedIds.length > 0) {
-                    const inserts = selectedIds.map(sid => ({
-                        class_id: classId,
-                        student_id: sid
-                    }));
-                    const { error } = await window.db.from('student_classes').insert(inserts);
-                    if (error) throw error;
-                }
-
-                await Swal.fire({
-                    icon: 'success',
-                    title: '儲存成功',
-                    text: '班級名單已更新',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-
-                // 重新整理父視窗 (如果有的話) 並關閉自己
-                if (window.opener && !window.opener.closed) {
-                    window.opener.loadClasses(); // 呼叫父視窗的重新整理函式
-                }
+                // 插入新的
+                const inserts = Array.from(enrolledSet).map(sid => ({ class_id: classId, student_id: sid }));
+                if(inserts.length > 0) await window.db.from('student_classes').insert(inserts);
+                
+                await Swal.fire('成功', '名單已更新', 'success');
+                if(window.opener) window.opener.loadClasses(); // 重新整理父視窗
                 window.close();
-
-            } catch (err) {
-                console.error(err);
-                Swal.fire('失敗', '儲存失敗: ' + err.message, 'error');
-            }
+            } catch(e) { Swal.fire('錯誤', e.message, 'error'); }
         }
     </script>
 </body>
