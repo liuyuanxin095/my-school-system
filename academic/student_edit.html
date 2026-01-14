@@ -5,175 +5,384 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>編輯學生資料</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Microsoft JhengHei', sans-serif; }
+        .profile-header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            height: 150px;
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 60px;
+        }
+        .profile-card {
+            margin-top: -100px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .avatar-circle {
+            width: 120px; height: 120px;
+            background-color: #e9ecef;
+            border-radius: 50%;
+            border: 5px solid white;
+            display: flex;
+            align-items: center; justify-content: center;
+            font-size: 3rem; color: #6c757d;
+            margin: 0 auto 15px;
+        }
+        .nav-pills .nav-link {
+            color: #495057; border-radius: 10px; padding: 10px 20px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd; color: white;
+        }
+        .form-section-title {
+            font-size: 1.1rem; font-weight: bold; border-left: 4px solid #0d6efd;
+            padding-left: 10px; margin-bottom: 20px; color: #212529;
+        }
+    </style>
 </head>
 <body>
-<div class="container" style="max-width: 800px;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold">編輯學生資料</h3>
-        <a href="student_list.html" class="btn btn-outline-secondary">返回列表</a>
+
+    <div class="profile-header">
+        <div class="container pt-4">
+            <a href="student_list.html" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">基本資料</div>
-        <div class="card-body">
-            <input type="hidden" id="studentDbId">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">學號</label>
-                    <input type="text" class="form-control" id="studentId" readonly>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">姓名</label>
-                    <input type="text" class="form-control" id="studentName">
+    <div class="container pb-5">
+        <div class="row g-4">
+            <div class="col-lg-3">
+                <div class="profile-card p-4 text-center h-100">
+                    <div class="avatar-circle">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    <h4 class="fw-bold mb-1" id="display-name">載入中...</h4>
+                    <p class="text-muted mb-3" id="display-id">Student ID</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="saveStudent()">
+                            <i class="bi bi-save me-1"></i> 儲存變更
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteStudent()">
+                            <i class="bi bi-trash me-1"></i> 刪除學生
+                        </button>
+                    </div>
+                    <hr>
+                    <div class="text-start small text-muted">
+                        <div class="mb-2"><i class="bi bi-calendar3 me-2"></i>入學：<span id="display-enroll"></span></div>
+                        <div class="mb-2"><i class="bi bi-mortarboard me-2"></i>年級：<span id="display-grade"></span></div>
+                        <div><i class="bi bi-telephone me-2"></i>電話：<span id="display-phone"></span></div>
+                    </div>
                 </div>
             </div>
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label">入學日期</label>
-                    <input type="date" class="form-control" id="enrollDate">
+
+            <div class="col-lg-9">
+                <div class="card border-0 shadow-sm" style="margin-top: -100px; border-radius: 15px;">
+                    <div class="card-body p-4">
+                        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#basic-info">基本資料</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#parent-info">家長資料</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#school-info">學籍資料</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="pill" data-bs-target="#class-history">
+                                    <i class="bi bi-clock-history"></i> 歷年班級
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="basic-info">
+                                <div class="form-section-title">基本身分資訊</div>
+                                <input type="hidden" id="studentDbId">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">學號 (不可修改)</label>
+                                        <input type="text" class="form-control bg-light" id="studentId" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">中文姓名</label>
+                                        <input type="text" class="form-control" id="studentName">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">性別</label>
+                                        <select class="form-select" id="gender">
+                                            <option value="">請選擇</option>
+                                            <option value="男">男</option>
+                                            <option value="女">女</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">生日</label>
+                                        <input type="date" class="form-control" id="birthday">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label text-muted small">身分證字號</label>
+                                        <input type="text" class="form-control" id="idNumber">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="parent-info">
+                                <div class="form-section-title">聯絡人資訊</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">家長姓名</label>
+                                        <input type="text" class="form-control" id="parentName">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">關係</label>
+                                        <input type="text" class="form-control" id="relationship">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">聯絡電話</label>
+                                        <input type="text" class="form-control" id="phone">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label text-muted small">通訊地址</label>
+                                        <input type="text" class="form-control" id="address">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="school-info">
+                                <div class="form-section-title">在校學籍狀態</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">入學日期</label>
+                                        <input type="date" class="form-control" id="enrollDate">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">目前年級</label>
+                                        <select class="form-select" id="grade">
+                                            <option value="一年級">一年級</option>
+                                            <option value="二年級">二年級</option>
+                                            <option value="三年級">三年級</option>
+                                            <option value="四年級">四年級</option>
+                                            <option value="五年級">五年級</option>
+                                            <option value="六年級">六年級</option>
+                                            <option value="畢業">畢業</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">就讀學校</label>
+                                        <input type="text" class="form-control" id="schoolName">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small">狀態</label>
+                                        <select class="form-select" id="status">
+                                            <option value="在讀">在讀</option>
+                                            <option value="休學">休學</option>
+                                            <option value="退學">退學</option>
+                                            <option value="畢業">畢業</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="class-history">
+                                <div class="form-section-title">歷年就讀班級紀錄</div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>學期</th>
+                                                <th>班級名稱</th>
+                                                <th>授課老師</th>
+                                                <th>上課時間</th>
+                                                <th>狀態</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="historyTable">
+                                            <tr><td colspan="5" class="text-center text-muted py-3">資料載入中...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">就讀年級</label>
-                    <input type="text" class="form-control" id="grade" placeholder="例如：一年級">
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">聯絡電話</label>
-                <input type="text" class="form-control" id="phone">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">地址</label>
-                <input type="text" class="form-control" id="address">
-            </div>
-            <div class="text-end">
-                <button class="btn btn-primary" onclick="saveStudent()">儲存變更</button>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-light fw-bold">歷年就讀班級紀錄</div>
-        <div class="card-body">
-            <table class="table table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>學期</th>
-                        <th>課程名稱</th>
-                        <th>授課老師</th>
-                        <th>狀態</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTable">
-                    <tr><td colspan="4" class="text-center text-muted">載入中...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+    <script src="../js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script src="../js/config.js"></script>
-<script>
-    // 取得 URL 參數中的 id
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
 
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!id) {
-            Swal.fire('錯誤', '無效的學生 ID', 'error').then(() => window.location.href = 'student_list.html');
-            return;
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!id) {
+                Swal.fire('錯誤', '無效的學生 ID', 'error').then(() => window.location.href = 'student_list.html');
+                return;
+            }
+            if(typeof window.db === 'undefined') {
+                Swal.fire('設定錯誤', '找不到 js/config.js', 'error');
+                return;
+            }
+            loadStudentData();
+            loadClassHistory(); // 載入班級紀錄
+        });
+
+        async function loadStudentData() {
+            const { data, error } = await window.db.from('students').select('*').eq('id', id).single();
+            if (error) {
+                console.error(error);
+                return Swal.fire('讀取失敗', '找不到該學生資料', 'error');
+            }
+            
+            // 填入表單
+            document.getElementById('studentDbId').value = data.id;
+            document.getElementById('studentId').value = data.student_id;
+            document.getElementById('studentName').value = data.name;
+            document.getElementById('gender').value = data.gender || '';
+            document.getElementById('birthday').value = data.birthday || '';
+            document.getElementById('idNumber').value = data.id_number || '';
+            
+            document.getElementById('parentName').value = data.parent_name || '';
+            document.getElementById('relationship').value = data.relationship || '';
+            document.getElementById('phone').value = data.phone || '';
+            document.getElementById('address').value = data.address || '';
+            
+            document.getElementById('enrollDate').value = data.enrollment_date || '';
+            document.getElementById('grade').value = data.grade || '一年級';
+            document.getElementById('schoolName').value = data.school_name || '';
+            document.getElementById('status').value = data.status || '在讀';
+
+            // 更新左側卡片顯示
+            document.getElementById('display-name').textContent = data.name;
+            document.getElementById('display-id').textContent = data.student_id;
+            document.getElementById('display-enroll').textContent = data.enrollment_date || '-';
+            document.getElementById('display-grade').textContent = data.grade || '-';
+            document.getElementById('display-phone').textContent = data.phone || '-';
         }
-        loadStudentData();
-        loadClassHistory(); // 載入班級紀錄
-    });
 
-    async function loadStudentData() {
-        const { data, error } = await window.db.from('students').select('*').eq('id', id).single();
-        if (error) return console.error(error);
+        async function saveStudent() {
+            const payload = {
+                name: document.getElementById('studentName').value,
+                gender: document.getElementById('gender').value,
+                birthday: document.getElementById('birthday').value || null,
+                id_number: document.getElementById('idNumber').value,
+                
+                parent_name: document.getElementById('parentName').value,
+                relationship: document.getElementById('relationship').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                
+                enrollment_date: document.getElementById('enrollDate').value || null,
+                grade: document.getElementById('grade').value,
+                school_name: document.getElementById('schoolName').value,
+                status: document.getElementById('status').value
+            };
+
+            const { error } = await window.db.from('students').update(payload).eq('id', id);
+            
+            if (error) {
+                Swal.fire('儲存失敗', error.message, 'error');
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    title: '儲存成功',
+                    text: '學生資料已更新',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                loadStudentData(); // 重新整理顯示
+            }
+        }
+
+        async function deleteStudent() {
+            const result = await Swal.fire({
+                title: '確定要刪除嗎？',
+                text: "此操作無法復原！",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: '是的，刪除',
+                cancelButtonText: '取消'
+            });
+
+            if (result.isConfirmed) {
+                const { error } = await window.db.from('students').delete().eq('id', id);
+                if (error) {
+                    Swal.fire('刪除失敗', error.message, 'error');
+                } else {
+                    Swal.fire('已刪除', '學生資料已被移除', 'success').then(() => {
+                        window.location.href = 'student_list.html';
+                    });
+                }
+            }
+        }
         
-        document.getElementById('studentDbId').value = data.id;
-        document.getElementById('studentId').value = data.student_id;
-        document.getElementById('studentName').value = data.name;
-        document.getElementById('enrollDate').value = data.enrollment_date;
-        document.getElementById('grade').value = data.grade;
-        document.getElementById('phone').value = data.phone;
-        document.getElementById('address').value = data.address;
-    }
+        // ★★★ 載入歷年班級紀錄 (邏輯與剛剛相同，但樣式統一) ★★★
+        async function loadClassHistory() {
+            const { data, error } = await window.db
+                .from('student_classes')
+                .select(`
+                    created_at,
+                    classes (
+                        semester,
+                        course_name,
+                        teacher_name,
+                        schedule,
+                        status
+                    )
+                `)
+                .eq('student_id', id);
 
-    async function saveStudent() {
-        const payload = {
-            name: document.getElementById('studentName').value,
-            enrollment_date: document.getElementById('enrollDate').value || null,
-            grade: document.getElementById('grade').value,
-            phone: document.getElementById('phone').value,
-            address: document.getElementById('address').value
-        };
+            const tbody = document.getElementById('historyTable');
+            tbody.innerHTML = '';
 
-        const { error } = await window.db.from('students').update(payload).eq('id', id);
-        if (error) Swal.fire('儲存失敗', error.message, 'error');
-        else Swal.fire('成功', '學生資料已更新', 'success');
-    }
+            if (error) {
+                console.error(error);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">無法讀取班級紀錄</td></tr>';
+                return;
+            }
 
-    // ★★★ 載入該學生的班級歷史 ★★★
-    async function loadClassHistory() {
-        // 透過 student_classes 關聯表，並 Inner Join classes 表
-        const { data, error } = await window.db
-            .from('student_classes')
-            .select(`
-                created_at,
-                classes (
-                    semester,
-                    course_name,
-                    teacher_name,
-                    status
-                )
-            `)
-            .eq('student_id', id)
-            // 這裡我們假設希望看到最新的班級在上面，可以用 classes 的 semester 或 id 排序
-            // 但因為 Supabase 關聯排序限制，我們先抓回來再前端排序比較簡單
-            ;
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">尚無參加任何班級紀錄</td></tr>';
+                return;
+            }
 
-        const tbody = document.getElementById('historyTable');
-        tbody.innerHTML = '';
+            // 依學期排序 (降序)
+            data.sort((a, b) => {
+                const semA = a.classes?.semester || '';
+                const semB = b.classes?.semester || '';
+                return semB.localeCompare(semA);
+            });
 
-        if (error) {
-            console.error(error);
-            tbody.innerHTML = '<tr><td colspan="4" class="text-danger">無法讀取班級紀錄</td></tr>';
-            return;
+            data.forEach(item => {
+                const cls = item.classes;
+                if(!cls) return;
+
+                let statusBadge = cls.status === 'closed' 
+                    ? '<span class="badge bg-secondary">已結業</span>' 
+                    : '<span class="badge bg-success">進行中</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="fw-bold text-primary">${cls.semester}</span></td>
+                        <td>${cls.course_name}</td>
+                        <td>${cls.teacher_name || '-'}</td>
+                        <td class="small text-muted">${cls.schedule || '-'}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            });
         }
-
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">尚無參加任何班級</td></tr>';
-            return;
-        }
-
-        // 前端排序：學期 (字串比較, 例如 "112-2" > "112-1")
-        data.sort((a, b) => {
-            const semA = a.classes?.semester || '';
-            const semB = b.classes?.semester || '';
-            return semB.localeCompare(semA); // 降序
-        });
-
-        data.forEach(item => {
-            const cls = item.classes;
-            if(!cls) return; // 防呆
-
-            // 狀態標籤
-            let statusBadge = '<span class="badge bg-success">進行中</span>';
-            if(cls.status === 'closed') statusBadge = '<span class="badge bg-secondary">已結業</span>';
-
-            tbody.innerHTML += `
-                <tr>
-                    <td><span class="fw-bold">${cls.semester}</span></td>
-                    <td>${cls.course_name}</td>
-                    <td>${cls.teacher_name || '-'}</td>
-                    <td>${statusBadge}</td>
-                </tr>
-            `;
-        });
-    }
-</script>
+    </script>
 </body>
 </html>
