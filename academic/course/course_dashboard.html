@@ -87,11 +87,11 @@
     <div class="section-title">基礎資料設定</div>
     <div class="row g-3">
         <div class="col-md-3 col-6">
-            <a href="semester_setup.html" class="card menu-card">
+            <a href="semester_view.html" class="card menu-card">
                 <div class="card-body">
-                    <i class="bi bi-calendar-event icon-large text-danger"></i>
-                    <h5 class="fw-bold">學期設定</h5>
-                    <small class="text-muted">設定當前學期與週次</small>
+                    <i class="bi bi-calendar-check icon-large text-danger"></i>
+                    <h5 class="fw-bold">學期資料檢視</h5>
+                    <small class="text-muted">查詢學期與週次狀態</small>
                 </div>
             </a>
         </div>
@@ -114,16 +114,16 @@
             </a>
         </div>
         <div class="col-md-3 col-6">
-            <a href="classroom_manager.html" class="card menu-card">
+            <a href="../../admin/classroom_manager.html" class="card menu-card">
                 <div class="card-body">
                     <i class="bi bi-building icon-large text-success"></i>
-                    <h5 class="fw-bold">教室資料維護</h5>
-                    <small class="text-muted">專科教室與普通教室</small>
+                    <h5 class="fw-bold">教室資料管理</h5>
+                    <small class="text-muted">分校與教室空間維護</small>
                 </div>
             </a>
         </div>
         <div class="col-md-3 col-6">
-            <a href="class_manager.html" class="card menu-card">
+            <a href="../class_opening/class_list.html" class="card menu-card">
                 <div class="card-body">
                     <i class="bi bi-people-fill icon-large text-info"></i>
                     <h5 class="fw-bold">班級資料維護</h5>
@@ -201,16 +201,16 @@
         const { count: subCount } = await window.db.from('subjects').select('*', { count: 'exact', head: true });
         document.getElementById('count-subjects').textContent = subCount || 0;
 
-        // 2. 本學期教師 (course_teachers)
+        // 2. 本學期教師 (course_teachers 或 employees) - 這裡暫時維持 course_teachers
         const { count: teaCount } = await window.db.from('course_teachers').select('*', { count: 'exact', head: true });
         document.getElementById('count-teachers').textContent = teaCount || 0;
 
-        // 3. 教室數
+        // 3. 教室數 (連動 Classrooms)
         const { count: roomCount } = await window.db.from('classrooms').select('*', { count: 'exact', head: true });
         document.getElementById('count-rooms').textContent = roomCount || 0;
 
-        // 4. 班級數
-        const { count: clsCount } = await window.db.from('classes').select('*', { count: 'exact', head: true });
+        // 4. 班級數 (更新為 school_classes 表)
+        const { count: clsCount } = await window.db.from('school_classes').select('*', { count: 'exact', head: true });
         document.getElementById('count-classes').textContent = clsCount || 0;
     }
 </script>
