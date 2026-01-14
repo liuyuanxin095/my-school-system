@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; } .user-tag { background:#e9ecef; border-radius:15px; padding:2px 10px; margin-right:5px; display:inline-block; } .readonly-field { background-color:#fff!important; cursor:pointer; }</style>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
 </head>
 <body>
 <div class="container-fluid">
@@ -28,18 +28,22 @@
         <div class="col-md-2"><label>時間</label><input type="datetime-local" class="form-control" id="meetingTime"></div>
         <div class="col-md-2"><label>地點</label><input type="text" class="form-control" id="meetingLocation"></div>
     </div>
-    <div class="mb-3"><label>主席</label><input type="text" class="form-control" id="chairPerson" placeholder="請輸入主席姓名 (暫時改為手動輸入以排除錯誤)"></div>
+    <div class="mb-3"><label>主席</label><input type="text" class="form-control" id="chairPerson" placeholder="請輸入主席姓名"></div>
     <div class="row g-3"><div class="col-md-6"><label>議程</label><textarea class="form-control" id="agenda" rows="5"></textarea></div><div class="col-md-6"><label>記錄</label><textarea class="form-control" id="minutes" rows="5"></textarea></div></div>
 </div>
 <div class="modal-footer"><button class="btn btn-primary" onclick="saveMeeting()">儲存</button></div></div></div></div>
 
-<script src="../js/config.js"></script>
 <script>
+    // ★★★ 內建連線設定 ★★★
+    const _SUPABASE_URL = 'https://blzkbhjjoqylinywxtyy.supabase.co';
+    const _SUPABASE_KEY = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
+    const db = supabase.createClient(_SUPABASE_URL, _SUPABASE_KEY);
     const meetingModal = new bootstrap.Modal(document.getElementById('meetingModal'));
+
     document.addEventListener('DOMContentLoaded', () => { loadMeetings(); loadCategories(); });
 
     async function loadCategories() {
-        const { data } = await window.db.from('meeting_categories').select('*');
+        const { data } = await db.from('meeting_categories').select('*');
         if(data) {
             const sel = document.getElementById('categoryId');
             sel.innerHTML = '<option value="">請選擇</option>';
@@ -47,12 +51,13 @@
         }
     }
     async function loadMeetings() {
-        const { data, error } = await window.db.from('meetings').select('*, meeting_categories(name)').order('meeting_time', { ascending: false });
+        const { data, error } = await db.from('meetings').select('*, meeting_categories(name)').order('meeting_time', { ascending: false });
         if(error) return console.error(error);
         const tbody = document.getElementById('meetingTable');
         tbody.innerHTML = '';
         data.forEach(m => {
-            tbody.innerHTML += `<tr><td>${m.meeting_time||''}</td><td>${m.meeting_categories?.name||'-'}</td><td class="fw-bold">${m.name}</td><td>${m.location||''}</td><td>${m.chair_person||''}</td><td><button class="btn btn-sm btn-primary">詳情</button></td></tr>`;
+            const timeStr = m.meeting_time ? new Date(m.meeting_time).toLocaleString() : '';
+            tbody.innerHTML += `<tr><td>${timeStr}</td><td>${m.meeting_categories?.name||'-'}</td><td class="fw-bold">${m.name}</td><td>${m.location||''}</td><td>${m.chair_person||''}</td><td><button class="btn btn-sm btn-primary">詳情</button></td></tr>`;
         });
     }
     window.openMeetingModal = () => { document.getElementById('meetingId').value=''; document.getElementById('meetingName').value=''; meetingModal.show(); }
@@ -63,18 +68,16 @@
             name: document.getElementById('meetingName').value,
             meeting_time: document.getElementById('meetingTime').value || null,
             location: document.getElementById('meetingLocation').value,
-            chair_person: document.getElementById('chairPerson').value, // 暫時簡化
+            chair_person: document.getElementById('chairPerson').value,
             agenda: document.getElementById('agenda').value,
             minutes: document.getElementById('minutes').value
         };
         if(!payload.name) return Swal.fire('錯誤', '請輸入會議名稱', 'error');
 
-        // ★★★ 除錯關鍵：直接把錯誤顯示出來 ★★★
-        const { error } = await window.db.from('meetings').insert([payload]);
+        const { error } = await db.from('meetings').insert([payload]);
         
         if (error) {
-            console.error('Save Error:', error);
-            Swal.fire('儲存失敗', `錯誤代碼: ${error.code}<br>訊息: ${error.message}`, 'error');
+            Swal.fire('儲存失敗', error.message, 'error');
         } else {
             meetingModal.hide();
             loadMeetings();
