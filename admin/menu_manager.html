@@ -18,16 +18,14 @@
 </div>
 <div class="modal fade" id="menuModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">新增選單</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="menuId"><input type="text" class="form-control mb-2" id="menuTitle" placeholder="名稱"><input type="text" class="form-control mb-2" id="menuLink" placeholder="連結"><input type="number" class="form-control mb-2" id="menuSort" placeholder="排序" value="10"></div><div class="modal-footer"><button class="btn btn-primary" onclick="saveMenu()">儲存</button></div></div></div></div>
 
+<script src="../js/config.js"></script>
 <script>
-    // ★★★ 內建連線設定 ★★★
-    const _SUPABASE_URL = 'https://blzkbhjjoqylinywxtyy.supabase.co';
-    const _SUPABASE_KEY = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh';
-    const db = supabase.createClient(_SUPABASE_URL, _SUPABASE_KEY);
-    const modal = new bootstrap.Modal(document.getElementById('menuModal'));
+    if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js', 'error'); }
 
+    const modal = new bootstrap.Modal(document.getElementById('menuModal'));
     document.addEventListener('DOMContentLoaded', loadMenus);
     async function loadMenus() {
-        const { data, error } = await db.from('system_menus').select('*').order('sort_order');
+        const { data, error } = await window.db.from('system_menus').select('*').order('sort_order');
         if(error) return console.error(error);
         const tbody = document.getElementById('menuTable');
         tbody.innerHTML = '';
@@ -42,10 +40,10 @@
             is_active: true,
             allowed_roles: ['admin', 'staff', 'teacher', 'student']
         };
-        const { error } = await db.from('system_menus').insert([payload]);
+        const { error } = await window.db.from('system_menus').insert([payload]);
         if(error) Swal.fire('錯誤', error.message, 'error'); else { modal.hide(); loadMenus(); Swal.fire('成功','','success'); }
     }
-    window.del = async (id) => { await db.from('system_menus').delete().eq('id', id); loadMenus(); }
+    window.del = async (id) => { await window.db.from('system_menus').delete().eq('id', id); loadMenus(); }
 </script>
 </body>
 </html>
