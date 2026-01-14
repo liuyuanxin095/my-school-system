@@ -19,6 +19,9 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
+            <div class="alert alert-info small mb-3">
+                <i class="bi bi-info-circle"></i> 這裡設定的選單會直接連動左側導覽列。若設定為「父層選單」，請勿填寫連結。
+            </div>
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
@@ -36,7 +39,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="menuModal" tabindex="-1">
+<div class="modal fade" id="menuModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -46,16 +49,20 @@
             <div class="modal-body">
                 <input type="hidden" id="menuId">
                 <div class="mb-3">
-                    <label class="form-label">選單名稱</label>
-                    <input type="text" class="form-control" id="menuTitle" placeholder="例如：教務系統">
+                    <label class="form-label">選單名稱 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="menuTitle" placeholder="例如：教務系統" required>
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
                         <label class="form-label">圖示 (Bootstrap Icons)</label>
-                        <input type="text" class="form-control" id="menuIcon" placeholder="例如：bi-person">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-stars"></i></span>
+                            <input type="text" class="form-control" id="menuIcon" placeholder="bi-person">
+                        </div>
+                        <div class="form-text small">只需填寫名稱，如 <code>bi-house</code></div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">排序 (數字小在對前)</label>
+                        <label class="form-label">排序 (數字小在前)</label>
                         <input type="number" class="form-control" id="menuSort" value="10">
                     </div>
                 </div>
@@ -70,7 +77,7 @@
                     <input type="text" class="form-control" id="menuLink" placeholder="例如：academic/student_list.html">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label d-block">可見角色權限</label>
+                    <label class="form-label d-block fw-bold">可見角色權限 <span class="text-danger">*</span></label>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input role-check" type="checkbox" value="admin" id="role_admin">
                         <label class="form-check-label" for="role_admin">管理員</label>
@@ -88,6 +95,10 @@
                         <label class="form-check-label" for="role_student">學生</label>
                     </div>
                 </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="menuActive" checked>
+                    <label class="form-check-label" for="menuActive">啟用此選單</label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -102,12 +113,23 @@
     let allMenus = [];
     const modal = new bootstrap.Modal(document.getElementById('menuModal'));
 
-    document.addEventListener('DOMContentLoaded', loadMenus);
+    document.addEventListener('DOMContentLoaded', () => {
+        // 檢查設定檔
+        if (typeof window.db === 'undefined') {
+            Swal.fire('錯誤', '找不到 js/config.js', 'error');
+            return;
+        }
+        loadMenus();
+    });
 
     async function loadMenus() {
-        // 讀取所有選單
         const { data, error } = await window.db.from('system_menus').select('*').order('sort_order', { ascending: true });
-        if(error) return console.error(error);
+        
+        if(error) {
+            console.error(error);
+            Swal.fire('讀取失敗', error.message, 'error');
+            return;
+        }
         
         allMenus = data;
         renderTable();
@@ -133,20 +155,25 @@
     }
 
     function rowHtml(item, isParent) {
+        // 安全處理 null
         const roles = item.allowed_roles ? item.allowed_roles.join(', ') : 'All';
         const indent = isParent ? '' : '<span class="text-muted ms-4">└─ </span>';
         const bg = isParent ? 'bg-light' : '';
         const titleStyle = isParent ? 'fw-bold' : '';
+        const statusHtml = item.is_active ? '<span class="badge bg-success">啟用</span>' : '<span class="badge bg-secondary">停用</span>';
+        
+        // 處理 Icon 顯示
+        const iconHtml = item.icon ? `<i class="bi ${item.icon} me-1"></i>` : '';
 
         return `
             <tr class="${bg}">
                 <td>${item.sort_order}</td>
                 <td class="${titleStyle}">
-                    ${indent}<i class="bi ${item.icon} me-2"></i>${item.title}
+                    ${indent}${iconHtml} ${item.title}
                 </td>
-                <td class="small text-muted">${item.link || '-'}</td>
-                <td><span class="badge bg-secondary">${roles}</span></td>
-                <td>${item.is_active ? '<span class="text-success">啟用</span>' : '<span class="text-danger">停用</span>'}</td>
+                <td class="small text-muted text-truncate" style="max-width: 200px;">${item.link || '-'}</td>
+                <td><small class="text-muted">${roles}</small></td>
+                <td>${statusHtml}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="editMenu(${item.id})"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteMenu(${item.id})"><i class="bi bi-trash"></i></button>
@@ -157,10 +184,16 @@
 
     function updateParentSelect() {
         const select = document.getElementById('menuParent');
+        // 保存當前選中的值 (避免刷新後跑掉)
+        const currentVal = select.value;
+        
         select.innerHTML = '<option value="">(無 - 設為第一層)</option>';
+        // 只有第一層選單可以當父層
         allMenus.filter(m => !m.parent_id).forEach(m => {
             select.innerHTML += `<option value="${m.id}">${m.title}</option>`;
         });
+        
+        if (currentVal) select.value = currentVal;
     }
 
     function openModal() {
@@ -170,7 +203,11 @@
         document.getElementById('menuIcon').value = '';
         document.getElementById('menuSort').value = 10;
         document.getElementById('menuParent').value = '';
+        document.getElementById('menuActive').checked = true;
+        
+        // 預設全選權限
         document.querySelectorAll('.role-check').forEach(c => c.checked = true);
+        
         document.getElementById('modalTitle').textContent = '新增選單';
         modal.show();
     }
@@ -185,6 +222,7 @@
         document.getElementById('menuIcon').value = item.icon || '';
         document.getElementById('menuSort').value = item.sort_order;
         document.getElementById('menuParent').value = item.parent_id || '';
+        document.getElementById('menuActive').checked = item.is_active;
         
         // 設定 Checkbox
         document.querySelectorAll('.role-check').forEach(c => c.checked = false);
@@ -200,41 +238,88 @@
     }
 
     async function saveMenu() {
-        const id = document.getElementById('menuId').value;
-        const roles = Array.from(document.querySelectorAll('.role-check:checked')).map(c => c.value);
-        
-        const payload = {
-            title: document.getElementById('menuTitle').value,
-            link: document.getElementById('menuLink').value,
-            icon: document.getElementById('menuIcon').value,
-            sort_order: document.getElementById('menuSort').value,
-            parent_id: document.getElementById('menuParent').value || null,
-            allowed_roles: roles,
-            is_active: true
-        };
+        const btn = document.querySelector('#menuModal .btn-primary');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '儲存中...';
 
-        let error;
-        if (id) {
-            const res = await window.db.from('system_menus').update(payload).eq('id', id);
-            error = res.error;
-        } else {
-            const res = await window.db.from('system_menus').insert([payload]);
-            error = res.error;
-        }
+        try {
+            const id = document.getElementById('menuId').value;
+            const roles = Array.from(document.querySelectorAll('.role-check:checked')).map(c => c.value);
+            const title = document.getElementById('menuTitle').value.trim();
+            
+            if (!title) throw new Error("請輸入選單名稱");
+            if (roles.length === 0) throw new Error("請至少選擇一個可見角色");
 
-        if (error) {
-            Swal.fire('錯誤', error.message, 'error');
-        } else {
+            // 處理 parent_id 為空字串轉 null
+            const parentIdVal = document.getElementById('menuParent').value;
+            
+            const payload = {
+                title: title,
+                link: document.getElementById('menuLink').value.trim() || null,
+                icon: document.getElementById('menuIcon').value.trim() || null,
+                sort_order: parseInt(document.getElementById('menuSort').value) || 0,
+                parent_id: parentIdVal ? parseInt(parentIdVal) : null,
+                allowed_roles: roles,
+                is_active: document.getElementById('menuActive').checked
+            };
+
+            let result;
+            if (id) {
+                // 更新
+                result = await window.db.from('system_menus').update(payload).eq('id', id).select();
+            } else {
+                // 新增
+                result = await window.db.from('system_menus').insert([payload]).select();
+            }
+
+            // 檢查資料庫錯誤
+            if (result.error) {
+                console.error('Supabase Error:', result.error);
+                throw new Error(result.error.message || '資料庫操作失敗');
+            }
+
             modal.hide();
-            loadMenus();
-            Swal.fire('成功', '選單已儲存', 'success');
+            await loadMenus(); // 重新讀取列表
+            
+            // 提示成功，並提醒重新整理
+            Swal.fire({
+                icon: 'success',
+                title: '儲存成功',
+                text: '選單已更新，請重新整理網頁以查看左側選單的變化。',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+        } catch (err) {
+            Swal.fire('儲存失敗', err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
     }
     
     async function deleteMenu(id) {
-        if(confirm('確定要刪除嗎？若此為父選單，子選單可能會顯示異常。')) {
-            await window.db.from('system_menus').delete().eq('id', id);
-            loadMenus();
+        const result = await Swal.fire({
+            title: '確定要刪除嗎？',
+            text: "若此為父選單，底下的子選單可能會無法顯示！",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '是的，刪除',
+            cancelButtonText: '取消'
+        });
+
+        if (result.isConfirmed) {
+            const { error } = await window.db.from('system_menus').delete().eq('id', id);
+            
+            if (error) {
+                Swal.fire('刪除失敗', error.message, 'error');
+            } else {
+                Swal.fire('已刪除', '該選單已被移除', 'success');
+                loadMenus();
+            }
         }
     }
 </script>
