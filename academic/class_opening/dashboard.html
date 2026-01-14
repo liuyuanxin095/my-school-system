@@ -3,90 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>開班管理系統</title>
+    <title>開班管理模組</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body { background-color: #f0f2f5; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
-        .dashboard-header { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .stat-card { background: #fff; border-radius: 8px; padding: 15px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stat-icon { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; }
-        
-        .menu-card {
-            border: none; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s;
-            height: 100%; cursor: pointer; text-decoration: none; color: inherit; display: block;
-            background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); color: #0d6efd; }
-        .menu-card .card-body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 15px; text-align: center; }
-        .icon-large { font-size: 3.5rem; margin-bottom: 20px; }
-        
-        .section-title { font-size: 0.9rem; font-weight: bold; color: #6c757d; text-transform: uppercase; margin: 30px 0 15px 5px; border-left: 4px solid #0d6efd; padding-left: 10px; }
-    </style>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
 </head>
 <body>
-
-<div class="container">
-    <div class="dashboard-header">
-        <div>
-            <h3 class="fw-bold mb-0"><i class="bi bi-bank2 text-primary"></i> 開班管理系統</h3>
-            <small class="text-muted">Class Opening & Management Module</small>
-        </div>
-        <div>
-            <a href="../../index.html" class="btn btn-outline-secondary">
-                <i class="bi bi-house-door-fill"></i> 回系統首頁
-            </a>
-        </div>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-calendar3"></i> 開班管理系統</h3>
+        <button class="btn btn-primary" onclick="openClassModal()"><i class="bi bi-plus-lg"></i> 新增開課</button>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
-            <div class="stat-card">
-                <div class="stat-icon bg-primary"><i class="bi bi-mortarboard-fill"></i></div>
-                <div><h6 class="mb-0 text-muted">目前班級數</h6><h4 class="fw-bold mb-0" id="cnt-active">-</h4></div>
-            </div>
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>學期</th>
+                        <th>課程名稱</th>
+                        <th>老師</th>
+                        <th>時間/教室</th>
+                        <th>人數</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="classTable">
+                    <tr><td colspan="6" class="text-center text-muted">載入中...</td></tr>
+                </tbody>
+            </table>
         </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card">
-                <div class="stat-icon bg-success"><i class="bi bi-check-circle-fill"></i></div>
-                <div><h6 class="mb-0 text-muted">需排課班級</h6><h4 class="fw-bold mb-0" id="cnt-scheduling">-</h4></div>
+    </div>
+</div>
+
+<div class="modal fade" id="classModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">開課資訊</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card">
-                <div class="stat-icon bg-info text-dark"><i class="bi bi-people-fill"></i></div>
-                <div><h6 class="mb-0 text-muted">已畢業班級</h6><h4 class="fw-bold mb-0" id="cnt-grad">-</h4></div>
+            <div class="modal-body">
+                <input type="hidden" id="classId">
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label>學期</label>
+                        <input type="text" class="form-control" id="semester" placeholder="112-1">
+                    </div>
+                    <div class="col-6">
+                        <label>課程名稱</label>
+                        <input type="text" class="form-control" id="courseName">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label>授課老師</label>
+                    <input type="text" class="form-control" id="teacherName">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label>上課時間</label>
+                        <input type="text" class="form-control" id="schedule" placeholder="每週一 18:00">
+                    </div>
+                    <div class="col-6">
+                        <label>教室</label>
+                        <input type="text" class="form-control" id="classroom">
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="stat-card">
-                <div class="stat-icon bg-secondary"><i class="bi bi-archive-fill"></i></div>
-                <div><h6 class="mb-0 text-muted">封存班級</h6><h4 class="fw-bold mb-0" id="cnt-archived">-</h4></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveClass()">儲存</button>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="section-title">核心功能</div>
-    <div class="row g-4">
-        <div class="col-md-4">
-            <a href="class_list.html" class="card menu-card border-primary">
-                <div class="card-body">
-                    <i class="bi bi-list-check icon-large text-primary"></i>
-                    <h4 class="fw-bold">班級資料維護</h4>
-                    <p class="text-muted mb-0">新增、編輯、設定導師與排課屬性</p>
+<div class="modal fade" id="studentSelectModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold"><i class="bi bi-people-fill"></i> 班級學生管理</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="manageClassId">
+                <div class="d-flex justify-content-between mb-3">
+                    <span id="manageClassName" class="fw-bold fs-5 text-primary"></span>
+                    <input type="text" id="searchStudent" class="form-control w-50" placeholder="搜尋姓名..." onkeyup="filterStudents()">
                 </div>
-            </a>
-        </div>
-        <div class="col-md-4">
-            <div class="card menu-card" style="opacity: 0.6; cursor: not-allowed;">
-                <div class="card-body">
-                    <i class="bi bi-diagram-3 icon-large text-muted"></i>
-                    <h4 class="fw-bold">升級作業 (開發中)</h4>
-                    <p class="text-muted mb-0">批次年級升級與班級調整</p>
+                
+                <div class="border rounded p-2" style="height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th width="50" class="text-center">選取</th>
+                                <th>學號</th>
+                                <th>姓名</th>
+                                <th>年級</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentListBody">
+                            </tbody>
+                    </table>
                 </div>
+                <div class="text-end mt-2 text-muted small">
+                    已選取: <span id="selectedCount" class="fw-bold text-dark">0</span> 人
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button type="button" class="btn btn-primary" onclick="saveClassStudents()">
+                    <i class="bi bi-save"></i> 儲存名單
+                </button>
             </div>
         </div>
     </div>
@@ -94,16 +124,205 @@
 
 <script src="../../js/config.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        // 讀取統計
-        const { data } = await window.db.from('school_classes').select('status, needs_scheduling');
-        if(data) {
-            document.getElementById('cnt-active').textContent = data.filter(c => c.status === 'active').length;
-            document.getElementById('cnt-grad').textContent = data.filter(c => c.status === 'graduated').length;
-            document.getElementById('cnt-archived').textContent = data.filter(c => c.status === 'archived').length;
-            document.getElementById('cnt-scheduling').textContent = data.filter(c => c.status === 'active' && c.needs_scheduling).length;
-        }
+    const classModal = new bootstrap.Modal(document.getElementById('classModal'));
+    const studentModal = new bootstrap.Modal(document.getElementById('studentSelectModal'));
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if(typeof window.db === 'undefined') return Swal.fire('錯誤', '找不到 DB 連線', 'error');
+        loadClasses();
     });
+
+    // --- 1. 班級管理邏輯 ---
+    
+    async function loadClasses() {
+        // 讀取班級，並計算每個班級有多少學生 (count)
+        const { data, error } = await window.db
+            .from('classes')
+            .select('*, student_classes(count)') 
+            .order('id', { ascending: false });
+
+        if(error) return console.error(error);
+        
+        const tbody = document.getElementById('classTable');
+        tbody.innerHTML = '';
+        
+        if(!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">尚無開課資料</td></tr>';
+            return;
+        }
+
+        data.forEach(c => {
+            // student_classes[0].count 是因為 Supabase 回傳格式特性
+            const count = c.student_classes && c.student_classes[0] ? c.student_classes[0].count : 0;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge bg-secondary">${c.semester}</span></td>
+                    <td class="fw-bold">${c.course_name}</td>
+                    <td>${c.teacher_name || '-'}</td>
+                    <td class="small">${c.schedule || ''}<br>${c.classroom || ''}</td>
+                    <td><span class="badge bg-info text-dark">${count} 人</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success me-1" onclick="manageStudents(${c.id}, '${c.course_name}')">
+                            <i class="bi bi-person-check-fill"></i> 學生
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editClass(${c.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteClass(${c.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 開啟新增/編輯班級視窗
+    window.openClassModal = () => {
+        document.getElementById('classId').value = '';
+        document.getElementById('semester').value = '';
+        document.getElementById('courseName').value = '';
+        document.getElementById('teacherName').value = '';
+        document.getElementById('schedule').value = '';
+        document.getElementById('classroom').value = '';
+        classModal.show();
+    }
+
+    window.editClass = async (id) => {
+        const { data } = await window.db.from('classes').select('*').eq('id', id).single();
+        if(data) {
+            document.getElementById('classId').value = data.id;
+            document.getElementById('semester').value = data.semester;
+            document.getElementById('courseName').value = data.course_name;
+            document.getElementById('teacherName').value = data.teacher_name;
+            document.getElementById('schedule').value = data.schedule;
+            document.getElementById('classroom').value = data.classroom;
+            classModal.show();
+        }
+    }
+
+    window.saveClass = async () => {
+        const id = document.getElementById('classId').value;
+        const payload = {
+            semester: document.getElementById('semester').value,
+            course_name: document.getElementById('courseName').value,
+            teacher_name: document.getElementById('teacherName').value,
+            schedule: document.getElementById('schedule').value,
+            classroom: document.getElementById('classroom').value
+        };
+
+        if(!payload.course_name) return Swal.fire('錯誤', '請輸入課程名稱', 'error');
+
+        const { error } = id 
+            ? await window.db.from('classes').update(payload).eq('id', id)
+            : await window.db.from('classes').insert([payload]);
+
+        if(error) Swal.fire('失敗', error.message, 'error');
+        else { classModal.hide(); loadClasses(); Swal.fire('成功', '資料已更新', 'success'); }
+    }
+
+    // --- 2. 學生選擇邏輯 (您的新需求) ---
+
+    let allStudentsCache = []; // 快取所有學生資料
+
+    window.manageStudents = async (classId, className) => {
+        document.getElementById('manageClassId').value = classId;
+        document.getElementById('manageClassName').textContent = className;
+        
+        // 1. 讀取所有學生 (若未快取)
+        if(allStudentsCache.length === 0) {
+            const { data } = await window.db.from('students').select('id, student_id, name, grade').order('student_id');
+            allStudentsCache = data || [];
+        }
+
+        // 2. 讀取「目前已在此班級」的學生
+        const { data: enrolledData } = await window.db
+            .from('student_classes')
+            .select('student_id')
+            .eq('class_id', classId);
+        
+        const enrolledIds = enrolledData ? enrolledData.map(e => e.student_id) : [];
+
+        // 3. 渲染列表
+        renderStudentList(allStudentsCache, enrolledIds);
+        
+        studentModal.show();
+    }
+
+    function renderStudentList(students, enrolledIds) {
+        const tbody = document.getElementById('studentListBody');
+        tbody.innerHTML = '';
+        let selectedCount = 0;
+
+        students.forEach(s => {
+            const isChecked = enrolledIds.includes(s.id);
+            if(isChecked) selectedCount++;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input student-check" value="${s.id}" ${isChecked ? 'checked' : ''} onchange="updateCount()">
+                    </td>
+                    <td>${s.student_id}</td>
+                    <td class="search-name">${s.name}</td>
+                    <td>${s.grade || '-'}</td>
+                </tr>
+            `;
+        });
+        document.getElementById('selectedCount').textContent = selectedCount;
+    }
+
+    // 搜尋過濾功能
+    window.filterStudents = () => {
+        const txt = document.getElementById('searchStudent').value.toLowerCase();
+        const rows = document.querySelectorAll('#studentListBody tr');
+        rows.forEach(r => {
+            const name = r.querySelector('.search-name').textContent.toLowerCase();
+            r.style.display = name.includes(txt) ? '' : 'none';
+        });
+    }
+
+    window.updateCount = () => {
+        const count = document.querySelectorAll('.student-check:checked').length;
+        document.getElementById('selectedCount').textContent = count;
+    }
+
+    // 儲存學生名單 (採 "先刪後加" 策略，最簡單且不易出錯)
+    window.saveClassStudents = async () => {
+        const classId = document.getElementById('manageClassId').value;
+        const checkboxes = document.querySelectorAll('.student-check:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        Swal.fire({title: '儲存中...', didOpen: () => Swal.showLoading()});
+
+        try {
+            // 1. 刪除該班級舊的所有關聯
+            await window.db.from('student_classes').delete().eq('class_id', classId);
+
+            // 2. 插入新選取的關聯
+            if(selectedIds.length > 0) {
+                const inserts = selectedIds.map(sid => ({
+                    class_id: classId,
+                    student_id: sid
+                }));
+                const { error } = await window.db.from('student_classes').insert(inserts);
+                if(error) throw error;
+            }
+
+            studentModal.hide();
+            loadClasses(); // 重新整理外面列表的人數
+            Swal.fire('成功', '班級名單已更新', 'success');
+
+        } catch(err) {
+            Swal.fire('失敗', err.message, 'error');
+        }
+    }
+
+    window.deleteClass = async (id) => {
+        if((await Swal.fire({title:'確定刪除?', text:'這將連帶刪除該班級的學生名單紀錄', icon:'warning', showCancelButton:true})).isConfirmed) {
+            // 因為我們有設 ForeignKey，最好先刪除關聯 (如果沒設 CASCADE)
+            await window.db.from('student_classes').delete().eq('class_id', id);
+            await window.db.from('classes').delete().eq('id', id);
+            loadClasses();
+        }
+    }
 </script>
 </body>
 </html>
