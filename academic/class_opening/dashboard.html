@@ -3,69 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>開班管理模組</title>
+    <title>開班管理系統</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        body { background-color: #f8f9fa; font-family: 'Microsoft JhengHei', sans-serif; }
-        .page-header {
-            background: linear-gradient(135deg, #198754 0%, #146c43 100%); /* 綠色系代表開班/生機 */
-            color: white;
-            padding: 30px 20px;
-            border-radius: 0 0 15px 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(25, 135, 84, 0.2);
+        /* UI 風格設定 */
+        body { background-color: #f3f4f6; font-family: 'Microsoft JhengHei', sans-serif; padding: 20px; }
+        
+        .main-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+            padding: 30px;
+            min-height: 85vh;
         }
+
+        .page-title { font-weight: bold; font-size: 1.5rem; color: #333; display: flex; align-items: center; }
+        .page-title i { color: #0d6efd; margin-right: 10px; font-size: 1.8rem; }
+        .page-subtitle { color: #6c757d; font-size: 0.9rem; margin-top: 5px; }
+
+        /* 統計卡片 */
+        .stat-card {
+            border: none; border-radius: 10px; color: white; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-icon { font-size: 2rem; opacity: 0.8; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; }
+        .stat-label { font-size: 0.9rem; opacity: 0.9; }
+
+        /* 課程卡片 */
         .class-card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-            height: 100%;
-            background: white;
+            border: 1px solid #eee; border-radius: 12px; background: #fff;
+            transition: all 0.2s; height: 100%; position: relative; overflow: hidden;
         }
-        .class-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        }
-        .card-status-line {
-            height: 5px;
-            width: 100%;
-            background-color: #198754;
-            border-radius: 12px 12px 0 0;
-        }
-        .info-label { font-size: 0.85rem; color: #6c757d; }
-        .info-value { font-size: 0.95rem; font-weight: 500; color: #212529; }
+        .class-card:hover { border-color: #0d6efd; box-shadow: 0 5px 15px rgba(13, 110, 253, 0.1); transform: translateY(-3px); }
+        .class-card-header { padding: 15px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
+        .semester-badge { background-color: #e9ecef; color: #495057; font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+        .class-card-body { padding: 20px; }
+        .teacher-info { display: flex; align-items: center; color: #6c757d; font-size: 0.9rem; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .info-label { color: #adb5bd; }
+        .info-val { font-weight: 500; color: #333; }
+        
+        .card-actions { padding: 15px; background-color: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
-    <div class="page-header d-flex justify-content-between align-items-center">
-        <div>
-            <h2 class="fw-bold mb-0"><i class="bi bi-easel3-fill me-2"></i>開班管理系統</h2>
-            <small class="opacity-75">管理各學期開設課程與班級成員</small>
+    <div class="main-container">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <div class="page-title">
+                    <i class="bi bi-calendar3-range-fill"></i> 開班管理系統
+                </div>
+                <div class="page-subtitle">Academic Affairs - Class Opening Management</div>
+            </div>
+            <div>
+                <a href="../../index.html" class="btn btn-outline-secondary me-2"><i class="bi bi-house"></i> 回首頁</a>
+                <button class="btn btn-primary" onclick="openClassModal()">
+                    <i class="bi bi-plus-lg"></i> 新增開課
+                </button>
+            </div>
         </div>
-        <button class="btn btn-light text-success fw-bold shadow-sm" onclick="openClassModal()">
-            <i class="bi bi-plus-lg"></i> 新增開課
-        </button>
-    </div>
 
-    <div class="container-fluid px-4">
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="input-group shadow-sm">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" class="form-control border-start-0 ps-0" placeholder="搜尋課程名稱或老師..." id="searchInput" onkeyup="filterClasses()">
+        <div class="row g-3 mb-5">
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #0d6efd, #0a58ca);">
+                    <div>
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">本學期開班</div>
+                    </div>
+                    <i class="bi bi-journal-bookmark-fill stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #198754, #146c43);">
+                    <div>
+                        <div class="stat-value" id="stat-teachers">0</div>
+                        <div class="stat-label">授課教師</div>
+                    </div>
+                    <i class="bi bi-person-video3 stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffc107, #ffca2c); color: #333;">
+                    <div>
+                        <div class="stat-value" id="stat-students">0</div>
+                        <div class="stat-label">修課學生總數</div>
+                    </div>
+                    <i class="bi bi-people-fill stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #0dcaf0, #0aa2c0); color: white;">
+                    <div>
+                        <div class="stat-value" id="stat-avg">0</div>
+                        <div class="stat-label">平均班級人數</div>
+                    </div>
+                    <i class="bi bi-bar-chart-fill stat-icon"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center mb-3">
+            <div style="width: 5px; height: 25px; background-color: #0d6efd; margin-right: 10px; border-radius: 3px;"></div>
+            <h5 class="fw-bold m-0">開課列表</h5>
+            <div class="ms-auto w-25">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control border-start-0" id="searchInput" placeholder="搜尋課程..." onkeyup="filterClasses()">
                 </div>
             </div>
         </div>
 
         <div class="row g-4" id="classContainer">
-            <div class="col-12 text-center py-5 text-muted">
-                <div class="spinner-border text-success" role="status"></div>
-                <div class="mt-2">載入課程資料中...</div>
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="text-muted mt-2">資料讀取中...</div>
             </div>
         </div>
     </div>
@@ -73,9 +135,9 @@
     <div class="modal fade" id="classModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-success text-white">
+                <div class="modal-header">
                     <h5 class="modal-title fw-bold">開課資訊</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="classId">
@@ -96,7 +158,7 @@
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label">上課時間</label>
-                            <input type="text" class="form-control" id="schedule" placeholder="每週一 18:00">
+                            <input type="text" class="form-control" id="schedule">
                         </div>
                         <div class="col-6">
                             <label class="form-label">教室</label>
@@ -106,33 +168,62 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-success" onclick="saveClass()">儲存</button>
+                    <button type="button" class="btn btn-primary" onclick="saveClass()">儲存</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="../../js/config.js"></script>
+
     <script>
-        const classModal = new bootstrap.Modal(document.getElementById('classModal'));
+        // 定義全域變數
+        let classModal; // 先不 new，等 DOM 載入
         let allClasses = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            if(typeof window.db === 'undefined') return Swal.fire('錯誤', '找不到 DB 連線', 'error');
+            // ★★★ 確保 Bootstrap 載入後才初始化 Modal ★★★
+            if (typeof bootstrap !== 'undefined') {
+                classModal = new bootstrap.Modal(document.getElementById('classModal'));
+            } else {
+                console.error("Bootstrap 未載入");
+                alert("系統元件載入失敗，請重新整理");
+                return;
+            }
+
+            // 檢查 DB 連線
+            if(typeof window.db === 'undefined') {
+                document.getElementById('classContainer').innerHTML = 
+                    '<div class="col-12 text-center text-danger py-5">錯誤：找不到 js/config.js 連線設定。<br>請檢查檔案路徑。</div>';
+                return;
+            }
+
             loadClasses();
         });
 
         async function loadClasses() {
-            // 讀取班級並計算人數
-            const { data, error } = await window.db
-                .from('classes')
-                .select('*, student_classes(count)') 
-                .order('id', { ascending: false });
+            try {
+                // 讀取班級資料，同時關聯計算學生人數
+                const { data, error } = await window.db
+                    .from('classes')
+                    .select('*, student_classes(count)') 
+                    .order('id', { ascending: false });
 
-            if(error) return console.error(error);
-            
-            allClasses = data || [];
-            renderClasses(allClasses);
+                if(error) throw error;
+                
+                allClasses = data || [];
+                renderClasses(allClasses);
+                updateStats(allClasses);
+
+            } catch (err) {
+                console.error("讀取失敗:", err);
+                document.getElementById('classContainer').innerHTML = 
+                    `<div class="col-12 text-center text-danger py-5">
+                        <i class="bi bi-exclamation-triangle fs-1"></i><br>
+                        讀取失敗：${err.message}<br>
+                        <small class="text-muted">請確認資料庫中是否存在 classes 表格</small>
+                    </div>`;
+            }
         }
 
         function renderClasses(data) {
@@ -140,53 +231,49 @@
             container.innerHTML = '';
             
             if(data.length === 0) {
-                container.innerHTML = '<div class="col-12 text-center text-muted py-5">目前沒有開課資料</div>';
+                container.innerHTML = '<div class="col-12 text-center text-muted py-5">目前沒有開課資料，請點擊右上方按鈕新增。</div>';
                 return;
             }
 
             data.forEach(c => {
-                const count = c.student_classes && c.student_classes[0] ? c.student_classes[0].count : 0;
+                const count = (c.student_classes && c.student_classes[0]) ? c.student_classes[0].count : 0;
                 
                 container.innerHTML += `
                     <div class="col-md-6 col-lg-4 col-xl-3">
-                        <div class="class-card position-relative">
-                            <div class="card-status-line"></div>
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <span class="badge bg-secondary rounded-pill">${c.semester}</span>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="#" onclick="editClass(${c.id})"><i class="bi bi-pencil me-2"></i>編輯</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteClass(${c.id})"><i class="bi bi-trash me-2"></i>刪除</a></li>
-                                        </ul>
-                                    </div>
+                        <div class="class-card">
+                            <div class="class-card-header">
+                                <span class="semester-badge">${c.semester || '未定'}</span>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light rounded-circle" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" onclick="editClass(${c.id})">編輯</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteClass(${c.id})">刪除</a></li>
+                                    </ul>
                                 </div>
-                                
-                                <h5 class="fw-bold text-dark mb-1">${c.course_name}</h5>
-                                <p class="text-muted small mb-3"><i class="bi bi-person-video3 me-1"></i> ${c.teacher_name || '未定'}</p>
-                                
-                                <div class="row g-2 mb-4">
-                                    <div class="col-6">
-                                        <div class="info-label">時間</div>
-                                        <div class="info-value text-truncate">${c.schedule || '-'}</div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="info-label">教室</div>
-                                        <div class="info-value text-truncate">${c.classroom || '-'}</div>
-                                    </div>
+                            </div>
+                            <div class="class-card-body">
+                                <h5 class="fw-bold mb-1 text-truncate">${c.course_name}</h5>
+                                <div class="teacher-info">
+                                    <i class="bi bi-person-circle me-2"></i> ${c.teacher_name || '未安排'}
                                 </div>
-
-                                <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                                    <div class="d-flex align-items-center text-secondary">
-                                        <i class="bi bi-people-fill me-2 fs-5"></i>
-                                        <span class="fw-bold text-dark">${count}</span> <span class="small ms-1">學生</span>
-                                    </div>
-                                    <button class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="openStudentManager(${c.id}, '${c.course_name}')">
-                                        管理學生 <i class="bi bi-arrow-right"></i>
-                                    </button>
+                                <div class="info-row">
+                                    <span class="info-label">時間</span>
+                                    <span class="info-val text-truncate" style="max-width: 120px;">${c.schedule || '-'}</span>
                                 </div>
+                                <div class="info-row">
+                                    <span class="info-label">教室</span>
+                                    <span class="info-val">${c.classroom || '-'}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">人數</span>
+                                    <span class="badge bg-info-subtle text-info-emphasis rounded-pill">${count} 人</span>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <small class="text-muted">ID: ${c.id}</small>
+                                <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="openStudentManager(${c.id}, '${c.course_name}')">
+                                    <i class="bi bi-people-fill me-1"></i> 管理學生
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -194,17 +281,25 @@
             });
         }
 
-        // 開啟獨立的學生管理視窗
+        function updateStats(data) {
+            const totalClasses = data.length;
+            const uniqueTeachers = new Set(data.map(c => c.teacher_name).filter(n => n)).size;
+            let totalStudents = 0;
+            data.forEach(c => {
+                totalStudents += (c.student_classes && c.student_classes[0]) ? c.student_classes[0].count : 0;
+            });
+            const avg = totalClasses > 0 ? Math.round(totalStudents / totalClasses) : 0;
+
+            document.getElementById('stat-total').textContent = totalClasses;
+            document.getElementById('stat-teachers').textContent = uniqueTeachers;
+            document.getElementById('stat-students').textContent = totalStudents;
+            document.getElementById('stat-avg').textContent = avg;
+        }
+
+        // 開啟學生管理視窗 (Pop-up)
         window.openStudentManager = (classId, className) => {
-            // 使用 window.open 開啟新視窗，或者直接跳轉
-            // 為了體驗好，我們用 'student_selector.html' 並帶入參數
             const url = `student_selector.html?class_id=${classId}&class_name=${encodeURIComponent(className)}`;
-            
-            // 方式一：開新分頁 (推薦，操作比較清楚)
-            // window.open(url, '_blank');
-            
-            // 方式二：彈出小視窗 (Pop-up)
-             window.open(url, 'SelectStudent', 'width=900,height=700,scrollbars=yes');
+            window.open(url, 'SelectStudent', 'width=900,height=750,scrollbars=yes,resizable=yes');
         }
 
         window.filterClasses = () => {
@@ -216,7 +311,6 @@
             renderClasses(filtered);
         }
 
-        // 編輯與刪除邏輯維持不變
         window.openClassModal = () => {
             document.getElementById('classId').value = '';
             document.getElementById('semester').value = '';
@@ -227,7 +321,7 @@
             classModal.show();
         }
 
-        window.editClass = async (id) => {
+        window.editClass = (id) => {
             const cls = allClasses.find(c => c.id === id);
             if(cls) {
                 document.getElementById('classId').value = cls.id;
@@ -260,7 +354,7 @@
         }
 
         window.deleteClass = async (id) => {
-            if((await Swal.fire({title:'確定刪除?', text:'將一併刪除該班級的學生關聯', icon:'warning', showCancelButton:true})).isConfirmed) {
+            if((await Swal.fire({title:'確定刪除?', text:'將一併刪除該班級的學生名單', icon:'warning', showCancelButton:true})).isConfirmed) {
                 await window.db.from('student_classes').delete().eq('class_id', id);
                 await window.db.from('classes').delete().eq('id', id);
                 loadClasses();
