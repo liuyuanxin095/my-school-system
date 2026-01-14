@@ -6,6 +6,7 @@
     <title>會議記錄與通知</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
@@ -33,14 +34,22 @@
 </div>
 <div class="modal-footer"><button class="btn btn-primary" onclick="saveMeeting()">儲存</button></div></div></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script src="../js/config.js"></script>
+
 <script>
     if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js', 'error'); }
 
     const meetingModal = new bootstrap.Modal(document.getElementById('meetingModal'));
-    document.addEventListener('DOMContentLoaded', () => { loadMeetings(); loadCategories(); });
+    
+    document.addEventListener('DOMContentLoaded', () => { 
+        loadMeetings(); 
+        loadCategories(); 
+    });
 
     async function loadCategories() {
+        if (!window.db) return;
         const { data } = await window.db.from('meeting_categories').select('*');
         if(data) {
             const sel = document.getElementById('categoryId');
@@ -48,18 +57,27 @@
             data.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.name}</option>`);
         }
     }
+
     async function loadMeetings() {
+        if (!window.db) return;
         const { data, error } = await window.db.from('meetings').select('*, meeting_categories(name)').order('meeting_time', { ascending: false });
         if(error) return console.error(error);
+        
         const tbody = document.getElementById('meetingTable');
         tbody.innerHTML = '';
-        if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">無資料</td></tr>'; return;}
+        if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">無資料</td></tr>'; return;}
+        
         data.forEach(m => {
             const timeStr = m.meeting_time ? new Date(m.meeting_time).toLocaleString() : '';
             tbody.innerHTML += `<tr><td>${timeStr}</td><td>${m.meeting_categories?.name||'-'}</td><td class="fw-bold">${m.name}</td><td>${m.location||''}</td><td>${m.chair_person||''}</td><td><button class="btn btn-sm btn-primary">詳情</button></td></tr>`;
         });
     }
-    window.openMeetingModal = () => { document.getElementById('meetingId').value=''; document.getElementById('meetingName').value=''; meetingModal.show(); }
+
+    window.openMeetingModal = () => { 
+        document.getElementById('meetingId').value=''; 
+        document.getElementById('meetingName').value=''; 
+        meetingModal.show(); 
+    }
     
     window.saveMeeting = async () => {
         const payload = {
@@ -74,7 +92,8 @@
         if(!payload.name) return Swal.fire('錯誤', '請輸入會議名稱', 'error');
 
         const { error } = await window.db.from('meetings').insert([payload]);
-        if (error) Swal.fire('儲存失敗', error.message, 'error'); else { meetingModal.hide(); loadMeetings(); Swal.fire('成功', '已儲存', 'success'); }
+        if (error) Swal.fire('儲存失敗', error.message, 'error'); 
+        else { meetingModal.hide(); loadMeetings(); Swal.fire('成功', '已儲存', 'success'); }
     }
 </script>
 </body>
