@@ -15,6 +15,14 @@
         .list-group-item:hover { background-color: #e9ecef; }
         .list-group-item.active:hover { background-color: #0b5ed7; }
         
+        /* 修正開關樣式 */
+        .form-check-wrapper {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px 15px;
+        }
+
         /* 匯入預覽表格 */
         .preview-table td { padding: 5px; }
         .preview-table input { width: 100%; border: 1px solid #dee2e6; padding: 3px; font-size: 0.9rem; }
@@ -60,11 +68,12 @@
                                     <th>教室代碼</th>
                                     <th>教室名稱</th>
                                     <th>所屬分校</th>
+                                    <th class="text-center">排課狀態</th>
                                     <th class="text-end">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="roomTable">
-                                <tr><td colspan="4" class="text-center py-5 text-muted">請先選擇左側分校</td></tr>
+                                <tr><td colspan="5" class="text-center py-5 text-muted">請先選擇左側分校</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -97,6 +106,18 @@
                     <label>教室名稱 (選填)</label>
                     <input type="text" id="m_name" class="form-control" placeholder="若未填寫則顯示代碼">
                 </div>
+                
+                <div class="mb-3">
+                    <div class="form-check-wrapper">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="m_sched" checked>
+                            <label class="form-check-label fw-bold" for="m_sched">
+                                開放排課
+                            </label>
+                            <div class="text-muted small">關閉後，此教室將不會出現在排課系統的選單中。</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -116,7 +137,8 @@
             <div class="modal-body">
                 <div class="alert alert-info small">
                     <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，貼到底下文字框。<br>
-                    格式：<strong>分校代碼 (例: A) | 教室代碼 (例: 101) | 教室名稱 (可空)</strong>
+                    格式：<strong>分校代碼 (例: A) | 教室代碼 (例: 101) | 教室名稱 (可空)</strong><br>
+                    <span class="text-danger">* 匯入的教室預設皆為「可排課」。</span>
                 </div>
                 <div class="row">
                     <div class="col-md-12 mb-3">
@@ -183,9 +205,8 @@
         }
 
         branches.forEach((b, index) => {
-            branchMap[b.branch_code] = b.id; // 建立對照表
+            branchMap[b.branch_code] = b.id;
 
-            // 列表項目
             const item = document.createElement('a');
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
             item.innerHTML = `
@@ -195,10 +216,8 @@
             item.onclick = () => selectBranch(b.id, b.branch_name, item);
             list.appendChild(item);
 
-            // Modal 下拉選單
             m_sel.innerHTML += `<option value="${b.id}">${b.branch_code} ${b.branch_name}</option>`;
 
-            // 預設選取第一個
             if (index === 0) selectBranch(b.id, b.branch_name, item);
         });
     }
@@ -208,11 +227,9 @@
         currentBranchId = branchId;
         document.getElementById('currentBranchName').innerHTML = `<i class="bi bi-building"></i> ${branchName} 教室列表`;
 
-        // 更新 UI 狀態
         document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
         if(element) element.classList.add('active');
 
-        // 載入資料
         const { data, error } = await window.db.from('classrooms')
             .select('*, school_branches(branch_name)')
             .eq('branch_id', branchId)
@@ -222,7 +239,7 @@
         tbody.innerHTML = '';
 
         if (error || !data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-5 text-muted">此分校尚無教室資料</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">此分校尚無教室資料</td></tr>`;
             document.getElementById('roomCount').textContent = '0 間';
             return;
         }
@@ -230,14 +247,20 @@
         document.getElementById('roomCount').textContent = `${data.length} 間`;
 
         data.forEach(r => {
-            const displayName = r.room_name || r.room_code; // 若無名稱則顯示代碼
+            const displayName = r.room_name || r.room_code;
             const branchName = r.school_branches?.branch_name || '-';
+            
+            // 排課狀態顯示
+            const schedBadge = r.is_schedulable 
+                ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> 可排課</span>' 
+                : '<span class="badge bg-secondary"><i class="bi bi-dash-circle"></i> 不排課</span>';
 
             tbody.innerHTML += `
                 <tr>
                     <td class="font-monospace fw-bold text-primary">${r.room_code}</td>
                     <td class="fs-5">${displayName}</td>
                     <td>${branchName}</td>
+                    <td class="text-center">${schedBadge}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-info me-1" onclick="checkSchedule('${r.id}', '${displayName}')" title="查詢課表">
                             <i class="bi bi-calendar3"></i>
@@ -257,10 +280,12 @@
     // 3. Modal 操作
     window.openModal = (d = null) => {
         document.getElementById('editId').value = d ? d.id : '';
-        // 如果有選定分校，新增時直接帶入
         document.getElementById('m_branch').value = d ? d.branch_id : (currentBranchId || '');
         document.getElementById('m_code').value = d ? d.room_code : '';
         document.getElementById('m_name').value = d ? d.room_name : '';
+        // 設定排課狀態 (若為新增則預設 true)
+        document.getElementById('m_sched').checked = d ? d.is_schedulable : true;
+        
         dataModal.show();
     }
 
@@ -269,7 +294,8 @@
         const payload = {
             branch_id: document.getElementById('m_branch').value,
             room_code: document.getElementById('m_code').value,
-            room_name: document.getElementById('m_name').value || null // 空字串轉 null
+            room_name: document.getElementById('m_name').value || null,
+            is_schedulable: document.getElementById('m_sched').checked // 儲存狀態
         };
 
         if(!payload.branch_id || !payload.room_code) return Swal.fire('必填未填', '分校與教室代碼為必填', 'warning');
@@ -281,7 +307,6 @@
         if(error) Swal.fire('錯誤', error.message, 'error');
         else { 
             dataModal.hide(); 
-            // 重新載入目前分校的列表
             const bName = branches.find(b => b.id == currentBranchId)?.branch_name;
             selectBranch(currentBranchId, bName, document.querySelector('.list-group-item.active'));
             Swal.fire('成功', '資料已更新', 'success'); 
@@ -291,14 +316,12 @@
     window.delRoom = async (id) => {
         if(confirm('確定刪除此教室？')) {
             await window.db.from('classrooms').delete().eq('id', id);
-            // 重新整理
             const bName = branches.find(b => b.id == currentBranchId)?.branch_name;
             selectBranch(currentBranchId, bName, document.querySelector('.list-group-item.active'));
         }
     }
 
     window.checkSchedule = (roomId, roomName) => {
-        // 未來這裡可以連結到課表頁面，並帶入 roomId 參數
         Swal.fire({
             title: `${roomName} 課表`,
             text: '課表查詢功能開發中，將連結至課表系統。',
@@ -322,7 +345,7 @@
         
         let count = 0;
         rows.forEach((row) => {
-            const cols = row.split('\t'); // 假設 Excel 複製出來是 Tab 分隔
+            const cols = row.split('\t');
             if(cols.length < 2) return;
 
             count++;
@@ -359,19 +382,18 @@
             payload.push({
                 branch_id: branchId,
                 room_code: inputs[1].value.trim(),
-                room_name: inputs[2].value.trim() || null
+                room_name: inputs[2].value.trim() || null,
+                is_schedulable: true // 匯入預設可排課
             });
         }
 
         const { error } = await window.db.from('classrooms').insert(payload);
         if(error) {
-            // 如果遇到重複代碼 (Unique Constraint)，Supabase 會報錯
             if(error.code === '23505') Swal.fire('匯入失敗', '部分教室代碼已存在於該分校，請檢查重複。', 'error');
             else Swal.fire('匯入失敗', error.message, 'error');
         } else {
             importModal.hide();
             Swal.fire('成功', `已匯入 ${payload.length} 筆教室`, 'success');
-            // 重新載入
             loadBranches();
         }
     }
