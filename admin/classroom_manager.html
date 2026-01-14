@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教室資料管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
+        .list-group-item.active { background-color: #0d6efd; border-color: #0d6efd; }
+        .list-group-item { cursor: pointer; transition: 0.2s; }
+        .list-group-item:hover { background-color: #e9ecef; }
+        .list-group-item.active:hover { background-color: #0b5ed7; }
+        
+        /* 匯入預覽表格 */
+        .preview-table td { padding: 5px; }
+        .preview-table input { width: 100%; border: 1px solid #dee2e6; padding: 3px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark"><i class="bi bi-door-open-fill"></i> 教室資料管理</h3>
+        <div>
+            <button class="btn btn-success me-2" onclick="openImportModal()">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Excel 匯入
+            </button>
+            <a href="../index.html" class="btn btn-outline-secondary me-2">回首頁</a>
+            <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增教室</button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold">
+                    <i class="bi bi-buildings"></i> 選擇分校
+                </div>
+                <div class="list-group list-group-flush" id="branchList">
+                    <div class="text-center py-4 text-muted">載入中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold" id="currentBranchName">所有教室</span>
+                    <span class="badge bg-secondary" id="roomCount">0 間</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>教室代碼</th>
+                                    <th>教室名稱</th>
+                                    <th>所屬分校</th>
+                                    <th class="text-end">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roomTable">
+                                <tr><td colspan="4" class="text-center py-5 text-muted">請先選擇左側分校</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dataModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">教室設定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label>所屬分校 <span class="text-danger">*</span></label>
+                    <select id="m_branch" class="form-select" disabled>
+                        <option value="">載入中...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>教室代碼 <span class="text-danger">*</span></label>
+                    <input type="text" id="m_code" class="form-control" placeholder="例: 101, A203">
+                </div>
+                <div class="mb-3">
+                    <label>教室名稱 (選填)</label>
+                    <input type="text" id="m_name" class="form-control" placeholder="若未填寫則顯示代碼">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet"></i> 教室 Excel 快速匯入</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle"></i> 請從 Excel 複製資料 (不含標題)，貼到底下文字框。<br>
+                    格式：<strong>分校代碼 (例: A) | 教室代碼 (例: 101) | 教室名稱 (可空)</strong>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <textarea id="pasteArea" class="form-control" rows="5" placeholder="例: A  101  一年一班..." oninput="parsePasteData()"></textarea>
+                    </div>
+                    <div class="col-md-12">
+                        <h6 class="fw-bold">預覽 (系統自動解析)</h6>
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-bordered preview-table mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>分校代碼</th>
+                                        <th>教室代碼</th>
+                                        <th>教室名稱</th>
+                                        <th width="80">狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewBody">
+                                    <tr><td colspan="4" class="text-center text-muted">請先貼上資料</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="importCount" class="me-auto text-muted">共 0 筆</span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="executeImport()">確認匯入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let dataModal, importModal;
+    let branches = [];
+    let branchMap = {}; // 代碼 -> ID
+    let currentBranchId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        dataModal = new bootstrap.Modal(document.getElementById('dataModal'));
+        importModal = new bootstrap.Modal(document.getElementById('importModal'));
+        await loadBranches();
+    });
+
+    // 1. 載入分校選單 (左側)
+    async function loadBranches() {
+        const { data } = await window.db.from('school_branches').select('*').order('branch_code');
+        branches = data || [];
+        branchMap = {};
+
+        const list = document.getElementById('branchList');
+        const m_sel = document.getElementById('m_branch');
+        list.innerHTML = '';
+        m_sel.innerHTML = '';
+
+        if (!branches.length) {
+            list.innerHTML = '<div class="p-3 text-center text-muted">無分校資料</div>';
+            return;
+        }
+
+        branches.forEach((b, index) => {
+            branchMap[b.branch_code] = b.id; // 建立對照表
+
+            // 列表項目
+            const item = document.createElement('a');
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <span><span class="badge bg-primary me-2">${b.branch_code}</span> ${b.branch_name}</span>
+                <i class="bi bi-chevron-right small text-muted"></i>
+            `;
+            item.onclick = () => selectBranch(b.id, b.branch_name, item);
+            list.appendChild(item);
+
+            // Modal 下拉選單
+            m_sel.innerHTML += `<option value="${b.id}">${b.branch_code} ${b.branch_name}</option>`;
+
+            // 預設選取第一個
+            if (index === 0) selectBranch(b.id, b.branch_name, item);
+        });
+    }
+
+    // 2. 選擇分校 -> 載入教室
+    async function selectBranch(branchId, branchName, element) {
+        currentBranchId = branchId;
+        document.getElementById('currentBranchName').innerHTML = `<i class="bi bi-building"></i> ${branchName} 教室列表`;
+
+        // 更新 UI 狀態
+        document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+        if(element) element.classList.add('active');
+
+        // 載入資料
+        const { data, error } = await window.db.from('classrooms')
+            .select('*, school_branches(branch_name)')
+            .eq('branch_id', branchId)
+            .order('room_code');
+
+        const tbody = document.getElementById('roomTable');
+        tbody.innerHTML = '';
+
+        if (error || !data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-5 text-muted">此分校尚無教室資料</td></tr>`;
+            document.getElementById('roomCount').textContent = '0 間';
+            return;
+        }
+
+        document.getElementById('roomCount').textContent = `${data.length} 間`;
+
+        data.forEach(r => {
+            const displayName = r.room_name || r.room_code; // 若無名稱則顯示代碼
+            const branchName = r.school_branches?.branch_name || '-';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="font-monospace fw-bold text-primary">${r.room_code}</td>
+                    <td class="fs-5">${displayName}</td>
+                    <td>${branchName}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-info me-1" onclick="checkSchedule('${r.id}', '${displayName}')" title="查詢課表">
+                            <i class="bi bi-calendar3"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick='openModal(${JSON.stringify(r)})' title="編輯">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="delRoom('${r.id}')" title="刪除">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // 3. Modal 操作
+    window.openModal = (d = null) => {
+        document.getElementById('editId').value = d ? d.id : '';
+        // 如果有選定分校，新增時直接帶入
+        document.getElementById('m_branch').value = d ? d.branch_id : (currentBranchId || '');
+        document.getElementById('m_code').value = d ? d.room_code : '';
+        document.getElementById('m_name').value = d ? d.room_name : '';
+        dataModal.show();
+    }
+
+    window.saveData = async () => {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            branch_id: document.getElementById('m_branch').value,
+            room_code: document.getElementById('m_code').value,
+            room_name: document.getElementById('m_name').value || null // 空字串轉 null
+        };
+
+        if(!payload.branch_id || !payload.room_code) return Swal.fire('必填未填', '分校與教室代碼為必填', 'warning');
+
+        let error;
+        if(id) error = (await window.db.from('classrooms').update(payload).eq('id', id)).error;
+        else error = (await window.db.from('classrooms').insert([payload])).error;
+
+        if(error) Swal.fire('錯誤', error.message, 'error');
+        else { 
+            dataModal.hide(); 
+            // 重新載入目前分校的列表
+            const bName = branches.find(b => b.id == currentBranchId)?.branch_name;
+            selectBranch(currentBranchId, bName, document.querySelector('.list-group-item.active'));
+            Swal.fire('成功', '資料已更新', 'success'); 
+        }
+    }
+
+    window.delRoom = async (id) => {
+        if(confirm('確定刪除此教室？')) {
+            await window.db.from('classrooms').delete().eq('id', id);
+            // 重新整理
+            const bName = branches.find(b => b.id == currentBranchId)?.branch_name;
+            selectBranch(currentBranchId, bName, document.querySelector('.list-group-item.active'));
+        }
+    }
+
+    window.checkSchedule = (roomId, roomName) => {
+        // 未來這裡可以連結到課表頁面，並帶入 roomId 參數
+        Swal.fire({
+            title: `${roomName} 課表`,
+            text: '課表查詢功能開發中，將連結至課表系統。',
+            icon: 'info'
+        });
+    }
+
+    // --- 匯入功能 ---
+    window.openImportModal = () => {
+        document.getElementById('pasteArea').value = '';
+        document.getElementById('previewBody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">請先貼上資料</td></tr>';
+        document.getElementById('importCount').textContent = '共 0 筆';
+        importModal.show();
+    }
+
+    window.parsePasteData = () => {
+        const text = document.getElementById('pasteArea').value;
+        const rows = text.trim().split('\n');
+        const tbody = document.getElementById('previewBody');
+        tbody.innerHTML = '';
+        
+        let count = 0;
+        rows.forEach((row) => {
+            const cols = row.split('\t'); // 假設 Excel 複製出來是 Tab 分隔
+            if(cols.length < 2) return;
+
+            count++;
+            const [bCode, rCode, rName] = cols;
+
+            tbody.innerHTML += `
+                <tr class="import-row">
+                    <td><input type="text" value="${bCode ? bCode.toUpperCase() : ''}" placeholder="分校代碼"></td>
+                    <td><input type="text" value="${rCode||''}" placeholder="教室代碼"></td>
+                    <td><input type="text" value="${rName||''}" placeholder="教室名稱"></td>
+                    <td class="text-center"><span class="badge bg-info">待匯入</span></td>
+                </tr>
+            `;
+        });
+        document.getElementById('importCount').textContent = `共 ${count} 筆`;
+    }
+
+    window.executeImport = async () => {
+        const rows = document.querySelectorAll('.import-row');
+        if(rows.length === 0) { Swal.fire('無資料', '請先貼上 Excel 資料', 'warning'); return; }
+
+        const payload = [];
+        
+        for (const tr of rows) {
+            const inputs = tr.querySelectorAll('input');
+            const bCode = inputs[0].value.trim();
+            const branchId = branchMap[bCode]; 
+
+            if (!branchId) {
+                Swal.fire('資料錯誤', `分校代碼 "${bCode}" 不存在`, 'error');
+                return;
+            }
+
+            payload.push({
+                branch_id: branchId,
+                room_code: inputs[1].value.trim(),
+                room_name: inputs[2].value.trim() || null
+            });
+        }
+
+        const { error } = await window.db.from('classrooms').insert(payload);
+        if(error) {
+            // 如果遇到重複代碼 (Unique Constraint)，Supabase 會報錯
+            if(error.code === '23505') Swal.fire('匯入失敗', '部分教室代碼已存在於該分校，請檢查重複。', 'error');
+            else Swal.fire('匯入失敗', error.message, 'error');
+        } else {
+            importModal.hide();
+            Swal.fire('成功', `已匯入 ${payload.length} 筆教室`, 'success');
+            // 重新載入
+            loadBranches();
+        }
+    }
+</script>
+</body>
+</html>
