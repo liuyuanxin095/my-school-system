@@ -8,12 +8,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }
-        .user-tag { background-color: #e9ecef; border-radius: 15px; padding: 2px 10px; margin-right: 5px; display: inline-block; font-size: 0.9rem; margin-bottom: 5px; }
-        .user-tag i { cursor: pointer; margin-left: 5px; color: #dc3545; }
-        .readonly-field { background-color: #fff !important; cursor: pointer; }
-    </style>
+    <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; } .user-tag { background:#e9ecef; border-radius:15px; padding:2px 10px; margin-right:5px; display:inline-block; } .readonly-field { background-color:#fff!important; cursor:pointer; }</style>
 </head>
 <body>
 <div class="container-fluid">
@@ -21,358 +16,70 @@
         <h3 class="fw-bold text-dark"><i class="bi bi-calendar-event-fill"></i> 會議記錄與通知</h3>
         <button class="btn btn-primary" onclick="openMeetingModal()"><i class="bi bi-plus-lg"></i> 新增會議記錄</button>
     </div>
-
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>日期</th>
-                        <th>會議類別</th>
-                        <th>會議名稱</th>
-                        <th>地點</th>
-                        <th>主席</th>
-                        <th>狀態</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="meetingTable"></tbody>
-            </table>
-        </div>
-    </div>
+    <div class="card shadow-sm border-0"><div class="card-body"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>日期</th><th>類別</th><th>名稱</th><th>地點</th><th>主席</th><th>操作</th></tr></thead><tbody id="meetingTable"></tbody></table></div></div>
 </div>
 
-<div class="modal fade" id="meetingModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title fw-bold">會議資料維護</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="meetingId">
-                
-                <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">基本資訊</h6>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3">
-                        <label class="form-label">會議類別</label>
-                        <select class="form-select" id="categoryId"></select>
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label">會議名稱 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="meetingName" required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">會議時間</label>
-                        <input type="datetime-local" class="form-control" id="meetingTime">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">會議地點</label>
-                        <input type="text" class="form-control" id="meetingLocation">
-                    </div>
-                </div>
-
-                <h6 class="text-primary fw-bold mb-3 border-bottom pb-2 mt-4">人員設定</h6>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">主席 (單選)</label>
-                        <div class="input-group" onclick="openUserSelector('chair')">
-                            <input type="text" class="form-control readonly-field" id="chairDisplay" placeholder="點擊選擇..." readonly>
-                            <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        </div>
-                        <input type="hidden" id="chairData">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">記錄者 (單選)</label>
-                        <div class="input-group" onclick="openUserSelector('recorder')">
-                            <input type="text" class="form-control readonly-field" id="recorderDisplay" placeholder="點擊選擇..." readonly>
-                            <span class="input-group-text"><i class="bi bi-pencil"></i></span>
-                        </div>
-                        <input type="hidden" id="recorderData">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">與會人員 (多選)</label>
-                        <div class="form-control readonly-field" style="min-height: 38px;" id="attendeesDisplay" onclick="openUserSelector('attendees')">
-                            <span class="text-muted small">點擊選擇與會人員...</span>
-                        </div>
-                        <input type="hidden" id="attendeesData">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">列席人員 (手動輸入)</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="observersInput" placeholder="請輸入姓名，多位請用逗號隔開">
-                            <button class="btn btn-outline-secondary" type="button" onclick="openUserSelector('observers')">從名單選取</button>
-                        </div>
-                    </div>
-                </div>
-
-                <h6 class="text-primary fw-bold mb-3 border-bottom pb-2 mt-4">會議內容</h6>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">會議議程</label>
-                        <textarea class="form-control" id="agenda" rows="6"></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">會議記錄</label>
-                        <textarea class="form-control" id="minutes" rows="6"></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                <button type="button" class="btn btn-primary" onclick="saveMeeting()">儲存會議記錄</button>
-            </div>
-        </div>
+<div class="modal fade" id="meetingModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">會議資料</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal-body">
+    <input type="hidden" id="meetingId">
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><label>類別</label><select class="form-select" id="categoryId"></select></div>
+        <div class="col-md-5"><label>名稱 *</label><input type="text" class="form-control" id="meetingName"></div>
+        <div class="col-md-2"><label>時間</label><input type="datetime-local" class="form-control" id="meetingTime"></div>
+        <div class="col-md-2"><label>地點</label><input type="text" class="form-control" id="meetingLocation"></div>
     </div>
+    <div class="mb-3"><label>主席</label><input type="text" class="form-control" id="chairPerson" placeholder="請輸入主席姓名 (暫時改為手動輸入以排除錯誤)"></div>
+    <div class="row g-3"><div class="col-md-6"><label>議程</label><textarea class="form-control" id="agenda" rows="5"></textarea></div><div class="col-md-6"><label>記錄</label><textarea class="form-control" id="minutes" rows="5"></textarea></div></div>
 </div>
-
-<div class="modal fade" id="userSelectorModal" tabindex="-1" style="z-index: 1060;">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">選擇人員</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="text" class="form-control mb-3" id="userSearch" placeholder="搜尋姓名..." onkeyup="filterUsers()">
-                <div class="list-group" id="userListGroup"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="confirmUserSelection()">確定選擇</button>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="modal-footer"><button class="btn btn-primary" onclick="saveMeeting()">儲存</button></div></div></div></div>
 
 <script src="../js/config.js"></script>
 <script>
-    let currentSelectorType = '';
-    let allUsers = [];
     const meetingModal = new bootstrap.Modal(document.getElementById('meetingModal'));
-    const userModal = new bootstrap.Modal(document.getElementById('userSelectorModal'));
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js', 'error'); return; }
-        
-        loadMeetings();
-        loadCategories();
-        
-        // 預載使用者
-        const { data } = await window.db.from('system_users').select('id, name, ref_id');
-        allUsers = data || [];
-    });
+    document.addEventListener('DOMContentLoaded', () => { loadMeetings(); loadCategories(); });
 
     async function loadCategories() {
         const { data } = await window.db.from('meeting_categories').select('*');
-        const select = document.getElementById('categoryId');
-        select.innerHTML = '<option value="">請選擇類別...</option>';
         if(data) {
-            data.forEach(c => select.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+            const sel = document.getElementById('categoryId');
+            sel.innerHTML = '<option value="">請選擇</option>';
+            data.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.name}</option>`);
         }
     }
-
     async function loadMeetings() {
-        const { data, error } = await window.db
-            .from('meetings')
-            .select(`*, meeting_categories(name)`)
-            .order('meeting_time', { ascending: false });
-        
-        if (error) { console.error("Load Error:", error); return; }
-
+        const { data, error } = await window.db.from('meetings').select('*, meeting_categories(name)').order('meeting_time', { ascending: false });
+        if(error) return console.error(error);
         const tbody = document.getElementById('meetingTable');
         tbody.innerHTML = '';
-        
-        if(data) {
-            data.forEach(m => {
-                const chairName = m.chair_person ? m.chair_person.name : '-';
-                const timeStr = m.meeting_time ? new Date(m.meeting_time).toLocaleString() : '';
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${timeStr}</td>
-                        <td><span class="badge bg-secondary">${m.meeting_categories?.name || '未分類'}</span></td>
-                        <td class="fw-bold">${m.name}</td>
-                        <td>${m.location || ''}</td>
-                        <td>${chairName}</td>
-                        <td>${m.approval_status === 'draft' ? '草稿' : '已簽核'}</td>
-                        <td><button class="btn btn-sm btn-primary" onclick="editMeeting(${m.id})">編輯</button></td>
-                    </tr>
-                `;
-            });
-        }
+        data.forEach(m => {
+            tbody.innerHTML += `<tr><td>${m.meeting_time||''}</td><td>${m.meeting_categories?.name||'-'}</td><td class="fw-bold">${m.name}</td><td>${m.location||''}</td><td>${m.chair_person||''}</td><td><button class="btn btn-sm btn-primary">詳情</button></td></tr>`;
+        });
     }
-
-    // --- 新增/編輯 ---
-    window.openMeetingModal = () => {
-        document.getElementById('meetingId').value = '';
-        document.getElementById('meetingName').value = '';
-        document.getElementById('meetingLocation').value = '';
-        document.getElementById('agenda').value = '';
-        document.getElementById('minutes').value = '';
-        document.getElementById('meetingTime').value = '';
-        document.getElementById('categoryId').value = '';
-        
-        setSingleUser('chair', null);
-        setSingleUser('recorder', null);
-        setMultiUser('attendees', []);
-        document.getElementById('observersInput').value = '';
-        meetingModal.show();
-    }
-
-    window.editMeeting = async (id) => {
-        const { data } = await window.db.from('meetings').select('*').eq('id', id).single();
-        if(data) {
-            document.getElementById('meetingId').value = data.id;
-            document.getElementById('categoryId').value = data.category_id || '';
-            document.getElementById('meetingName').value = data.name;
-            document.getElementById('meetingTime').value = data.meeting_time ? data.meeting_time.slice(0, 16) : '';
-            document.getElementById('meetingLocation').value = data.location;
-            
-            setSingleUser('chair', data.chair_person);
-            setSingleUser('recorder', data.recorder);
-            setMultiUser('attendees', data.attendees || []);
-            document.getElementById('observersInput').value = data.observers || '';
-            document.getElementById('agenda').value = data.agenda;
-            document.getElementById('minutes').value = data.minutes;
-            
-            meetingModal.show();
-        }
-    }
-
-    // ★ 重寫的 Save Function (包含詳細錯誤顯示)
+    window.openMeetingModal = () => { document.getElementById('meetingId').value=''; document.getElementById('meetingName').value=''; meetingModal.show(); }
+    
     window.saveMeeting = async () => {
-        const btn = document.querySelector('#meetingModal .btn-primary');
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = '處理中...';
+        const payload = {
+            category_id: document.getElementById('categoryId').value || null,
+            name: document.getElementById('meetingName').value,
+            meeting_time: document.getElementById('meetingTime').value || null,
+            location: document.getElementById('meetingLocation').value,
+            chair_person: document.getElementById('chairPerson').value, // 暫時簡化
+            agenda: document.getElementById('agenda').value,
+            minutes: document.getElementById('minutes').value
+        };
+        if(!payload.name) return Swal.fire('錯誤', '請輸入會議名稱', 'error');
 
-        try {
-            const id = document.getElementById('meetingId').value;
-            const payload = {
-                category_id: document.getElementById('categoryId').value || null,
-                name: document.getElementById('meetingName').value,
-                meeting_time: document.getElementById('meetingTime').value || null,
-                location: document.getElementById('meetingLocation').value,
-                chair_person: getJsonData('chairData'),
-                recorder: getJsonData('recorderData'),
-                attendees: getJsonData('attendeesData'),
-                observers: document.getElementById('observersInput').value,
-                agenda: document.getElementById('agenda').value,
-                minutes: document.getElementById('minutes').value
-            };
-
-            if(!payload.name) throw new Error('請輸入會議名稱');
-
-            let result;
-            if(id) {
-                result = await window.db.from('meetings').update(payload).eq('id', id).select();
-            } else {
-                result = await window.db.from('meetings').insert([payload]).select();
-            }
-
-            if (result.error) {
-                console.error('Supabase Error:', result.error);
-                throw new Error(result.error.message);
-            }
-
+        // ★★★ 除錯關鍵：直接把錯誤顯示出來 ★★★
+        const { error } = await window.db.from('meetings').insert([payload]);
+        
+        if (error) {
+            console.error('Save Error:', error);
+            Swal.fire('儲存失敗', `錯誤代碼: ${error.code}<br>訊息: ${error.message}`, 'error');
+        } else {
             meetingModal.hide();
             loadMeetings();
-            Swal.fire({ icon: 'success', title: '成功', text: '會議資料已儲存' });
-
-        } catch (err) {
-            Swal.fire({
-                icon: 'error',
-                title: '儲存失敗',
-                text: err.message,
-                footer: '請按 F12 查看 Console 以獲得詳細資訊'
-            });
-        } finally {
-            btn.disabled = false;
-            btn.textContent = originalText;
+            Swal.fire('成功', '會議記錄已儲存', 'success');
         }
-    }
-
-    // --- Helper Functions ---
-    function getJsonData(elementId) {
-        const val = document.getElementById(elementId).value;
-        try { return val ? JSON.parse(val) : null; } catch(e) { return null; }
-    }
-
-    // --- 人員選取器 ---
-    window.openUserSelector = (type) => {
-        currentSelectorType = type;
-        const listGroup = document.getElementById('userListGroup');
-        listGroup.innerHTML = '';
-        const isMulti = (type === 'attendees' || type === 'observers');
-        const inputType = isMulti ? 'checkbox' : 'radio';
-
-        allUsers.forEach(u => {
-            listGroup.innerHTML += `
-                <label class="list-group-item">
-                    <input class="form-check-input me-2 user-check" type="${inputType}" name="userSelect" value="${u.id}" data-name="${u.name}">
-                    ${u.name} <small class="text-muted">(${u.ref_id || ''})</small>
-                </label>
-            `;
-        });
-        userModal.show();
-    }
-
-    window.filterUsers = () => {
-        const term = document.getElementById('userSearch').value.toLowerCase();
-        document.querySelectorAll('#userListGroup label').forEach(el => {
-            el.style.display = el.textContent.toLowerCase().includes(term) ? '' : 'none';
-        });
-    }
-
-    window.confirmUserSelection = () => {
-        const checked = document.querySelectorAll('.user-check:checked');
-        const selected = Array.from(checked).map(c => ({
-            id: c.value, 
-            name: c.getAttribute('data-name')
-        }));
-
-        if (currentSelectorType === 'chair') setSingleUser('chair', selected[0] || null);
-        else if (currentSelectorType === 'recorder') setSingleUser('recorder', selected[0] || null);
-        else if (currentSelectorType === 'attendees') {
-            const oldData = getJsonData('attendeesData') || [];
-            // 合併並簡單去重 (依 ID)
-            const map = new Map();
-            [...oldData, ...selected].forEach(item => map.set(item.id, item));
-            setMultiUser('attendees', Array.from(map.values()));
-        } 
-        else if (currentSelectorType === 'observers') {
-            const input = document.getElementById('observersInput');
-            const newNames = selected.map(s => s.name).join(', ');
-            input.value = input.value ? (input.value + ', ' + newNames) : newNames;
-        }
-        userModal.hide();
-    }
-
-    function setSingleUser(type, userObj) {
-        document.getElementById(`${type}Display`).value = userObj ? userObj.name : '';
-        document.getElementById(`${type}Data`).value = userObj ? JSON.stringify(userObj) : '';
-    }
-
-    function setMultiUser(type, userArray) {
-        const displayDiv = document.getElementById(`${type}Display`);
-        document.getElementById(`${type}Data`).value = JSON.stringify(userArray);
-        displayDiv.innerHTML = '';
-        if (!userArray || userArray.length === 0) {
-            displayDiv.innerHTML = '<span class="text-muted small">點擊選擇...</span>';
-            return;
-        }
-        userArray.forEach((u, index) => {
-            displayDiv.innerHTML += `
-                <span class="user-tag">
-                    ${u.name} 
-                    <i class="bi bi-x-circle-fill" onclick="removeMultiUser('${type}', ${index}); event.stopPropagation();"></i>
-                </span>`;
-        });
-    }
-
-    window.removeMultiUser = (type, index) => {
-        const list = getJsonData(`${type}Data`) || [];
-        list.splice(index, 1);
-        setMultiUser(type, list);
     }
 </script>
 </body>
