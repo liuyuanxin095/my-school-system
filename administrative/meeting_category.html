@@ -16,131 +16,31 @@
         <h3 class="fw-bold text-dark"><i class="bi bi-tags-fill"></i> 會議類別管理</h3>
         <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增類別</button>
     </div>
-
     <div class="card shadow-sm border-0">
         <div class="card-body">
             <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>母項目</th>
-                        <th>子項目</th>
-                        <th>會議類別</th>
-                        <th>週期</th>
-                        <th>方式</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
+                <thead class="table-light"><tr><th>母項目</th><th>子項目</th><th>會議類別</th><th>週期</th><th>方式</th><th>操作</th></tr></thead>
                 <tbody id="listTable"></tbody>
             </table>
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">編輯會議類別</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="dataId">
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <label class="form-label">母項目</label>
-                        <input type="text" class="form-control" id="parentItem" placeholder="例：校務會議">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">子項目</label>
-                        <input type="text" class="form-control" id="childItem" placeholder="例：全體">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">會議類別名稱 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="catName" required>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <label class="form-label">進行週期</label>
-                        <select class="form-select" id="cycle">
-                            <option value="不定期">不定期</option>
-                            <option value="每週">每週</option>
-                            <option value="雙週">雙週</option>
-                            <option value="每月">每月</option>
-                            <option value="每季">每季</option>
-                            <option value="每學期">每學期</option>
-                            <option value="每學年">每學年</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">會議方式</label>
-                        <select class="form-select" id="method">
-                            <option value="實體會議">實體會議</option>
-                            <option value="線上會議">線上會議</option>
-                            <option value="混合會議">混合會議</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="saveData()">儲存</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold">編輯會議類別</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="dataId"><div class="row mb-3"><div class="col-6"><label class="form-label">母項目</label><input type="text" class="form-control" id="parentItem"></div><div class="col-6"><label class="form-label">子項目</label><input type="text" class="form-control" id="childItem"></div></div><div class="mb-3"><label class="form-label">會議類別名稱 <span class="text-danger">*</span></label><input type="text" class="form-control" id="catName" required></div><div class="row mb-3"><div class="col-6"><label class="form-label">進行週期</label><select class="form-select" id="cycle"><option value="不定期">不定期</option><option value="每週">每週</option><option value="每月">每月</option><option value="每學期">每學期</option></select></div><div class="col-6"><label class="form-label">會議方式</label><select class="form-select" id="method"><option value="實體會議">實體會議</option><option value="線上會議">線上會議</option></select></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="saveData()">儲存</button></div></div></div></div>
 <script src="../js/config.js"></script>
 <script>
     const modal = new bootstrap.Modal(document.getElementById('editModal'));
-
     document.addEventListener('DOMContentLoaded', loadData);
-
     async function loadData() {
-        if (!window.db) { Swal.fire('錯誤', '找不到 js/config.js', 'error'); return; }
+        if (!window.db) return Swal.fire('錯誤', 'js/config.js 設定有誤', 'error');
         const { data, error } = await window.db.from('meeting_categories').select('*').order('id');
-        if (error) { console.error(error); return; }
-        
+        if (error) return console.error(error);
         const tbody = document.getElementById('listTable');
         tbody.innerHTML = '';
         data.forEach(item => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${item.parent_item || '-'}</td>
-                    <td>${item.child_item || '-'}</td>
-                    <td class="fw-bold">${item.name}</td>
-                    <td><span class="badge bg-info text-dark">${item.cycle}</span></td>
-                    <td>${item.method}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editItem(${item.id})"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>
-            `;
+            tbody.innerHTML += `<tr><td>${item.parent_item||'-'}</td><td>${item.child_item||'-'}</td><td class="fw-bold">${item.name}</td><td>${item.cycle}</td><td>${item.method}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button></td></tr>`;
         });
     }
-
-    window.openModal = () => {
-        document.getElementById('dataId').value = '';
-        document.getElementById('parentItem').value = '';
-        document.getElementById('childItem').value = '';
-        document.getElementById('catName').value = '';
-        modal.show();
-    }
-
-    window.editItem = async (id) => {
-        const { data } = await window.db.from('meeting_categories').select('*').eq('id', id).single();
-        if(data) {
-            document.getElementById('dataId').value = data.id;
-            document.getElementById('parentItem').value = data.parent_item;
-            document.getElementById('childItem').value = data.child_item;
-            document.getElementById('catName').value = data.name;
-            document.getElementById('cycle').value = data.cycle;
-            document.getElementById('method').value = data.method;
-            modal.show();
-        }
-    }
-
+    window.openModal = () => { document.getElementById('dataId').value=''; document.getElementById('catName').value=''; modal.show(); }
     window.saveData = async () => {
         const id = document.getElementById('dataId').value;
         const payload = {
@@ -150,33 +50,11 @@
             cycle: document.getElementById('cycle').value,
             method: document.getElementById('method').value
         };
-
-        if(!payload.name) return Swal.fire('錯誤', '請輸入會議類別名稱', 'error');
-
-        let error;
-        if(id) {
-            const res = await window.db.from('meeting_categories').update(payload).eq('id', id);
-            error = res.error;
-        } else {
-            const res = await window.db.from('meeting_categories').insert([payload]);
-            error = res.error;
-        }
-
-        if(error) {
-            Swal.fire('失敗', error.message, 'error');
-        } else {
-            modal.hide();
-            loadData();
-            Swal.fire('成功', '資料已儲存', 'success');
-        }
+        if(!payload.name) return Swal.fire('錯誤', '請輸入名稱', 'error');
+        const { error } = id ? await window.db.from('meeting_categories').update(payload).eq('id', id) : await window.db.from('meeting_categories').insert([payload]);
+        if(error) Swal.fire('失敗', error.message, 'error'); else { modal.hide(); loadData(); Swal.fire('成功','','success'); }
     }
-
-    window.deleteItem = async (id) => {
-        if((await Swal.fire({ title: '確定刪除？', showCancelButton: true })).isConfirmed) {
-            await window.db.from('meeting_categories').delete().eq('id', id);
-            loadData();
-        }
-    }
+    window.deleteItem = async (id) => { if((await Swal.fire({title:'確定刪除?',showCancelButton:true})).isConfirmed) { await window.db.from('meeting_categories').delete().eq('id', id); loadData(); } }
 </script>
 </body>
 </html>
