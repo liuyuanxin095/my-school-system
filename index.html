@@ -1,365 +1,77 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧校務整合系統</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body { display: flex; height: 100vh; overflow: hidden; margin: 0; background-color: #f8f9fa; }
-        
-        /* --- 側邊欄 (Sidebar) --- */
-        .sidebar {
-            width: 260px;
-            background-color: #212529; /* 深黑 */
-            color: white;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #333;
-            transition: all 0.3s;
-            z-index: 1050; /* 確保在遮罩之上 */
-        }
-        
-        .sidebar-header { 
-            padding: 20px 15px; 
-            background-color: #212529;
-            border-bottom: 1px solid #373b3e; 
-        }
-        .brand-text { margin-left: 5px; font-weight: bold; font-size: 1.1rem; color: #fff; }
+<script>
+    // ... (保留原本的 user 檢查與 logout 程式碼) ...
 
-        /* --- 選單按鈕樣式 --- */
-        .menu-btn, .accordion-button {
-            background-color: transparent !important;
-            color: #adb5bd !important;
-            box-shadow: none !important;
-            padding: 12px 20px;
-            border: none;
-            width: 100%;
-            text-align: left;
-            text-decoration: none;
-            border-left: 4px solid transparent;
-            display: flex;
-            align-items: center;
-        }
-
-        .menu-btn:hover, .accordion-button:hover { 
-            background-color: #2c3034 !important; 
-            color: #fff !important; 
-        }
-
-        .submenu-link {
-            display: block;
-            padding: 8px 10px 8px 54px;
-            color: #888;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: 0.2s;
-            border-left: 4px solid transparent;
-            background-color: #15171a;
-        }
-        .submenu-link:hover { color: #fff; background-color: #2c3034; }
-
-        /* 激活狀態 */
-        .menu-btn.active, .submenu-link.active {
-            color: #fff !important;
-            background-color: #2c3034 !important;
-            border-left-color: #0d6efd;
-        }
-        
-        .accordion-button:not(.collapsed) { 
-            color: #fff !important; 
-            font-weight: bold;
-            background-color: #212529 !important;
-        }
-        .accordion-button::after { display: none; }
-        .accordion-item { background-color: transparent; border: none; }
-        
-        /* --- 主要內容區 (Main Content) --- */
-        .main-content { 
-            flex-grow: 1; 
-            display: flex; 
-            flex-direction: column; 
-            width: 100%; /* 確保寬度正確 */
-            position: relative;
-        }
-        
-        /* 手機版頂部導覽列 (預設隱藏，手機顯示) */
-        .mobile-navbar {
-            display: none;
-            background-color: #fff;
-            padding: 10px 15px;
-            border-bottom: 1px solid #dee2e6;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        iframe { width: 100%; height: 100%; border: none; }
-
-        /* --- 響應式設計 (Mobile RWD) --- */
-        @media (max-width: 768px) {
-            /* 1. 側邊欄預設隱藏 (移到畫面左邊外面) */
-            .sidebar {
-                position: fixed;
-                top: 0; left: -260px; /* 藏在左邊 */
-                height: 100vh;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-            }
-            
-            /* 2. 當側邊欄被激活時 (滑入) */
-            .sidebar.show {
-                left: 0;
-            }
-
-            /* 3. 顯示手機頂部導覽列 */
-            .mobile-navbar { display: flex; }
-
-            /* 4. 遮罩層 (Overlay) - 當側邊欄打開時顯示 */
-            .overlay {
-                display: none;
-                position: fixed;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.5);
-                z-index: 1040; /* 在側邊欄之下，內容之上 */
-            }
-            .overlay.show { display: block; }
-        }
-    </style>
-    <script>
-        if (!localStorage.getItem('currentUser')) {
-            window.location.href = 'login.html';
-        }
-    </script>
-</head>
-<body>
-
-    <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
-
-    <div id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-building-fill text-primary"></i>
-                    <span class="brand-text">智慧校務整合系統</span>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="toggleSidebar()">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-            
-            <div class="d-flex align-items-center mt-3 text-light ps-1">
-                <div class="d-flex align-items-center">
-                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2" style="width:30px; height:30px; font-size: 0.8rem;">
-                        <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div style="line-height: 1.2;">
-                        <span id="userNameDisplay" class="d-block fw-bold" style="font-size: 0.85rem;">載入中...</span>
-                        <small id="userRoleDisplay" class="text-muted" style="font-size: 0.75rem;">...</small>
-                    </div>
-                </div>
-                
-                <button id="logoutBtn" class="btn btn-sm btn-outline-danger ms-auto" title="登出系統" style="border-radius: 6px;">
-                    <i class="bi bi-box-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="accordion accordion-flush" id="menuAccordion" style="overflow-y: auto; flex-grow: 1;">
-            
-            <div class="accordion-item">
-                <a href="welcome.html" target="content-frame" class="menu-btn active" onclick="handleMenuClick(this)">
-                    <i class="bi bi-speedometer2 me-2"></i> 系統首頁
-                </a>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-administrative">
-                        <i class="bi bi-bank2 me-2"></i> 行政系統
-                    </button>
-                </h2>
-                <div id="menu-administrative" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="administrative/calendar.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">校務行事曆</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-academic">
-                        <i class="bi bi-journal-bookmark-fill me-2"></i> 教務系統
-                    </button>
-                </h2>
-                <div id="menu-academic" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="academic/student_list.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學生學籍資料維護</a>
-                    <a href="academic/student_attendance.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學生考勤作業</a>
-                    <a href="academic/class_opening/dashboard.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">開班管理模組</a>
-                    <a href="academic/course/course_dashboard.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">課程維護系統</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">調代課作業</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">成績管理模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">測驗管理模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">教學問卷系統</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">教務資料同步作業</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-student">
-                        <i class="bi bi-backpack2-fill me-2"></i> 學務系統
-                    </button>
-                </h2>
-                <div id="menu-student" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">出缺席管理模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學生操行模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">獎懲登錄作業</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">巡堂模組</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-counseling">
-                        <i class="bi bi-heart-pulse-fill me-2"></i> 輔導系統
-                    </button>
-                </h2>
-                <div id="menu-counseling" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">個案記錄</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">心理測驗</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-general">
-                        <i class="bi bi-tools me-2"></i> 總務系統
-                    </button>
-                </h2>
-                <div id="menu-general" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學生餐費管理</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">財產管理模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">設備報修模組</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">出納收支管理系統</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">學雜費管理系統</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">報表列印作業</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-message">
-                        <i class="bi bi-megaphone-fill me-2"></i> 訊息系統
-                    </button>
-                </h2>
-                <div id="menu-message" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="admin/announcement_manager.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">全校公告管理</a>
-                    <a href="#" class="submenu-link" onclick="handleMenuClick(this)">模組作業推播管理</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-hr">
-                        <i class="bi bi-people-fill me-2"></i> 人資系統
-                    </button>
-                </h2>
-                <div id="menu-hr" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="hr/list_employee.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">人事資料管理</a>
-                    <a href="hr/add_employee.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">單位用人作業</a>
-                    <a href="hr/online_punch.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">考勤作業</a>
-                </div>
-            </div>
-
-            <div class="accordion-item">
-                <a href="forms.html" target="content-frame" class="menu-btn" onclick="handleMenuClick(this)">
-                    <i class="bi bi-clipboard-check-fill me-2"></i> 表單系統
-                </a>
-            </div>
-
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#menu-admin">
-                        <i class="bi bi-gear-fill me-2"></i> 系統管理
-                    </button>
-                </h2>
-                <div id="menu-admin" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-                    <a href="admin/branch_manager.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">分校資料管理</a>
-                    <a href="admin/classroom_manager.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">教室資料管理</a>
-                    <a href="admin/semester_manager.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">學期資料管理</a>
-                    <a href="admin/permission_settings.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">系統權限設定</a>
-                    <a href="admin/account_manager.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">帳號權限管理</a>
-                    <a href="admin/change_password.html" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">修改個人密碼</a>
-                </div>
-            </div>
-
-            <div style="height: 20px;"></div>
-
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="mobile-navbar d-md-none">
-            <button class="btn btn-outline-dark border-0" onclick="toggleSidebar()">
-                <i class="bi bi-list fs-3"></i>
-            </button>
-            <span class="fw-bold">智慧校務系統</span>
-            <div style="width: 40px;"></div> </div>
-
-        <iframe name="content-frame" src="welcome.html"></iframe>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    // ▼▼▼ 新增這個函式來動態生成選單 ▼▼▼
+    async function renderDynamicMenu() {
         const user = JSON.parse(localStorage.getItem('currentUser'));
-        if (user) {
-            document.getElementById('userNameDisplay').textContent = user.name;
-            const roleMap = { 'admin': '系統管理員', 'staff': '教職員', 'student': '學生', 'teacher': '教師' };
-            document.getElementById('userRoleDisplay').textContent = roleMap[user.role] || user.role;
-        }
+        if (!user) return;
 
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            Swal.fire({
-                title: '確定要登出嗎？',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: '登出',
-                cancelButtonText: '取消'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
-                }
-            })
-        });
+        // 1. 從資料庫撈取所有啟用選單
+        const { data: allMenus } = await window.db
+            .from('system_menus')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
 
-        // 側邊欄切換功能 (手機版)
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            sidebar.classList.toggle('show');
-            overlay.classList.toggle('show');
-        }
+        if (!allMenus) return;
 
-        // 點選選單後自動收合 (僅限手機版)
-        function handleMenuClick(clickedEl) {
-            // 移除所有 active
-            document.querySelectorAll('.menu-btn, .submenu-link').forEach(el => {
-                el.classList.remove('active');
-            });
-            // 加上 active
-            clickedEl.classList.add('active');
+        const menuContainer = document.getElementById('menuAccordion');
+        menuContainer.innerHTML = ''; // 清空目前內容
 
-            // 如果是手機版，點選後自動關閉側邊欄
-            if (window.innerWidth < 768) {
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar.classList.contains('show')) {
-                    toggleSidebar();
+        // 2. 篩選權限 (只留下此角色能看到的)
+        const allowedMenus = allMenus.filter(m => 
+            !m.allowed_roles || m.allowed_roles.includes(user.role)
+        );
+
+        // 3. 分離父層與子層
+        const parents = allowedMenus.filter(m => !m.parent_id);
+
+        // 4. 產生 HTML
+        parents.forEach(parent => {
+            const children = allowedMenus.filter(m => m.parent_id === parent.id);
+            
+            if (children.length > 0) {
+                // === 情況 A: 折疊式選單 (有子項目) ===
+                const collapseId = `menu-${parent.id}`;
+                const html = `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                                <i class="bi ${parent.icon || 'bi-folder'} me-2"></i> ${parent.title}
+                            </button>
+                        </h2>
+                        <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+                            ${children.map(child => `
+                                <a href="${child.link}" target="content-frame" class="submenu-link" onclick="handleMenuClick(this)">
+                                    ${child.title}
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                menuContainer.innerHTML += html;
+            } else {
+                // === 情況 B: 單一連結 (沒有子項目) ===
+                // 如果父層自己有連結，就顯示；如果是空目錄則不顯示
+                if (parent.link) {
+                    const html = `
+                        <div class="accordion-item">
+                            <a href="${parent.link}" target="content-frame" class="menu-btn" onclick="handleMenuClick(this)">
+                                <i class="bi ${parent.icon || 'bi-link'} me-2"></i> ${parent.title}
+                            </a>
+                        </div>
+                    `;
+                    menuContainer.innerHTML += html;
                 }
             }
-        }
-    </script>
-</body>
-</html>
+        });
+        
+        // 最後加一點底部留白
+        menuContainer.innerHTML += '<div style="height: 20px;"></div>';
+    }
+
+    // 在頁面載入時執行
+    document.addEventListener('DOMContentLoaded', () => {
+        renderDynamicMenu();
+    });
+</script>
