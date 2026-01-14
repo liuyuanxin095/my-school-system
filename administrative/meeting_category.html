@@ -6,7 +6,6 @@
     <title>會議類別設定</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>body { background-color: #f8f9fa; padding: 20px; font-family: 'Microsoft JhengHei', sans-serif; }</style>
@@ -17,81 +16,35 @@
         <h3 class="fw-bold text-dark"><i class="bi bi-tags-fill"></i> 會議類別管理</h3>
         <button class="btn btn-primary" onclick="openModal()"><i class="bi bi-plus-lg"></i> 新增類別</button>
     </div>
-
-    <div id="statusMsg" class="alert alert-info" style="display:none;">正在連線資料庫...</div>
-
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr><th>母項目</th><th>子項目</th><th>會議類別</th><th>週期</th><th>方式</th><th>操作</th></tr>
-                </thead>
-                <tbody id="listTable"></tbody>
-            </table>
-        </div>
-    </div>
+    <div class="card shadow-sm border-0"><div class="card-body"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>母項目</th><th>子項目</th><th>會議類別</th><th>週期</th><th>方式</th><th>操作</th></tr></thead><tbody id="listTable"></tbody></table></div></div>
 </div>
 
 <div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold">編輯會議類別</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="dataId"><div class="row mb-3"><div class="col-6"><label class="form-label">母項目</label><input type="text" class="form-control" id="parentItem"></div><div class="col-6"><label class="form-label">子項目</label><input type="text" class="form-control" id="childItem"></div></div><div class="mb-3"><label class="form-label">會議類別名稱 <span class="text-danger">*</span></label><input type="text" class="form-control" id="catName" required></div><div class="row mb-3"><div class="col-6"><label class="form-label">進行週期</label><select class="form-select" id="cycle"><option value="不定期">不定期</option><option value="每週">每週</option><option value="每月">每月</option><option value="每學期">每學期</option></select></div><div class="col-6"><label class="form-label">會議方式</label><select class="form-select" id="method"><option value="實體會議">實體會議</option><option value="線上會議">線上會議</option></select></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="saveData()">儲存</button></div></div></div></div>
 
+<script src="../js/config.js"></script>
 <script>
-    // ★★★ 直接在此設定資料庫，排除路徑問題 ★★★
-    const _SUPABASE_URL = 'https://blzkbhjjoqylinywxtyy.supabase.co';
-    const _SUPABASE_KEY = 'sb_publishable_k5DR0vYzR9-GKrHoysRFjA_iTMlJPjh'; // 使用您提供的 key
-    const db = supabase.createClient(_SUPABASE_URL, _SUPABASE_KEY);
-
+    // 檢查連線
+    if (typeof window.db === 'undefined') { Swal.fire('錯誤', '找不到 js/config.js，請確認檔案路徑。', 'error'); }
+    
     const modal = new bootstrap.Modal(document.getElementById('editModal'));
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log("頁面載入完成，開始讀取資料...");
-        await loadData();
-    });
+    document.addEventListener('DOMContentLoaded', loadData);
 
     async function loadData() {
-        // 顯示載入中
-        const status = document.getElementById('statusMsg');
-        status.style.display = 'block';
-        status.textContent = '正在讀取資料...';
-
-        const { data, error } = await db.from('meeting_categories').select('*').order('id');
+        // 使用 window.db
+        const { data, error } = await window.db.from('meeting_categories').select('*').order('id');
+        if (error) return Swal.fire('讀取失敗', error.message, 'error');
         
-        status.style.display = 'none';
-
-        if (error) {
-            console.error("讀取錯誤:", error);
-            Swal.fire('讀取失敗', error.message, 'error');
-            return;
-        }
-
         const tbody = document.getElementById('listTable');
         tbody.innerHTML = '';
+        if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">無資料</td></tr>'; return;}
         
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前沒有資料，請按右上角新增。</td></tr>';
-            return;
-        }
-
         data.forEach(item => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${item.parent_item||'-'}</td>
-                    <td>${item.child_item||'-'}</td>
-                    <td class="fw-bold">${item.name}</td>
-                    <td>${item.cycle}</td>
-                    <td>${item.method}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button>
-                    </td>
-                </tr>`;
+            tbody.innerHTML += `<tr><td>${item.parent_item||'-'}</td><td>${item.child_item||'-'}</td><td class="fw-bold">${item.name}</td><td>${item.cycle}</td><td>${item.method}</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})"><i class="bi bi-trash"></i></button></td></tr>`;
         });
     }
-
-    window.openModal = () => {
-        document.getElementById('dataId').value = '';
-        document.getElementById('catName').value = '';
-        modal.show();
-    }
-
+    
+    window.openModal = () => { document.getElementById('dataId').value=''; document.getElementById('catName').value=''; modal.show(); }
+    
     window.saveData = async () => {
         const id = document.getElementById('dataId').value;
         const payload = {
@@ -101,31 +54,16 @@
             cycle: document.getElementById('cycle').value,
             method: document.getElementById('method').value
         };
-
         if(!payload.name) return Swal.fire('錯誤', '請輸入名稱', 'error');
-
-        // 測試寫入
+        
         const { error } = id 
-            ? await db.from('meeting_categories').update(payload).eq('id', id)
-            : await db.from('meeting_categories').insert([payload]);
+            ? await window.db.from('meeting_categories').update(payload).eq('id', id)
+            : await window.db.from('meeting_categories').insert([payload]);
 
-        if(error) {
-            console.error("儲存錯誤:", error);
-            Swal.fire('儲存失敗', error.message + '<br>請檢查 Console', 'error');
-        } else {
-            modal.hide();
-            await loadData();
-            Swal.fire('成功', '資料已儲存', 'success');
-        }
+        if(error) Swal.fire('失敗', error.message, 'error'); else { modal.hide(); loadData(); Swal.fire('成功','','success'); }
     }
-
-    window.deleteItem = async (id) => {
-        if((await Swal.fire({title:'確定刪除?',showCancelButton:true})).isConfirmed) {
-            const { error } = await db.from('meeting_categories').delete().eq('id', id);
-            if(error) Swal.fire('刪除失敗', error.message, 'error');
-            else loadData();
-        }
-    }
+    
+    window.deleteItem = async (id) => { if((await Swal.fire({title:'確定刪除?',showCancelButton:true})).isConfirmed) { await window.db.from('meeting_categories').delete().eq('id', id); loadData(); } }
 </script>
 </body>
 </html>
